@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MORIVA CONTENT STUDIO — 쿠팡 이미지 콘텐츠 빌더</title>
-<link rel="icon" href="./moriva-brand-guide.png">
+<link rel="icon" type="image/png" href="./favicon.png">
+<link rel="apple-touch-icon" href="./favicon.png">
 <style>
 
 /* NOTE: 이 CSS는 saas-starter 전체에서 공유하는 globals.css와 별개로
@@ -70,8 +71,8 @@
   backdrop-filter: blur(18px);
 }
 .brand { display: flex; align-items: center; gap: 14px; color: inherit; text-decoration: none; width: max-content; }
-.brand-logo-crop { width:188px; height:58px; overflow:hidden; position:relative; display:block; flex:0 0 auto; }
-.brand-logo-crop img { position:absolute; width:510px; max-width:none; height:auto; left:-26px; top:-171px; }
+.brand-logo-crop { width:172px; height:52px; display:flex; align-items:center; flex:0 0 auto; }
+.brand-logo-crop img { width:100%; height:auto; display:block; }
 .brand-product { border-left:1px solid #d9dfe5; padding-left:14px; display:flex; flex-direction:column; line-height:1; }
 .brand-product strong { font-size:calc(10px * var(--page-scale, 1)); color:var(--navy); letter-spacing:.12em; }
 .brand-product small { margin-top:6px; font-size:calc(6px * var(--page-scale, 1)); color:#9a8560; font-weight:700; letter-spacing:.16em; }
@@ -102,8 +103,8 @@
 .hero-side { display:grid; gap:12px; }
 .hero-brand-panel { min-height:145px; border-radius:24px; padding:14px 22px 14px 10px; background:linear-gradient(135deg,#06162d,#0c294d); color:white; display:grid; grid-template-columns:236px 1fr; align-items:center; gap:14px; box-shadow:0 20px 48px rgba(7,26,53,.19); position:relative; overflow:hidden; }
 .hero-brand-panel::after { content:""; width:170px; height:170px; border:1px solid rgba(201,150,26,.17); border-radius:50%; position:absolute; right:-92px; top:-85px; box-shadow:0 0 0 30px rgba(201,150,26,.035); }
-.reverse-logo-crop { width:222px; height:118px; overflow:hidden; position:relative; border-radius:12px; }
-.reverse-logo-crop img { position:absolute; width:895px; max-width:none; height:auto; left:-336px; top:-480px; }
+.reverse-logo-crop { width:222px; display:grid; place-items:center; padding:14px 16px; border-radius:12px; background:rgba(255,255,255,.05); }
+.reverse-logo-crop img { width:100%; height:auto; display:block; }
 .hero-brand-panel > div:last-child { position:relative; z-index:1; min-width:0; }
 .hero-brand-panel > div:last-child span { color:#d8ae49; font-size:calc(8px * var(--page-scale, 1)); font-weight:800; letter-spacing:.14em; }
 .hero-brand-panel > div:last-child strong { display:block; margin-top:8px; font-size:calc(15px * var(--page-scale, 1)); letter-spacing:.02em; }
@@ -324,10 +325,10 @@
   .output-head { align-items:flex-start; gap:18px; }.output-actions { flex-direction:column; align-items:flex-end; }
   .batch-create-bar { align-items:flex-start; flex-direction:column; }.detail-master-actions { width:100%; min-width:0; }
   .gallery-grid { grid-template-columns:1fr; }
-  .brand-logo-crop { width:166px; }.brand-logo-crop img { width:470px; left:-24px; top:-152px; }.brand-product { display:none; }
+  .brand-logo-crop { width:150px; }.brand-product { display:none; }
 }
 @media (max-width: 560px) {
-  .brand-logo-crop { width:138px; height:48px; }.brand-logo-crop img { width:414px; left:-21px; top:-139px; }
+  .brand-logo-crop { width:126px; height:42px; }
   .hero h1 { font-size:calc(31px * var(--page-scale, 1)); }.hero-copy-area > p { font-size:calc(12px * var(--page-scale, 1)); }
   .font-scale-control button { min-width:30px; padding:0 5px; }
   .workflow-card { padding:22px 12px; gap:7px; }.workflow-card strong { font-size:calc(10px * var(--page-scale, 1)); }.workflow-card small { font-size:calc(8px * var(--page-scale, 1)); }.workflow-card > i { font-size:calc(10px * var(--page-scale, 1)); }
@@ -386,7 +387,7 @@ body { background:#f4f6f7; }
 
   <header class="site-header">
     <a class="brand" href="#top" aria-label="MORIVA Prompt Studio 홈">
-      <span class="brand-logo-crop"><img src="./moriva-brand-guide.png" alt="MORIVA 모리바 Better Life, Better Move"></span>
+      <span class="brand-logo-crop"><img src="./moriva-logo-h.png" alt="MORIVA 모리바 Better Life, Better Move"></span>
       <span class="brand-product"><strong>CONTENT STUDIO</strong><small>COUPANG CREATIVE BUILDER</small></span>
     </a>
     <div class="header-center"><span>쿠팡 로켓그로스</span><strong>이미지 콘텐츠 빌더</strong></div>
@@ -412,7 +413,7 @@ body { background:#f4f6f7; }
       </div>
       <div class="hero-side">
         <div class="hero-brand-panel">
-          <div class="reverse-logo-crop"><img src="./moriva-brand-guide.png" alt="MORIVA 모리바"></div>
+          <div class="reverse-logo-crop"><img src="./moriva-logo-h-white.png" alt="MORIVA 모리바"></div>
           <div><span>MORIVA BRAND PROMISE</span><strong>Better Life, Better Move</strong><p>브랜드 컬러와 제품 디테일을 일관되게 유지합니다.</p></div>
         </div>
         <div class="workflow-card" aria-label="작업 흐름">
