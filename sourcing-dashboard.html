@@ -611,17 +611,27 @@ function loadManifestSummary(){
     return Array.isArray(parsed) ? parsed : (parsed.items || []);
   }catch(e){ return []; }
 }
+function nameLooksSame(a, b){
+  var k = normalizeProductName(a), x = normalizeProductName(b);
+  if(!k || !x) return false;
+  if(k === x) return true;
+  // 부분일치는 이름이 너무 짧으면 엉뚱한 상품까지 걸리므로 2글자 이상일 때만 인정한다.
+  if(k.length < 2 || x.length < 2) return false;
+  return x.indexOf(k) !== -1 || k.indexOf(x) !== -1;
+}
+
 function manifestMatchesFor(productName){
-  var key = normalizeProductName(productName);
-  if(!key) return [];
+  if(!normalizeProductName(productName)) return [];
   return loadManifestSummary().filter(function(m){
-    var mk = normalizeProductName(m.name);
-    if(!mk) return false;
-    // 완전히 같으면 당연히 같은 상품.
-    if(mk === key) return true;
-    // 부분일치는 이름이 너무 짧으면 엉뚱한 상품까지 걸리므로 2글자 이상일 때만 인정한다.
-    if(key.length < 2 || mk.length < 2) return false;
-    return mk.indexOf(key) !== -1 || key.indexOf(mk) !== -1;
+    // 매니페스트는 상품명에 규격(예: "30*30*60 3개")을 적고
+    // 폴더에 상품군(예: "분리수거함")을 적는 경우가 많아 둘 다 확인한다.
+    // 폴더가 "러닝벨트 / 벨크로 러닝벨트"처럼 슬래시로 나뉜 경우 각 조각도 비교한다.
+    if(nameLooksSame(productName, m.name)) return true;
+    var folder = m.folder || '';
+    if(nameLooksSame(productName, folder)) return true;
+    return folder.split('/').some(function(part){
+      return nameLooksSame(productName, part);
+    });
   });
 }
 
