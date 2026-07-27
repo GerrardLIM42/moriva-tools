@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MORIVA 도구 모음</title>
+<style>
+  :root{
+    --ink:#1B2A3D; --paper:#F6F3EC; --paper-dim:#EDE7D8; --card:#FFFDF8;
+    --line:#DCD5C3; --mist:#8B95A1; --amber:#D98E3D; --jade:#4F7864;
+    --steel:#5B7C99; --seal:#B8453A; --plum:#86586B; --rust:#C2703D;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif;
+    background:var(--paper); color:var(--ink); min-height:100vh;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:36px 20px 60px;}
+  header{margin-bottom:30px;}
+  .logo-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .logo-mark{
+    width:38px;height:38px;border-radius:10px;background:var(--ink);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;
+  }
+  h1{font-size:24px;letter-spacing:.02em;}
+  .sub{color:var(--mist);font-size:14px;line-height:1.6;}
+  .section-label{
+    font-size:12px;font-weight:700;color:var(--mist);letter-spacing:.08em;
+    text-transform:uppercase;margin:26px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--line);
+  }
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;}
+  a.card{
+    display:flex;flex-direction:column;gap:8px;background:var(--card);
+    border:1px solid var(--line);border-radius:14px;padding:18px 16px;
+    text-decoration:none;color:var(--ink);transition:transform .12s, box-shadow .12s, border-color .12s;
+  }
+  a.card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(27,42,61,.08);border-color:var(--amber);}
+  .card-top{display:flex;align-items:center;gap:10px;}
+  .icon{
+    width:38px;height:38px;border-radius:10px;display:flex;align-items:center;
+    justify-content:center;font-size:19px;flex-shrink:0;
+  }
+  .i1{background:#F5E3CE;} .i2{background:#E2EAE6;} .i3{background:#E3EAF0;}
+  .i4{background:#F0E3E8;} .i5{background:#F3E0DC;} .i6{background:var(--paper-dim);}
+  .card-title{font-size:15px;font-weight:700;}
+  .card-desc{font-size:12.5px;color:var(--mist);line-height:1.55;}
+  .badge-new{
+    display:inline-block;font-size:10px;font-weight:800;color:#fff;background:var(--seal);
+    border-radius:20px;padding:2px 8px;margin-left:6px;vertical-align:middle;
+  }
+  footer{margin-top:44px;text-align:center;color:var(--mist);font-size:12px;line-height:1.7;}
+  @media (max-width:520px){
+    .wrap{padding:24px 14px 48px;}
+    .grid{grid-template-columns:1fr;}
+    h1{font-size:20px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo-row">
+      <div class="logo-mark">M</div>
+      <h1>MORIVA 도구 모음</h1>
+    </div>
+    <p class="sub">쿠팡 셀러 업무용 개인 도구 모음입니다. 모든 데이터는 이 브라우저에만 저장돼요.</p>
+  </header>
+
+  <div class="section-label">소싱 · 분석</div>
+  <div class="grid">
+    <a class="card" href="./sourcing-dashboard.html">
+      <div class="card-top"><div class="icon i1">📊</div><div class="card-title">소싱 대시보드<span class="badge-new">NEW</span></div></div>
+      <div class="card-desc">소싱 현황을 한눈에 보는 통합 대시보드.</div>
+    </a>
+    <a class="card" href="./launch-calendar.html">
+      <div class="card-top"><div class="icon i2">🗓️</div><div class="card-title">상품런칭 캘린더<span class="badge-new">NEW</span></div></div>
+      <div class="card-desc">상품 런칭 일정을 캘린더로 관리합니다.</div>
+    </a>
+    <a class="card" href="./sourcing-manifest.html">
+      <div class="card-top"><div class="icon i3">🗂️</div><div class="card-title">소싱 매니페스트</div></div>
+      <div class="card-desc">1688 사입 후보를 링크·이미지와 함께 등록해 비교 검토합니다.</div>
+    </a>
+    <a class="card" href="./sourcing-price-compare.html">
+      <div class="card-top"><div class="icon i4">💱</div><div class="card-title">소싱 가격비교</div></div>
+      <div class="card-desc">판매자별 옵션 가격을 비교해 최저가를 자동으로 찾아줍니다.</div>
+    </a>
+  </div>
+
+  <div class="section-label">상품 등록 · 판매</div>
+  <div class="grid">
+    <a class="card" href="./product-name-generator.html">
+      <div class="card-top"><div class="icon i1">🏷️</div><div class="card-title">상품명 생성기</div></div>
+      <div class="card-desc">상위노출 상품명을 분석해 5단어 상품명 5가지를 제안합니다.</div>
+    </a>
+    <a class="card" href="./pricing-setter.html">
+      <div class="card-top"><div class="icon i2">💰</div><div class="card-title">가격 세팅 도구</div></div>
+      <div class="card-desc">최종소비자가 기준으로 판매가·할인·정상가를 자동 계산합니다.</div>
+    </a>
+    <a class="card" href="./margin-calculator.html">
+      <div class="card-top"><div class="icon i5">🧮</div><div class="card-title">마진 계산기</div></div>
+      <div class="card-desc">수입원가·관부가세·판매비를 반영해 마진율을 계산합니다.</div>
+    </a>
+    <a class="card" href="./preview-tool.html">
+      <div class="card-top"><div class="icon i3">🛒</div><div class="card-title">상세페이지 미리보기</div></div>
+      <div class="card-desc">썸네일·상세페이지를 실제 쿠팡 화면처럼 미리 봅니다.</div>
+    </a>
+    <a class="card" href="./kc-label-navigator.html">
+      <div class="card-top"><div class="icon i6">📋</div><div class="card-title">KC 표시사항 내비게이터</div></div>
+      <div class="card-desc">카테고리별 KC 인증·표시사항 체크리스트를 안내합니다.</div>
+    </a>
+  </div>
+
+  <footer>MORIVA · 개인용 도구 모음<br>데이터는 서버에 전송되지 않고 브라우저(localStorage)에만 저장됩니다.</footer>
+</div>
+<script src="./moriva-sync.js"></script>
+</body>
+</html>

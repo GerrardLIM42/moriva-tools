@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>로켓그로스 가격 세팅 도구</title>
+<style>
+  :root{
+    /* 소싱 매니페스트 도구와 통일된 색감(따뜻한 종이 톤 + 앰버 포인트) */
+    --bg:#F6F3EC;
+    --surface:#FFFDF8;
+    --ink:#1B2A3D;
+    --ink-soft:#5F6B78;
+    --ink-faint:#8B95A1;
+    --navy:#5B7C99;
+    --navy-deep:#16222F;
+    --amber:#D98E3D;
+    --amber-deep:#C2703D;
+    --brick:#B8453A;
+    --brick-soft:#F1DEDA;
+    --slate:#8B95A1;
+    --slate-soft:#EDE7D8;
+    --line:#DCD5C3;
+    --radius:12px;
+    --mono:ui-monospace, SFMono-Regular, Consolas, Menlo, 'Roboto Mono', monospace;
+    --sans:-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Segoe UI', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:var(--sans);
+    background:var(--bg);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{
+    max-width:640px;
+    margin:0 auto;
+    padding:36px 20px 56px;
+  }
+  .brand-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:26px;
+  }
+  .brand-mark{width:30px; height:30px; flex-shrink:0;}
+  .brand-word{
+    font-family:var(--mono);
+    font-weight:700;
+    font-size:15px;
+    letter-spacing:.16em;
+    color:var(--navy-deep);
+  }
+  .brand-divider{
+    width:1px;
+    height:16px;
+    background:var(--line);
+  }
+  .brand-sub{
+    font-size:11px;
+    color:var(--ink-faint);
+    font-weight:500;
+  }
+
+  header{margin-bottom:28px;}
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.12em;
+    color:var(--navy);
+    font-weight:600;
+    text-transform:uppercase;
+    margin-bottom:8px;
+  }
+  h1{
+    font-size:26px;
+    line-height:1.3;
+    margin:0 0 10px;
+    letter-spacing:-.01em;
+    font-weight:700;
+  }
+  .sub{
+    font-size:13.5px;
+    line-height:1.6;
+    color:var(--ink-soft);
+    margin:0;
+    max-width:520px;
+  }
+
+  .controls-row{
+    display:flex;
+    gap:10px;
+    margin:22px 0 26px;
+    flex-wrap:wrap;
+  }
+  .control{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:12px 14px;
+    flex:1;
+    min-width:200px;
+  }
+  .control label{
+    display:block;
+    font-size:11px;
+    color:var(--ink-soft);
+    margin-bottom:8px;
+    font-weight:600;
+  }
+  .rate-input{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .rate-input input[type=range]{
+    flex:1;
+    accent-color:var(--navy);
+  }
+  .rate-input input[type=text]{
+    width:44px;
+    flex:0 0 auto;
+    font-family:var(--mono);
+    font-weight:600;
+    font-size:14px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:4px 4px;
+    text-align:center;
+    color:var(--navy);
+  }
+  .rate-input span{font-family:var(--mono); font-size:13px; color:var(--ink-soft);}
+  select{
+    width:100%;
+    font-family:var(--mono);
+    font-size:13px;
+    font-weight:600;
+    color:var(--navy);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:6px 8px;
+    background:var(--surface);
+  }
+
+  .ladder{
+    display:flex;
+    flex-direction:column;
+  }
+
+  .step{
+    position:relative;
+    border-radius:var(--radius);
+    overflow:hidden;
+    border:1px solid var(--line);
+    background:var(--surface);
+  }
+  .step-fill{
+    position:absolute;
+    left:0; top:0; bottom:0;
+    width:0%;
+    transition:width .25s ease;
+    z-index:0;
+  }
+  .step-normal .step-fill{background:linear-gradient(90deg,var(--navy-deep),var(--navy));}
+  .step-sale .step-fill{background:linear-gradient(90deg,var(--navy),#3E5C90);}
+  .step-sub{border-style:dashed;}
+  .step-sub .step-fill{background:var(--slate-soft);}
+  .step-final .step-fill{background:linear-gradient(90deg,var(--amber-deep),var(--amber));}
+
+  .step-content{
+    position:relative;
+    z-index:1;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:16px 18px;
+  }
+  .step-normal .step-content, .step-sale .step-content, .step-final .step-content{color:#fff;}
+  .step-sub .step-content{color:var(--ink-soft); padding:9px 18px;}
+
+  .step-label{
+    font-size:13.5px;
+    font-weight:600;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .step-sub .step-label{font-weight:500; font-size:12px;}
+  .tag{
+    font-family:var(--mono);
+    font-size:9.5px;
+    letter-spacing:.03em;
+    padding:2px 6px;
+    border-radius:20px;
+    background:rgba(255,255,255,.18);
+    font-weight:600;
+  }
+  .tag.anchor{background:rgba(22,35,61,.25);}
+  .step-normal .tag, .step-sale .tag, .step-final .tag{color:#fff;}
+  .tag-sub{
+    font-size:11px;
+    font-weight:500;
+    opacity:.75;
+  }
+
+  .step-value{
+    display:flex;
+    align-items:baseline;
+    gap:2px;
+    font-family:var(--mono);
+    font-size:20px;
+    font-weight:700;
+  }
+  .won{font-size:14px; opacity:.75;}
+  .step-value input{
+    background:transparent;
+    border:none;
+    outline:none;
+    color:inherit;
+    font-family:var(--mono);
+    font-size:20px;
+    font-weight:700;
+    text-align:right;
+    width:110px;
+    padding:2px 4px;
+    border-radius:5px;
+  }
+  .step-value input:focus{background:rgba(255,255,255,.16);}
+  .step-value-static{
+    font-family:var(--mono);
+    font-size:13px;
+    font-weight:600;
+    color:var(--ink-soft);
+  }
+
+  .connector{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:8px 18px 8px 30px;
+    font-size:12px;
+    position:relative;
+  }
+  .connector::before{
+    content:"";
+    position:absolute;
+    left:16px; top:0; bottom:0;
+    width:1px;
+    background:var(--line);
+  }
+  .connector::after{
+    content:"▾";
+    position:absolute;
+    left:11px; top:50%;
+    transform:translateY(-50%);
+    font-size:9px;
+    color:var(--ink-faint);
+  }
+  .connector-label{
+    font-weight:600;
+    color:var(--ink-soft);
+    white-space:nowrap;
+  }
+  .connector.brick .connector-label{color:var(--brick);}
+  .connector.slate .connector-label{color:var(--slate);}
+  .connector.display-discount{padding:10px 18px 10px 30px;}
+  .connector-value{
+    font-family:var(--mono);
+    font-weight:700;
+    color:var(--navy);
+    margin-left:auto;
+  }
+  .tag-mini{
+    font-family:var(--mono);
+    font-size:9px;
+    color:var(--ink-faint);
+    font-weight:500;
+  }
+  .connector-input{
+    font-family:var(--mono);
+    font-weight:700;
+    font-size:14px;
+    border:1px solid var(--line);
+    background:var(--surface);
+    border-radius:6px;
+    padding:3px 6px;
+    text-align:right;
+    width:78px;
+    color:var(--ink);
+  }
+  .connector.brick .connector-input{border-color:var(--brick-soft); color:var(--brick);}
+  .connector.slate .connector-input{border-color:var(--slate-soft); color:var(--slate);}
+  .connector-input:focus{outline:none; border-color:currentColor;}
+  .connector-pct{
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--ink-faint);
+    margin-left:auto;
+  }
+
+  .step + .connector, .connector + .step{margin-top:2px;}
+
+  .summary{
+    display:flex;
+    gap:10px;
+    margin-top:22px;
+  }
+  .summary-item{
+    flex:1;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:14px 16px;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .summary-item span{font-size:11.5px; color:var(--ink-soft); font-weight:600;}
+  .summary-item strong{font-family:var(--mono); font-size:19px; color:var(--navy);}
+
+  .note{
+    margin-top:22px;
+    font-size:12px;
+    line-height:1.6;
+    color:var(--ink-faint);
+    padding:14px 16px;
+    background:var(--surface);
+    border:1px dashed var(--line);
+    border-radius:var(--radius);
+  }
+
+  @media (max-width:420px){
+    .step-value input, .step-value{font-size:17px;}
+    h1{font-size:22px;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="brand-row">
+    <svg class="brand-mark" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+      <path d="M6 50 L20 14 L30 34 L40 14 L54 50" fill="none" stroke="#0F1B2D" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/>
+      <rect x="26" y="27" width="8" height="8" fill="#E1A93B" transform="rotate(45 30 31)"/>
+    </svg>
+    <span class="brand-word">MORIVA</span>
+    <div class="brand-divider"></div>
+    <span class="brand-sub">모리바</span>
+  </div>
+  <noscript>
+    <div class="note" style="border-color:var(--brick); color:var(--brick); margin-bottom:20px;">
+      ⚠️ 지금 보고 계신 화면은 값을 입력해도 계산되지 않는 미리보기 모드입니다. 아래쪽 공유 아이콘을 눌러 <strong>"Safari로 열기"</strong>를 선택해 브라우저에서 열어야 정상적으로 계산기가 동작합니다.
+    </div>
+  </noscript>
+  <header>
+    <div class="eyebrow">Coupang Rocket Growth · Pricing</div>
+    <h1>로켓그로스 가격 세팅 도구</h1>
+    <p class="sub">최종소비자가를 입력하면 판매가·즉시할인·다운할인·정상가가 자동으로 계산됩니다. 최종소비자가는 직접 수정하지 않는 한 바뀌지 않으며, 즉시할인·판매가·다운할인을 수정하면 그 변화가 정상가에 반영되어 100원 단위로 다시 맞춰집니다.</p>
+  </header>
+
+  <section class="controls-row">
+    <div class="control">
+      <label>정상가 표시 할인율 (정상가 → 판매가)</label>
+      <div class="rate-input">
+        <input type="range" id="rateSlider" min="10" max="90" step="1" value="50">
+        <input type="text" inputmode="decimal" id="rateInput" value="50">
+        <span>%</span>
+      </div>
+    </div>
+    <div class="control">
+      <label>정상가 반올림 단위</label>
+      <select id="roundUnit">
+        <option value="100" selected>100원 단위</option>
+        <option value="1000">1,000원 단위</option>
+      </select>
+    </div>
+  </section>
+
+  <section class="ladder">
+    <div class="step step-normal" id="rowNormal">
+      <div class="step-fill" id="fillNormal" style="width:100%"></div>
+      <div class="step-content">
+        <span class="step-label">정상가 <span class="tag">필수 · 등록가</span></span>
+        <div class="step-value"><span class="won">₩</span><input type="text" inputmode="numeric" id="inputNormal" value="30,000"></div>
+      </div>
+    </div>
+
+    <div class="connector display-discount">
+      <span class="connector-label">표시 할인율 (정상가→판매가)</span>
+      <span class="connector-value" id="displayRateLabel">-50.0%</span>
+    </div>
+
+    <div class="step step-sale" id="rowSale">
+      <div class="step-fill" id="fillSale" style="width:100%"></div>
+      <div class="step-content">
+        <span class="step-label">판매가 <span class="tag-sub">(최종 판매가)</span></span>
+        <div class="step-value"><span class="won">₩</span><input type="text" inputmode="numeric" id="inputSale" value="15,000"></div>
+      </div>
+    </div>
+
+    <div class="connector minus brick">
+      <span class="connector-label">즉시할인</span>
+      <span class="won" style="opacity:.6">₩</span><input class="connector-input" type="text" inputmode="numeric" id="inputInstant" value="6,000">
+      <span class="connector-pct" id="instantPct">(40%)</span>
+    </div>
+
+    <div class="step step-sub" id="rowSub">
+      <div class="step-fill" id="fillSub" style="width:30%"></div>
+      <div class="step-content">
+        <span class="step-label">즉시할인 적용가</span>
+        <span class="step-value-static" id="subValue">₩9,000</span>
+      </div>
+    </div>
+
+    <div class="connector minus slate">
+      <span class="connector-label">다운할인 <span class="tag-mini">선택 · 구매심리자극</span></span>
+      <span class="won" style="opacity:.6">₩</span><input class="connector-input" type="text" inputmode="numeric" id="inputDown" value="100">
+    </div>
+
+    <div class="step step-final" id="rowFinal">
+      <div class="step-fill" id="fillFinal" style="width:100%"></div>
+      <div class="step-content">
+        <span class="step-label">최종소비자가 <span class="tag-sub">(고객 실결제가)</span> <span class="tag anchor">기준값</span></span>
+        <div class="step-value"><span class="won">₩</span><input type="text" inputmode="numeric" id="inputFinal" value="8,900"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="summary">
+    <div class="summary-item">
+      <span>정상가 대비 총 할인율</span>
+      <strong id="totalRateLabel">70.3%</strong>
+    </div>
+    <div class="summary-item">
+      <span>판매가 대비 즉시할인율</span>
+      <strong id="instantRateLabel">40.0%</strong>
+    </div>
+  </section>
+
+  <footer class="note">
+    기본 로직 — 판매가 = 최종소비자가 + 즉시할인 + 다운할인 · 정상가 = 판매가 ÷ (1 − 표시할인율), 100원 단위 반올림.<br>
+    최종소비자가가 기준값입니다. 최종소비자가는 직접 입력할 때만 바뀌고, 즉시할인·판매가·다운할인 중 어떤 값을 수정해도 최종소비자가는 그대로 유지된 채 그 변화가 판매가를 거쳐 정상가에 반영됩니다.
+  </footer>
+</div>
+
+<script>
+(function(){
+  const state = {
+    finalPrice: 8900,
+    instantDiscount: 6000,
+    downDiscount: 100,
+    targetRate: 50,
+    roundUnit: 100
+  };
+
+  const els = {
+    normal: document.getElementById('inputNormal'),
+    sale: document.getElementById('inputSale'),
+    instant: document.getElementById('inputInstant'),
+    down: document.getElementById('inputDown'),
+    final: document.getElementById('inputFinal'),
+    rateSlider: document.getElementById('rateSlider'),
+    rateInput: document.getElementById('rateInput'),
+    roundUnit: document.getElementById('roundUnit'),
+    fillNormal: document.getElementById('fillNormal'),
+    fillSale: document.getElementById('fillSale'),
+    fillSub: document.getElementById('fillSub'),
+    fillFinal: document.getElementById('fillFinal'),
+    subValue: document.getElementById('subValue'),
+    displayRateLabel: document.getElementById('displayRateLabel'),
+    totalRateLabel: document.getElementById('totalRateLabel'),
+    instantRateLabel: document.getElementById('instantRateLabel'),
+    instantPct: document.getElementById('instantPct')
+  };
+
+  function fmt(n){
+    return Math.round(n).toLocaleString('ko-KR');
+  }
+  function parseNum(str){
+    const n = parseInt(String(str).replace(/[^0-9-]/g,''), 10);
+    return isNaN(n) ? 0 : Math.max(0, n);
+  }
+
+  function derive(){
+    // 최종소비자가(기준값)는 절대 건드리지 않는다. 판매가는 거기서 파생된다.
+    const salePrice = state.finalPrice + state.instantDiscount + state.downDiscount;
+    const rate = Math.min(95, Math.max(0, state.targetRate)) / 100;
+    // 정상가는 "정상가 → 판매가" 표시 할인율 기준으로 산출한다 (판매가가 바뀌면 정상가도 같이 반영됨).
+    const rawNormal = rate < 1 ? salePrice / (1 - rate) : salePrice;
+    const normalPrice = Math.max(salePrice, Math.round(rawNormal / state.roundUnit) * state.roundUnit);
+    const subAfterInstant = salePrice - state.instantDiscount;
+    return { salePrice, normalPrice, subAfterInstant };
+  }
+
+  function render(){
+    const { salePrice, normalPrice, subAfterInstant } = derive();
+    const active = document.activeElement;
+
+    if (active !== els.normal) els.normal.value = fmt(normalPrice);
+    if (active !== els.sale) els.sale.value = fmt(salePrice);
+    if (active !== els.instant) els.instant.value = fmt(state.instantDiscount);
+    if (active !== els.down) els.down.value = fmt(state.downDiscount);
+    if (active !== els.final) els.final.value = fmt(state.finalPrice);
+    els.subValue.textContent = '₩' + fmt(subAfterInstant);
+
+    if (active !== els.rateSlider) els.rateSlider.value = state.targetRate;
+    if (active !== els.rateInput) els.rateInput.value = state.targetRate;
+
+    const max = Math.max(normalPrice, 1);
+    els.fillNormal.style.width = '100%';
+    els.fillSale.style.width = '100%';
+    els.fillSub.style.width = Math.min(100, (subAfterInstant / max) * 100) + '%';
+    els.fillFinal.style.width = '100%';
+
+    const displayRate = normalPrice > 0 ? (1 - salePrice / normalPrice) * 100 : 0;
+    const totalRate = normalPrice > 0 ? (1 - state.finalPrice / normalPrice) * 100 : 0;
+    const instantRate = salePrice > 0 ? (state.instantDiscount / salePrice) * 100 : 0;
+
+    els.displayRateLabel.textContent = '-' + displayRate.toFixed(1) + '%';
+    els.totalRateLabel.textContent = totalRate.toFixed(1) + '%';
+    els.instantRateLabel.textContent = instantRate.toFixed(1) + '%';
+    els.instantPct.textContent = salePrice > 0 ? '(' + instantRate.toFixed(0) + '%)' : '';
+  }
+
+  // --- edit handlers ---
+  // 최종소비자가가 기준값(anchor)이며, 직접 입력할 때만 바뀐다.
+  // 즉시할인·판매가·다운할인을 수정하면 최종소비자가는 그대로 유지된 채,
+  // 그 변화가 판매가를 거쳐 정상가에 반영된다.
+  // 'input' 이벤트로 타이핑 즉시 반영하고(모바일에서 blur를 기다릴 필요 없음),
+  // 'change'(blur 시)에서 최종적으로 값 포맷을 정리한다.
+
+  function onFinal(e){ state.finalPrice = parseNum(e.target.value); render(); }
+  els.final.addEventListener('input', onFinal);
+  els.final.addEventListener('change', onFinal);
+
+  function onInstant(e){ state.instantDiscount = parseNum(e.target.value); render(); }
+  els.instant.addEventListener('input', onInstant);
+  els.instant.addEventListener('change', onInstant);
+
+  function onDown(e){ state.downDiscount = parseNum(e.target.value); render(); }
+  els.down.addEventListener('input', onDown);
+  els.down.addEventListener('change', onDown);
+
+  function onSale(e){
+    const newSale = parseNum(e.target.value);
+    // 최종소비자가·다운할인은 고정하고, 그 차이를 즉시할인으로 흡수한다.
+    const newInstant = newSale - state.finalPrice - state.downDiscount;
+    if (newInstant >= 0){
+      state.instantDiscount = newInstant;
+    } else {
+      state.instantDiscount = 0;
+      state.downDiscount = Math.max(0, newSale - state.finalPrice);
+    }
+    render();
+  }
+  els.sale.addEventListener('input', onSale);
+  els.sale.addEventListener('change', onSale);
+
+  function onNormal(e){
+    const newNormal = parseNum(e.target.value);
+    const { salePrice } = derive();
+    if (newNormal > salePrice){
+      state.targetRate = Math.round((1 - salePrice / newNormal) * 1000) / 10;
+    }
+    render();
+  }
+  els.normal.addEventListener('input', onNormal);
+  els.normal.addEventListener('change', onNormal);
+
+  function setRate(v){
+    state.targetRate = Math.min(95, Math.max(0, v));
+    render();
+  }
+  els.rateSlider.addEventListener('input', e => setRate(parseFloat(e.target.value)));
+  els.rateInput.addEventListener('input', e => setRate(parseFloat(e.target.value) || 0));
+  els.rateInput.addEventListener('change', e => setRate(parseFloat(e.target.value) || 0));
+  els.roundUnit.addEventListener('change', e => {
+    state.roundUnit = parseInt(e.target.value, 10);
+    render();
+  });
+
+  // select-all on focus for quick editing
+  [els.normal, els.sale, els.instant, els.down, els.final, els.rateInput].forEach(input => {
+    input.addEventListener('focus', () => { setTimeout(() => { try { input.select(); } catch(err) {} }, 0); });
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); });
+  });
+
+  render();
+})();
+</script>
+<script src="./moriva-sync.js"></script>
+</body>
+</html>

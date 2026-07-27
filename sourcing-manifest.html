@@ -1,0 +1,3880 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MORIVA 소싱 매니페스트 — 1688 → 쿠팡그로스</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 80'><rect width='100' height='80' rx='14' fill='rgb(27,42,61)'/><polyline points='12,66 30,14 50,52 70,14 88,66' fill='none' stroke='white' stroke-width='13' stroke-linecap='square' stroke-linejoin='miter'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+<style>
+  :root{
+    --ink:#1B2A3D;
+    --paper:#F6F3EC;
+    --paper-dim:#EDE7D8;
+    --card:#FFFDF8;
+    --line:#DCD5C3;
+    --mist:#8B95A1;
+    --amber:#D98E3D;
+    --jade:#4F7864;
+    --steel:#5B7C99;
+    --seal:#B8453A;
+    --plum:#86586B;
+    --rust:#C2703D;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Pretendard Variable','Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{ font-family:'JetBrains Mono', monospace; }
+  .wrap{ max-width:1280px; margin:0 auto; padding:28px 20px 100px; }
+
+  /* ---------- Brand bar (MORIVA — Horizontal Alternate Logo) ---------- */
+  .brand-bar{
+    background:var(--ink);
+    border-radius:16px;
+    padding:20px 28px;
+    margin-bottom:18px;
+    position:relative;
+    overflow:hidden;
+  }
+  .brand-bar::before{
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background-image:
+      linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+    background-size:32px 32px;
+  }
+  /* ── Horizontal logo row ── */
+  .brand-primary{
+    display:flex; align-items:center; gap:20px; position:relative; z-index:1;
+  }
+  .brand-icon-svg{ width:64px; height:52px; flex:0 0 auto; display:block; }
+  .brand-text-col{ display:flex; flex-direction:column; gap:0; }
+  .brand-wordmark{
+    font-size:28px; font-weight:900; letter-spacing:.22em; color:#fff;
+    font-family:'Pretendard Variable','Pretendard',sans-serif;
+    line-height:1; text-indent:.22em;
+  }
+  .brand-kr{
+    font-size:11px; font-weight:600; letter-spacing:.3em; color:rgba(255,255,255,.5);
+    margin-top:3px; text-indent:.3em;
+  }
+  .brand-rule-v{ width:1px; background:rgba(255,255,255,.18); align-self:stretch; margin:0 8px; }
+  .brand-right-col{ display:flex; flex-direction:column; justify-content:center; gap:0; }
+  .brand-tagline{
+    font-size:9.5px; font-weight:700; letter-spacing:.18em; text-transform:uppercase;
+    color:rgba(255,255,255,.45); text-indent:.18em;
+  }
+  /* ── Category pills ── */
+  .brand-cats{
+    display:flex; align-items:center; gap:0; margin-left:auto;
+    position:relative; z-index:1;
+  }
+  .bc-item{ display:flex; flex-direction:column; align-items:center; gap:3px; padding:0 14px; }
+  .bc-item:not(:last-child){ border-right:1px solid rgba(255,255,255,.14); }
+  .bc-icon{ font-size:14px; }
+  .bc-label{ font-size:8.5px; letter-spacing:.1em; color:rgba(255,255,255,.5); font-weight:800; text-transform:uppercase; }
+
+  /* ---------- Header ---------- */
+  .masthead{
+    display:flex; align-items:flex-end; justify-content:space-between; gap:20px;
+    border-bottom:2px solid var(--ink); padding-bottom:18px; margin-bottom:22px;
+    flex-wrap:wrap;
+  }
+  .masthead-text .eyebrow{
+    font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.18em;
+    text-transform:uppercase; color:var(--amber); font-weight:700; margin-bottom:6px;
+  }
+  .masthead-text h1{ margin:0; font-size:30px; font-weight:800; letter-spacing:-0.01em; }
+  .masthead-text p{ margin:4px 0 0; color:var(--mist); font-size:14px; }
+  .sync-status{
+    margin-top:8px; font-size:11.5px; font-weight:700; color:var(--mist);
+    display:flex; align-items:center; gap:6px; font-family:'JetBrains Mono',monospace;
+  }
+  .sync-dot{ width:7px; height:7px; border-radius:50%; display:inline-block; flex:0 0 auto; }
+  .sync-dot.ok{ background:var(--jade); }
+  .sync-dot.fail{ background:var(--seal); }
+  .sync-dot.syncing{ background:var(--amber); animation:sync-pulse 1s ease-in-out infinite; }
+  @keyframes sync-pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.3; } }
+  .stamp-logo{
+    width:84px; height:84px; border:2px dashed var(--seal); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; text-align:center;
+    transform:rotate(-9deg); color:var(--seal); flex:0 0 auto;
+  }
+  .stamp-logo span{ font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700;
+    letter-spacing:.06em; line-height:1.4; text-transform:uppercase; }
+
+  /* ---------- Live rate bar ---------- */
+  .live-rate-bar{
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    background:var(--card); border:1px solid var(--line); border-radius:10px;
+    padding:11px 16px; margin-bottom:18px; font-size:13px;
+  }
+  .lrb-label{ font-weight:700; color:var(--mist); font-size:12px; }
+  .lrb-value{ font-family:'JetBrains Mono',monospace; font-weight:800; font-size:16px; color:var(--ink); cursor:help; }
+  .lrb-right{ margin-left:auto; display:flex; align-items:center; gap:10px; }
+  .lrb-date{ font-size:11px; color:var(--mist); }
+  .lrb-refresh{ padding:5px 12px; font-size:11.5px; }
+  .lrb-edit{ display:flex; align-items:center; gap:8px; margin-left:auto; }
+  .lrb-edit input{ width:100px; border:1px solid var(--line); border-radius:7px; padding:6px 9px; font-family:'JetBrains Mono',monospace; font-size:13px; }
+
+  /* ---------- Target margin bar ---------- */
+  .target-margin-bar{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    background:var(--card); border:1px solid var(--amber); border-radius:10px;
+    padding:11px 16px; margin-bottom:18px; font-size:13px;
+  }
+  .tmb-label{ font-weight:700; color:var(--ink); font-size:12px; flex:0 0 auto; }
+  #target-margin-input{
+    width:90px; border:1px solid var(--line); border-radius:7px; padding:6px 9px;
+    font-family:'JetBrains Mono',monospace; font-size:14px; font-weight:700; color:var(--amber);
+  }
+  .tmb-unit{ font-weight:700; color:var(--amber); margin-left:-6px; }
+  .tmb-hint{ font-size:11px; color:var(--mist); }
+  .tmb-clear{ margin-left:auto; padding:6px 12px; font-size:11.5px; flex:0 0 auto; }
+
+  /* ---------- Stats ---------- */
+  .stats-bar{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:18px; }
+  .stat-card{
+    background:var(--card); border:1px solid var(--line); border-radius:10px;
+    padding:14px 18px; flex:1; min-width:140px;
+  }
+  .stat-card .label{ font-size:12px; color:var(--mist); margin-bottom:4px; }
+  .stat-card .value{ font-family:'JetBrains Mono',monospace; font-size:22px; font-weight:700; }
+  .cat-dist{
+    background:var(--card); border:1px solid var(--line); border-radius:10px;
+    padding:14px 18px; flex:2; min-width:260px;
+  }
+  .cat-dist .label{ font-size:12px; color:var(--mist); margin-bottom:8px; }
+  .cat-bars{ display:flex; align-items:flex-end; gap:10px; height:46px; }
+  .cat-bar{ flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; height:100%; justify-content:flex-end; }
+  .cat-bar .bar{ width:100%; border-radius:3px 3px 0 0; min-height:3px; }
+  .cat-bar .ct{ font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink); }
+  .cat-bar .nm{ font-size:10px; color:var(--mist); letter-spacing:.04em; }
+
+  /* ---------- Controls ---------- */
+  .controls{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+  .tabs{ display:flex; gap:6px; flex-wrap:wrap; }
+  .tab{
+    border:1px solid var(--line); background:var(--card); color:var(--ink);
+    font-size:13px; padding:7px 12px; border-radius:999px; cursor:pointer;
+    font-weight:600; display:flex; align-items:center; gap:6px;
+  }
+  .tab .dot{ width:7px; height:7px; border-radius:50%; display:inline-block; }
+  .tab.active{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  .spacer{ flex:1; }
+  select, .btn, input{ font-family:inherit; font-size:13px; }
+  select{
+    border:1px solid var(--line); background:var(--card); color:var(--ink);
+    padding:7px 10px; border-radius:8px; font-weight:600;
+  }
+  .btn{
+    border:none; border-radius:8px; padding:9px 16px; font-weight:700; cursor:pointer;
+    background:var(--ink); color:var(--paper);
+  }
+  .btn.ghost{ background:transparent; color:var(--ink); border:1px solid var(--line); }
+  .btn.amber{ background:var(--amber); color:#fff; }
+  .btn:active{ transform:translateY(1px); }
+
+  .view-toggle-row{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+  .view-toggle{ display:flex; gap:6px; flex-wrap:wrap; }
+
+  /* ---------- Hidden folders panel ---------- */
+  .hidden-folders-panel{
+    background:var(--paper-dim); border:1px dashed var(--line); border-radius:12px;
+    padding:14px 16px; margin-bottom:16px;
+  }
+  .hidden-folders-panel .hf-title{ font-size:12px; font-weight:800; color:var(--mist); letter-spacing:.04em; margin-bottom:10px; text-transform:uppercase; }
+  .hidden-folders-list{ display:flex; flex-wrap:wrap; gap:8px; }
+  .hidden-folder-chip{
+    display:flex; align-items:center; gap:8px; background:var(--card); border:1px solid var(--line);
+    border-radius:999px; padding:6px 6px 6px 12px; font-size:12.5px; font-weight:600;
+  }
+  .hidden-folder-chip .hf-count{ color:var(--mist); font-weight:600; }
+  .hidden-folder-chip button{
+    border:none; background:var(--steel); color:#fff; border-radius:999px; padding:5px 11px;
+    font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap;
+  }
+  .hidden-folder-chip button:hover{ opacity:.85; }
+  .hidden-folders-empty{ font-size:12.5px; color:var(--mist); }
+
+  /* ---------- Folder card view (폴더를 카드식으로 나열) ---------- */
+  .folder-card-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(216px,1fr)); gap:14px; }
+  .folder-card-tile{
+    position:relative; background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:14px; cursor:pointer; display:flex; flex-direction:column; gap:10px;
+    box-shadow:0 1px 2px rgba(27,42,61,0.05); transition:box-shadow .15s ease, transform .15s ease;
+  }
+  .folder-card-tile:hover{ box-shadow:0 6px 16px rgba(27,42,61,0.14); transform:translateY(-2px); border-color:var(--steel); }
+  .folder-card-hide{
+    position:absolute; top:10px; right:10px; z-index:1;
+    background:var(--card); border:1px solid var(--line); border-radius:999px;
+    width:26px; height:26px; font-size:12px; line-height:1; cursor:pointer;
+  }
+  .folder-card-hide:hover{ background:var(--paper-dim); border-color:var(--steel); }
+  .fc-thumb{
+    width:100%; height:96px; border-radius:10px; background-color:var(--paper-dim);
+    background-position:center; background-size:cover; background-repeat:no-repeat;
+    display:flex; align-items:center; justify-content:center; font-size:26px; color:var(--mist);
+  }
+  .fc-body{ display:flex; flex-direction:column; gap:5px; }
+  .fc-name{ font-weight:800; font-size:14px; display:flex; align-items:center; gap:6px; }
+  .fc-name::before{ content:'📁'; font-size:13px; }
+  .fc-meta{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:11.5px; color:var(--mist); }
+  .fc-meta .fc-best{ color:var(--jade); font-weight:700; font-family:'JetBrains Mono',monospace; }
+  .fc-cat{ font-size:11px; font-weight:800; }
+
+  /* ---------- Form panel ---------- */
+  .panel{
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:20px; margin-bottom:22px;
+  }
+  .panel h2{ margin:0 0 14px; font-size:16px; font-weight:800; }
+  .fsec{ margin-bottom:18px; }
+  .fsec-head{
+    display:flex; align-items:center; gap:8px; padding-bottom:7px; margin-bottom:12px;
+    border-bottom:1px solid var(--line);
+  }
+  .fsec-head .ico{ font-size:14px; }
+  .fsec-head .ttl{ font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--mist); }
+  .form-grid{ display:grid; grid-template-columns:repeat(4, 1fr); gap:12px 14px; }
+  .form-grid .full{ grid-column:1 / -1; }
+  .form-grid .half{ grid-column:span 2; }
+  .field label{ display:block; font-size:12px; color:var(--mist); margin-bottom:5px; font-weight:600; }
+  .field input, .field select, .field textarea{
+    width:100%; border:1px solid var(--line); border-radius:7px; padding:8px 10px;
+    background:#fff; color:var(--ink);
+  }
+  .field textarea{ resize:vertical; min-height:54px; font-family:inherit; }
+  .field .hint{ display:block; margin-top:4px; font-size:11px; color:var(--mist); }
+  .hint{ display:block; margin-top:4px; font-size:11px; color:var(--mist); }
+  .field .readout{ display:block; margin-top:4px; font-size:11.5px; color:var(--jade); font-weight:700; font-family:'JetBrains Mono',monospace; }
+  .seg{ display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .seg button{ border:none; background:var(--card); color:var(--ink); padding:8px 16px; font-size:12.5px; font-weight:700; cursor:pointer; }
+  .seg button + button{ border-left:1px solid var(--line); }
+  .seg button.active{ background:var(--amber); color:#fff; }
+  .seg button:disabled{ opacity:.45; cursor:not-allowed; }
+  .field input:disabled, .field select:disabled{ opacity:.5; cursor:not-allowed; background:var(--paper-dim); }
+  .check-row{ display:flex; align-items:center; gap:8px; margin-top:26px; }
+  .check-row input{ width:auto; }
+  .check-row label{ font-size:13px; color:var(--ink); font-weight:600; margin:0; }
+  .bulk-check-label{ display:flex; align-items:center; gap:7px; font-size:12px; font-weight:700; color:var(--ink); margin-bottom:6px; cursor:pointer; }
+  .bulk-check-label input{ width:14px; height:14px; accent-color:var(--amber); cursor:pointer; margin:0; }
+
+  /* ---------- Product options ---------- */
+  .option-card{ border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:10px; background:var(--paper-dim); }
+  .option-card-head{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .option-num{
+    font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:800; color:var(--amber);
+    background:#fff; border:1px solid var(--line); border-radius:6px; padding:3px 8px; flex:0 0 auto; white-space:nowrap;
+  }
+  .option-card-head .opt-name{ flex:1; }
+  .option-card-body{ display:grid; grid-template-columns:1.6fr 1fr 1fr auto; gap:8px; align-items:center; }
+  .option-card-body input, .option-card-head input{
+    border:1px solid var(--line); border-radius:7px; padding:7px 9px; background:#fff; color:var(--ink); font-size:12.5px; width:100%;
+  }
+  .opt-margin-readout{ font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:800; white-space:nowrap; text-align:right; min-width:130px; }
+  .opt-price-cell{ display:flex; gap:4px; align-items:center; }
+  .opt-price-cell input{ flex:1; min-width:0; }
+  .opt-mode-toggle{
+    flex:0 0 auto; border:1px solid var(--line); background:var(--card); color:var(--steel);
+    border-radius:6px; padding:7px 8px; font-size:10.5px; font-weight:800; cursor:pointer;
+    font-family:'JetBrains Mono',monospace; white-space:nowrap;
+  }
+  .opt-mode-toggle:hover{ background:var(--paper-dim); }
+  .opt-pill{
+    font-size:9.5px; font-weight:800; padding:2px 7px; border-radius:999px; color:var(--ink);
+    background:var(--paper-dim); border:1px solid var(--line); font-family:'JetBrains Mono',monospace; white-space:nowrap;
+  }
+  .opt-pill.promo-pill{ background:rgba(79,120,100,0.12); border-color:var(--jade); color:var(--jade); }
+  .opt-section-label{ font-size:11px; font-weight:800; color:var(--steel); letter-spacing:.04em; }
+  .opt-list{ display:flex; flex-direction:column; gap:2px; }
+  .opt-item-block{ padding:6px 0; border-bottom:1px dashed var(--line); display:flex; flex-direction:column; gap:5px; }
+  .opt-item-block:last-child{ border-bottom:none; }
+  .opt-item-block.opt-item-rep{ background:rgba(79,120,100,0.07); border-radius:8px; padding:6px 8px; margin:2px 0; border-bottom:1px dashed transparent; }
+  .opt-item-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+  .opt-item-name{ font-size:11.5px; font-weight:700; color:var(--ink); font-family:'Pretendard Variable',sans-serif; flex:1; }
+  .opt-item-stat{ font-size:11px; color:var(--mist); white-space:nowrap; }
+  .opt-item-margin{ font-size:11.5px; font-weight:700; white-space:nowrap; }
+  .opt-rep-badge{
+    font-size:10.5px; font-weight:700; color:var(--jade); white-space:nowrap;
+    background:rgba(79,120,100,0.12); border:1px solid var(--jade); border-radius:999px; padding:2px 8px;
+  }
+  .opt-rep-btn{
+    font-size:10.5px; font-weight:600; color:var(--steel); white-space:nowrap; cursor:pointer;
+    background:#fff; border:1px solid var(--line); border-radius:999px; padding:2px 8px;
+  }
+  .opt-rep-btn:hover{ background:var(--paper-dim); border-color:var(--steel); }
+  .opt-rep-reset-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; padding-bottom:6px; margin-bottom:4px; border-bottom:1px dashed var(--line); }
+  .opt-rep-reset{ color:var(--amber); border-color:var(--amber); }
+  @media (max-width:760px){
+    .option-card-body{ grid-template-columns:1fr 1fr; }
+    .opt-margin-readout{ grid-column:1 / -1; text-align:left; }
+  }
+
+  .preview{
+    background:var(--paper-dim); border:1px dashed var(--line);
+    border-radius:8px; padding:12px 14px; display:flex; gap:22px; flex-wrap:wrap;
+    font-family:'JetBrains Mono',monospace; font-size:13px; margin-bottom:14px;
+  }
+  .preview .pv-item .pv-label{ font-size:10px; color:var(--mist); text-transform:uppercase; letter-spacing:.05em; font-family:'Pretendard Variable',sans-serif;}
+  .preview .pv-item .pv-val{ font-weight:700; font-size:15px; }
+  .form-actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:4px; }
+
+  /* ---------- Cost bar / pie graph ---------- */
+  .cost-bar{ display:flex; border-radius:5px; overflow:hidden; background:var(--paper-dim); width:100%; }
+  .cost-bar > div{ height:100%; }
+  .cost-bar-legend{ display:flex; flex-wrap:wrap; gap:7px 14px; margin-top:8px; font-size:10.5px; color:var(--mist); }
+  .cost-bar-legend .cbl-item{ display:flex; align-items:center; gap:4px; }
+  .cost-bar-legend i{ width:8px; height:8px; border-radius:2px; display:inline-block; flex:0 0 auto; }
+  .cost-bar-legend b{ color:var(--ink); font-family:'JetBrains Mono',monospace; font-weight:700; }
+
+  /* ---------- Folder grouping ---------- */
+  .folder-section{ margin-bottom:28px; }
+  .folder-section:not(.is-subfolder){
+    border:1px solid var(--line); border-radius:14px; padding:18px 18px 6px; background:rgba(255,255,255,0.35);
+  }
+  .folder-section.is-subfolder{ margin-top:18px; }
+  .folder-section .folder-section{ margin-bottom:18px; }
+  .folder-section .folder-section:last-child{ margin-bottom:4px; }
+  .folder-head{ display:flex; align-items:baseline; gap:10px; margin-bottom:10px; padding-bottom:7px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .folder-head .fname{ font-weight:800; font-size:15.5px; display:flex; align-items:center; gap:6px; }
+  .folder-collapse-btn{
+    background:none; border:none; cursor:pointer; font-size:14px; color:var(--ink);
+    padding:2px 4px; flex:0 0 auto; transition:transform .15s ease; line-height:1;
+  }
+  .folder-collapse-btn.collapsed{ transform:rotate(-90deg); }
+  .folder-head .fname::before{ content:'📁'; font-size:13px; }
+  .folder-head .fcount{ font-size:12px; color:var(--mist); }
+  .fhead-right{ margin-left:auto; display:flex; align-items:center; gap:10px; }
+  .fhead-right .fbest{ font-size:11.5px; color:var(--jade); font-weight:700; font-family:'JetBrains Mono',monospace; }
+  .fhead-right .icon-btn{ font-size:11.5px; }
+
+  .folder-settings{ background:var(--paper-dim); border:1px dashed var(--line); border-radius:10px; padding:14px; margin-bottom:14px; }
+  .folder-settings .fs-row{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:10px; }
+  .folder-settings .field{ flex:1; min-width:180px; margin-bottom:0; }
+  .folder-settings .hint{ display:block; margin-top:10px; font-size:11px; color:var(--mist); }
+  .folder-keyword-edit .field textarea{ min-height:50px; }
+
+  .folder-move{ background:rgba(91,124,153,0.08); border:1px dashed var(--steel); border-radius:10px; padding:14px; margin-bottom:14px; }
+  .folder-move .fs-row{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:10px; }
+  .folder-move .field{ flex:1; min-width:220px; margin-bottom:0; }
+  .folder-move .hint{ display:block; margin-top:10px; font-size:11px; color:var(--mist); }
+  .folder-move .fm-name-input{
+    width:100%; border:1px solid var(--line); border-radius:7px; padding:8px 10px; background:#fff; color:var(--ink); font-size:13px;
+  }
+
+  .folder-section.is-subfolder{ margin-left:26px; padding-left:16px; border-left:2px solid var(--line); }
+  .fname-parent{ color:var(--mist); font-weight:600; }
+  .fname-sep{ color:var(--mist); font-weight:400; }
+  .fname-sub{ color:var(--ink); font-weight:800; }
+
+  .folder-keyword-summary{
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    background:rgba(91,124,153,0.08); border:1px solid var(--steel); border-radius:8px;
+    padding:8px 12px; margin-bottom:10px;
+  }
+  .kw-keyword{ font-weight:800; font-size:12.5px; color:var(--steel); white-space:nowrap; }
+  .kw-chip{
+    font-size:11px; font-weight:600; color:var(--ink); background:#fff;
+    border:1px solid var(--line); border-radius:999px; padding:2px 9px; white-space:nowrap;
+  }
+  .kw-chip b{ font-family:'JetBrains Mono',monospace; font-weight:800; }
+  .kw-chip.kw-season{ color:var(--amber); border-color:var(--amber); background:rgba(217,142,61,0.08); }
+  .kw-chip.kw-link{ color:var(--steel); text-decoration:none; }
+  .kw-chip.kw-link:hover{ text-decoration:underline; }
+  .kw-updated{ font-size:10px; color:var(--mist); margin-left:auto; white-space:nowrap; }
+  .folder-keyword-memo{ font-size:11.5px; color:var(--mist); font-style:italic; margin:-4px 0 10px 2px; }
+
+  .kwd-card{
+    background:var(--card); border:1px solid var(--steel); border-radius:12px;
+    padding:18px 20px; margin-bottom:14px;
+  }
+  .kwd-empty{
+    background:var(--paper-dim); border:1px dashed var(--line); border-radius:10px;
+    padding:16px; margin-bottom:14px; text-align:center; color:var(--mist); font-size:13px;
+    display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap;
+  }
+  .kwd-keyword-line{ font-size:12px; color:var(--steel); font-weight:700; margin-bottom:10px; }
+  .kwd-keyword-line b{ color:var(--ink); font-weight:800; }
+  .kwd-top{ display:flex; align-items:center; gap:22px; flex-wrap:wrap; margin-bottom:14px; }
+  .kwd-grade-box{ flex:0 0 auto; text-align:center; min-width:96px; }
+  .kwd-grade-word{ font-size:21px; font-weight:800; line-height:1.15; }
+  .kwd-grade-caption{ font-size:11.5px; color:var(--mist); font-weight:700; margin-top:2px; }
+  .kwd-stat-row{ display:flex; gap:26px; flex-wrap:wrap; flex:1; }
+  .kwd-stat-item{ flex:0 0 auto; }
+  .kwd-stat-label{ font-size:11.5px; color:var(--mist); font-weight:700; margin-bottom:4px; white-space:nowrap; }
+  .kwd-stat-main{ display:flex; align-items:center; gap:7px; }
+  .kwd-stat-num{ font-family:'JetBrains Mono',monospace; font-size:19px; font-weight:800; color:var(--ink); white-space:nowrap; }
+  .kwd-badge{
+    font-size:10.5px; font-weight:800; color:#fff; padding:2px 8px; border-radius:999px;
+    font-family:'JetBrains Mono',monospace; white-space:nowrap;
+  }
+  .kwd-stat-sub{ font-size:10px; color:var(--mist); line-height:1.4; margin-top:4px; white-space:nowrap; }
+  .kwd-edit-btn-top{ margin-left:auto; flex:0 0 auto; }
+  .kwd-note{
+    background:rgba(217,142,61,0.08); border:1px solid var(--amber); border-radius:8px;
+    padding:9px 12px; font-size:12px; color:var(--ink); margin-bottom:10px;
+  }
+  .kwd-note-label{ font-weight:800; color:var(--amber); margin-right:6px; }
+  .kwd-memo{
+    font-size:12.5px; color:var(--ink); line-height:1.6; background:var(--paper-dim);
+    border-radius:8px; padding:10px 12px; margin-bottom:12px;
+  }
+  .kwd-footer{
+    display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+    padding-top:10px; border-top:1px dashed var(--line);
+  }
+  .kwd-meta{ font-size:11px; color:var(--mist); }
+  .kwd-meta b{ color:var(--steel); font-weight:800; }
+  .kwd-source-link{ font-size:11.5px; font-weight:700; color:var(--steel); text-decoration:none; white-space:nowrap; }
+  .kwd-source-link:hover{ text-decoration:underline; }
+  @media (max-width:760px){
+    .kwd-top{ align-items:flex-start; }
+    .kwd-stat-row{ gap:16px; }
+    .kwd-edit-btn-top{ margin-left:0; }
+  }
+
+  /* ---------- Grid / cards ---------- */
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(252px,1fr)); gap:16px; }
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:13px; display:flex; flex-direction:column; gap:9px;
+    box-shadow:0 1px 2px rgba(27,42,61,0.05);
+  }
+  .card.winner{ border-color:var(--jade); box-shadow:0 0 0 1.5px var(--jade) inset; }
+  .card.selected{ box-shadow:0 0 0 2px var(--amber) inset; }
+  .card.starred{ border-color:#F5A623; }
+  .winner-tag{ font-size:11px; font-weight:800; color:var(--jade); white-space:nowrap; margin-left:auto; }
+  .star-btn{
+    background:none; border:none; cursor:pointer; font-size:17px; line-height:1;
+    color:#ccc; padding:0 2px; transition:color .15s, transform .15s; margin-left:auto;
+  }
+  .star-btn:hover{ color:#F5A623; transform:scale(1.2); }
+  .star-btn.on{ color:#F5A623; }
+  .star-filter-btn.active{ background:#F5A623; color:#fff; border-color:#F5A623; }
+
+  /* quick-edit panel */
+  .quick-edit-panel{
+    background:rgba(91,124,153,0.07); border:1px solid var(--steel);
+    border-radius:10px; padding:12px 14px; margin:10px 0 6px;
+  }
+  .qe-title{ font-size:11px; font-weight:800; color:var(--steel); letter-spacing:.06em; margin-bottom:10px; }
+  .qe-opt-label{ font-size:11px; font-weight:700; color:var(--ink); margin-bottom:5px; }
+  .qe-row{ margin-bottom:12px; }
+  .qe-row:last-of-type{ margin-bottom:0; }
+  .qe-cost-row{ display:flex; align-items:center; gap:8px; margin-bottom:7px; }
+  .qe-cost-label{ font-size:11px; color:var(--mist); white-space:nowrap; }
+  .qe-cost-val{ font-size:12px; font-weight:700; color:var(--ink); background:var(--paper-dim); border-radius:6px; padding:3px 8px; }
+  .qe-fields{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .qe-field-group{ display:flex; flex-direction:column; gap:3px; }
+  .qe-field-group label{ font-size:10.5px; color:var(--mist); }
+  .qe-field-group input{
+    width:100px; border:1px solid var(--line); border-radius:7px; padding:6px 8px;
+    background:#fff; color:var(--ink); font-size:13px; font-family:'JetBrains Mono',monospace;
+  }
+  .qe-field-group input:focus{ border-color:var(--steel); outline:none; }
+  .qe-arrow{ font-size:16px; color:var(--mist); margin-top:14px; }
+  .qe-margin-readout{ font-size:11.5px; font-weight:700; margin-top:5px; min-height:16px; }
+  .qe-actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
+  .card-top-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .card-select{ display:flex; align-items:center; gap:6px; font-size:11px; color:var(--mist); font-weight:700; cursor:pointer; }
+  .card-select input{ width:14px; height:14px; accent-color:var(--amber); cursor:pointer; margin:0; }
+  .img-wrap{ position:relative; aspect-ratio:1/1; border-radius:8px; overflow:hidden; background:var(--paper-dim); }
+  .img-wrap img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .cat-pill{
+    font-size:12px; flex:0 0 auto; line-height:1; cursor:default;
+    width:22px; height:22px; display:inline-flex; align-items:center; justify-content:center;
+    border-radius:999px; color:#fff;
+  }
+  .bundle-pill{
+    position:absolute; top:8px; left:8px; font-size:9.5px; font-weight:800;
+    padding:2px 7px; border-radius:999px; color:#fff; background:var(--ink);
+    font-family:'JetBrains Mono',monospace;
+  }
+  .link-btn{
+    position:absolute; bottom:8px; right:8px; width:28px; height:28px; border-radius:50%;
+    background:rgba(27,42,61,0.78); color:#fff; display:flex; align-items:center; justify-content:center;
+    text-decoration:none; font-size:13px;
+  }
+  .stamp-badge{
+    position:absolute; top:8px; right:8px; border:1.5px dashed currentColor;
+    border-radius:999px; padding:3px 9px; font-size:9.5px; font-weight:800;
+    letter-spacing:.05em; text-transform:uppercase; transform:rotate(-7deg);
+    font-family:'JetBrains Mono',monospace; background:rgba(255,253,248,0.85);
+  }
+  .card-name{ font-weight:700; font-size:14px; line-height:1.35;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height:38px; }
+  .rep-note{ font-size:10.5px; color:var(--jade); font-weight:600; }
+  .rep-note b{ font-weight:800; }
+  .cny-price{ font-family:'JetBrains Mono',monospace; font-size:13.5px; font-weight:700; color:var(--rust);
+    display:flex; align-items:baseline; gap:6px; flex-wrap:wrap; }
+  .cny-price .cny-unit{ font-size:10.5px; font-weight:600; color:var(--mist); font-family:'Pretendard Variable',sans-serif; }
+  .ledger{ font-family:'JetBrains Mono',monospace; font-size:12px; border-top:1px dashed var(--line); padding-top:8px; display:flex; flex-direction:column; gap:3px; }
+  .row{ display:flex; justify-content:space-between; gap:8px; }
+  .ledger .row{ display:flex; justify-content:space-between; color:var(--mist); }
+  .ledger .row.margin{ color:var(--ink); font-weight:700; font-size:13px; padding-top:3px; border-top:1px dashed var(--line); margin-top:2px; }
+  .row.target-row{ font-weight:700; }
+  .row.target-row span:first-child{ color:var(--amber); }
+  .opt-item-block .target-row{ font-size:10.5px; margin-top:1px; font-family:'JetBrains Mono',monospace; }
+  .detail-toggle{
+    background:none; border:none; color:var(--steel); font-size:11.5px; font-weight:700; cursor:pointer;
+    padding:0; text-align:left;
+  }
+  .details-block{ font-family:'JetBrains Mono',monospace; font-size:11px; display:flex; flex-direction:column; gap:2px; background:var(--paper-dim); border-radius:6px; padding:8px 10px 10px; }
+  .details-block .grp{ color:var(--mist); font-weight:700; font-size:10px; text-transform:uppercase; letter-spacing:.05em; margin-top:4px; font-family:'Pretendard Variable',sans-serif; }
+  .details-block .note{ color:var(--mist); font-style:italic; font-family:'Pretendard Variable',sans-serif; line-height:1.4; }
+  .details-block .row{ display:flex; justify-content:space-between; color:var(--ink); opacity:.8; }
+  .card-foot{ display:flex; justify-content:space-between; align-items:center; }
+  .card-actions{ display:flex; gap:6px; }
+  .icon-btn{
+    border:1px solid var(--line); background:#fff; border-radius:6px; padding:5px 9px;
+    font-size:12px; cursor:pointer; font-weight:600;
+  }
+  .icon-btn.danger{ color:var(--seal); border-color:var(--seal); }
+  .icon-btn.danger.confirming{ background:var(--seal); color:#fff; }
+  .icon-btn.active{ background:var(--steel); color:#fff; border-color:var(--steel); }
+  .icon-btn.link-cta{ color:var(--steel); border-color:var(--steel); font-weight:700; text-decoration:none; display:inline-flex; align-items:center; }
+  .icon-btn.link-cta.muted{ color:var(--mist); border-color:var(--line); cursor:pointer; }
+  .memo{ font-size:11.5px; color:var(--mist); font-style:italic; }
+
+  /* ---------- Table compare view ---------- */
+  .table-wrap{ overflow-x:auto; border:1px solid var(--line); border-radius:10px; background:var(--card); }
+  .cmp-table{ width:100%; border-collapse:collapse; font-size:12px; min-width:1110px; }
+  .cmp-table th{
+    text-align:left; padding:9px 10px; background:var(--paper-dim); color:var(--mist);
+    font-size:10px; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap;
+    font-family:'Pretendard Variable',sans-serif; font-weight:800;
+  }
+  .cmp-table td{ padding:8px 10px; border-bottom:1px solid var(--line); white-space:nowrap; font-family:'JetBrains Mono',monospace; }
+  .cmp-table td.name-cell{ font-family:'Pretendard Variable',sans-serif; font-weight:600; white-space:normal; max-width:220px; }
+  .cmp-table tr:last-child td{ border-bottom:none; }
+  .cmp-table tr.winner-row td{ background:rgba(79,120,100,0.07); }
+  .cmp-table tr.selected-row td{ background:rgba(217,142,61,0.10); }
+  .cmp-table tr.opt-subrow td{ background:var(--paper-dim); padding:5px 10px; font-size:11px; }
+  .cmp-table tr.opt-subrow .thumb{ width:24px; height:24px; }
+  .cmp-table td.opt-subrow-name{ color:var(--mist); font-weight:600; padding-left:18px; }
+  .rep-opt-tag{ color:var(--jade); font-weight:700; font-size:11px; font-family:'JetBrains Mono',monospace; white-space:nowrap; }
+  .cmp-table input[type="checkbox"]{ width:15px; height:15px; accent-color:var(--amber); cursor:pointer; }
+  .cmp-table .thumb{ width:32px; height:32px; border-radius:6px; object-fit:cover; display:block; background:var(--paper-dim); }
+  .cmp-table .bar-cell{ width:110px; }
+  .stamp-mini{ font-size:10px; font-weight:700; border:1px dashed var(--mist); border-radius:999px; padding:2px 7px; color:var(--mist); white-space:nowrap; }
+  .stamp-mini.promo-mini{ border-color:var(--jade); color:var(--jade); }
+
+  /* ---------- Selection bar ---------- */
+  .selection-bar{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+    background:var(--ink); color:var(--paper); padding:10px 14px 10px 18px; border-radius:999px;
+    display:flex; align-items:center; gap:12px; box-shadow:0 8px 24px rgba(27,42,61,0.35); z-index:60;
+    font-size:13px; font-weight:700;
+  }
+  .selection-bar[hidden]{ display:none; }
+  .selection-bar .btn{ padding:7px 14px; font-size:12.5px; }
+  .selection-bar .btn.ghost{ color:var(--paper); border-color:rgba(255,255,255,0.35); }
+
+  /* ---------- Compare panel ---------- */
+  .compare-head{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:16px; }
+  .compare-head h2{ margin:0; font-size:15px; font-weight:800; }
+  .compare-head .spacer{ flex:1; }
+  .cmp-toolbar{ display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+  .cmp-bars{ display:flex; flex-direction:column; gap:8px; }
+  .cmp-bar-row{ display:flex; align-items:center; gap:10px; }
+  .cmp-bar-label{ width:170px; flex:0 0 170px; font-size:12.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cmp-bar-track{ flex:1; position:relative; height:24px; background:var(--paper-dim); border-radius:5px; overflow:hidden; }
+  .cmp-bar-fill{ height:100%; border-radius:5px; transition:width .25s ease; }
+  .cmp-bar-val{ position:absolute; right:8px; top:50%; transform:translateY(-50%); font-family:'JetBrains Mono',monospace; font-size:11.5px; font-weight:700; color:var(--ink); }
+
+  .cmp-toolbar-static{ margin-bottom:16px; }
+  .cmp-cost-rows{ display:flex; flex-direction:column; gap:11px; }
+  .cmp-cost-row{ display:flex; align-items:center; gap:12px; }
+  .cmp-cost-label{ width:170px; flex:0 0 170px; font-size:12.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cmp-cost-bar-wrap{ flex:1; }
+  .cmp-cost-stats{ width:150px; flex:0 0 150px; text-align:right; font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; white-space:nowrap; }
+  @media (max-width:760px){
+    .cmp-cost-label{ width:100px; flex:0 0 100px; }
+    .cmp-cost-stats{ width:110px; flex:0 0 110px; }
+  }
+
+  .pie-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(190px,1fr)); gap:18px; }
+  .pie-card{ background:var(--paper-dim); border:1px solid var(--line); border-radius:10px; padding:16px; text-align:center; }
+  .pie-chart{ width:120px; height:120px; border-radius:50%; margin:0 auto 10px; background:var(--card); border:1px solid var(--line); }
+  .pie-name{ font-weight:700; font-size:13px; margin-bottom:4px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .pie-card .cost-bar-legend{ justify-content:center; text-align:left; }
+
+  .empty{
+    text-align:center; padding:60px 20px; color:var(--mist); border:1px dashed var(--line);
+    border-radius:12px; background:var(--card);
+  }
+  .empty .big{ font-size:15px; font-weight:700; color:var(--ink); margin-bottom:6px; }
+
+  .toast{
+    position:fixed; bottom:84px; right:22px; background:var(--ink); color:var(--paper);
+    padding:10px 16px; border-radius:8px; font-size:13px; font-weight:600; opacity:0;
+    transform:translateY(8px); transition:all .25s ease; pointer-events:none; z-index:50;
+  }
+  .toast.show{ opacity:1; transform:translateY(0); }
+
+  /* sync row */
+  .ledger .tax-row{ color:var(--steel); font-style:italic; }
+  #tax-type-select{ font-weight:700; border-radius:8px; padding:6px 10px; border:1.5px solid var(--amber); color:var(--amber); background:#fff; cursor:pointer; }
+  .sync-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:8px; }
+  .sync-cfg-btn{ font-size:11px; padding:3px 10px; }
+
+  /* GitHub config modal */
+  .modal-backdrop{
+    position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:200;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .modal-backdrop[hidden]{ display:none; }
+  .modal-box{
+    background:#fff; border-radius:16px; width:100%; max-width:480px;
+    padding:24px 26px; box-shadow:0 20px 60px rgba(0,0,0,.25);
+  }
+  .modal-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; font-weight:800; font-size:15px; }
+  .modal-close{ background:none; border:none; font-size:18px; cursor:pointer; color:var(--mist); padding:0 4px; }
+  .modal-desc{ font-size:12.5px; color:var(--mist); line-height:1.6; margin-bottom:16px; background:var(--paper-dim); border-radius:8px; padding:10px 12px; }
+  .modal-fields{ display:flex; flex-direction:column; gap:12px; margin-bottom:20px; }
+  .modal-actions{ display:flex; gap:10px; justify-content:flex-end; }
+
+{ text-align:center; padding:60px 0; color:var(--mist); font-size:13px; }
+
+  @media (max-width:760px){
+    .form-grid{ grid-template-columns:1fr 1fr; }
+    .form-grid .half{ grid-column:span 2; }
+    .masthead{ align-items:flex-start; }
+    .cmp-bar-label{ width:110px; flex:0 0 110px; }
+  }
+  @media (max-width:480px){
+    .form-grid{ grid-template-columns:1fr; }
+    .form-grid .half{ grid-column:1; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="brand-bar">
+    <div class="brand-primary">
+
+      <!-- M 심볼 아이콘 -->
+      <svg class="brand-icon-svg" viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M8 150 L60 20 L100 90" stroke="white" stroke-width="22" stroke-linecap="square" stroke-linejoin="miter"/>
+        <path d="M192 150 L140 20 L100 90" stroke="white" stroke-width="22" stroke-linecap="square" stroke-linejoin="miter"/>
+        <path d="M60 150 L100 62" stroke="white" stroke-width="22" stroke-linecap="square" stroke-linejoin="miter"/>
+        <path d="M140 150 L100 62" stroke="white" stroke-width="22" stroke-linecap="square" stroke-linejoin="miter"/>
+        <polygon points="100,8 114,32 100,52 86,32" fill="#C9973A"/>
+      </svg>
+
+      <!-- 워드마크 + 한글 -->
+      <div class="brand-text-col">
+        <div class="brand-wordmark">MORIVA</div>
+        <div class="brand-kr">모 리 바</div>
+      </div>
+
+      <!-- 수직 구분선 -->
+      <div class="brand-rule-v"></div>
+
+      <!-- 태그라인 -->
+      <div class="brand-right-col">
+        <div class="brand-tagline">Better Life, Better Move</div>
+      </div>
+
+      <!-- 카테고리 (우측 끝) -->
+      <div class="brand-cats">
+        <div class="bc-item"><span class="bc-icon">🏃</span><span class="bc-label">ACTIVE</span></div>
+        <div class="bc-item"><span class="bc-icon">⛺</span><span class="bc-label">CAMP</span></div>
+        <div class="bc-item"><span class="bc-icon">🏠</span><span class="bc-label">HOME</span></div>
+        <div class="bc-item"><span class="bc-icon">🐾</span><span class="bc-label">PET</span></div>
+        <div class="bc-item"><span class="bc-icon">👜</span><span class="bc-label">BAG</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <header class="masthead">
+    <div class="masthead-text">
+      <div class="eyebrow">Import Sourcing Manifest</div>
+      <h1>소싱 매니페스트</h1>
+      <p>MORIVA 소싱 검토용 트래커 · 1688 사입 → 쿠팡 로켓그로스 · 카테고리 자동 수수료 · 묶음상품 · 폴더 비교 · 선택 비교</p>
+      <div class="sync-row">
+        <div class="sync-status" id="sync-status">동기화 상태 확인 중…</div>
+      </div>
+    </div>
+    <div class="stamp-logo"><span>1688<br/>→<br/>COUPANG</span></div>
+  </header>
+
+  <section class="live-rate-bar" id="live-rate-bar">
+    <span class="lrb-label">🌐 위안화 환율 (CNY → KRW)</span>
+    <span class="lrb-value" id="live-rate-value" title="참고용 시세이며 실제 환전·통관 시세와 차이가 있을 수 있습니다">조회 중…</span>
+    <div class="lrb-edit" id="live-rate-edit-wrap" style="display:none;">
+      <input type="number" id="live-rate-manual-input" step="0.01" min="0" placeholder="예: 192.50" />
+      <button type="button" class="btn amber lrb-refresh" id="live-rate-manual-save-btn">저장</button>
+      <button type="button" class="btn ghost lrb-refresh" id="live-rate-manual-cancel-btn">취소</button>
+    </div>
+    <div class="lrb-right" id="live-rate-right">
+      <span class="lrb-date" id="live-rate-date"></span>
+      <button type="button" class="btn ghost lrb-refresh" id="live-rate-edit-btn">✏️ 직접입력</button>
+      <button type="button" class="btn ghost lrb-refresh" id="live-rate-refresh-btn">↻ 새로고침</button>
+    </div>
+  </section>
+
+  <section class="target-margin-bar" id="target-margin-bar">
+    <span class="tmb-label">🎯 타겟 마진율</span>
+    <input type="number" id="target-margin-input" step="0.1" min="0" max="99" placeholder="예: 30" />
+    <span class="tmb-unit">%</span>
+    <span class="tmb-hint">입력하면 각 상품(옵션 포함)에 이 마진율을 맞추기 위한 적정 판매가가 같이 표시돼요.</span>
+    <button type="button" class="btn ghost tmb-clear" id="target-margin-clear-btn">지우기</button>
+  </section>
+
+  <section class="stats-bar" id="stats-bar"></section>
+
+  <section class="controls">
+    <div class="tabs" id="cat-tabs"></div>
+    <button class="tab star-filter-btn" id="star-filter-btn" title="별표 항목만 보기">☆ 별표만</button>
+    <div class="spacer"></div>
+    <select id="tax-type-select" title="과세 유형">
+      <option value="simplified">🧾 간이과세</option>
+      <option value="general">🧾 일반과세</option>
+      <option value="exempt">🧾 면세사업자</option>
+    </select>
+    <select id="status-filter"></select>
+    <select id="sort-select">
+      <option value="marginDesc" selected>마진율 높은순</option>
+      <option value="marginAsc">마진율 낮은순</option>
+      <option value="marginAmtDesc">마진액 높은순</option>
+      <option value="marginAmtAsc">마진액 낮은순</option>
+      <option value="recent">최근 등록순</option>
+      <option value="starred">★ 별표 먼저</option>
+    </select>
+    <button class="btn ghost" id="export-btn">CSV 내보내기</button>
+    <button class="btn ghost" id="backup-btn">💾 백업(JSON)</button>
+    <button class="btn ghost" id="restore-btn">📂 복원</button>
+    <input type="file" id="restore-input" accept="application/json,.json" hidden />
+    <button class="btn amber" id="add-btn">+ 신규 항목 추가</button>
+  </section>
+
+  <div class="view-toggle-row">
+    <div class="view-toggle">
+      <button class="tab active" id="view-group-btn">📁 폴더별 비교 보기</button>
+      <button class="tab" id="view-flat-btn">전체 목록</button>
+      <button class="tab" id="view-folders-btn">🗃 폴더 카드 보기</button>
+    </div>
+    <div class="view-toggle">
+      <button class="tab active" id="display-card-btn">🗂 카드 보기</button>
+      <button class="tab" id="display-table-btn">📊 테이블 보기</button>
+    </div>
+    <div class="view-toggle">
+      <button class="tab" id="select-all-btn">☐ 전체 선택</button>
+      <button class="tab" id="collapse-all-btn">▾ 전체 폴더 접기</button>
+      <button class="tab" id="hidden-folders-btn">🙈 숨긴 폴더</button>
+    </div>
+  </div>
+  <div class="hidden-folders-panel" id="hidden-folders-panel" hidden></div>
+
+  <section class="panel" id="form-panel" hidden>
+    <h2 id="panel-title">신규 소싱 항목 추가</h2>
+    <form id="item-form">
+
+      <div class="fsec">
+        <div class="fsec-head"><span class="ico">📦</span><span class="ttl">기본 정보</span></div>
+        <div class="form-grid">
+          <div class="field full">
+            <label>상품명</label>
+            <input type="text" id="f-name" placeholder="예: 강아지 쿨매트 50x70" required />
+          </div>
+          <div class="field half">
+            <label>폴더 (상품군)</label>
+            <select id="f-folder-select"></select>
+            <span class="hint">같은 폴더를 선택한 상품끼리 비교됩니다</span>
+          </div>
+          <div class="field half" id="new-folder-field" style="display:none;">
+            <label>새 폴더 이름</label>
+            <input type="text" id="f-folder-new" placeholder="예: 강아지 쿨매트" />
+          </div>
+          <div class="field full">
+            <label>1688 링크</label>
+            <input type="url" id="f-link" placeholder="https://detail.1688.com/offer/..." />
+          </div>
+          <div class="field">
+            <label>브랜드 카테고리</label>
+            <select id="f-category">
+              <option value="ACTIVE">ACTIVE</option>
+              <option value="CAMP">CAMP</option>
+              <option value="HOME">HOME</option>
+              <option value="PET">PET</option>
+              <option value="BAG">BAG</option>
+              <option value="ETC">기타</option>
+            </select>
+            <span class="hint">선택 시 쿠팡 카테고리·수수료가 자동으로 채워집니다</span>
+          </div>
+          <div class="field">
+            <label>상태</label>
+            <select id="f-status"></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="fsec" id="fsec-options">
+        <div class="fsec-head"><span class="ico">🎨</span><span class="ttl">옵션 (이미지·단가·판매가)</span></div>
+        <span class="hint">옵션 1개만 있는 단일 상품이면 그대로 옵션 1만 채우면 되고, 색상·사이즈별로 단가나 판매가가 다르면 "+ 옵션 추가"로 옵션 2, 3...을 계속 늘릴 수 있어요. 옵션마다 예상 마진이 바로 표시됩니다.</span>
+        <div id="options-list" style="margin-top:10px;"></div>
+        <button type="button" class="btn ghost" id="add-option-btn" style="margin-top:4px;">+ 옵션 추가</button>
+      </div>
+
+      <div class="fsec">
+        <div class="fsec-head"><span class="ico">🎁</span><span class="ttl">묶음 상품 설정</span></div>
+        <div class="form-grid">
+          <div class="field">
+            <label>판매 형태</label>
+            <div class="seg" id="seg-bundle" data-value="false">
+              <button type="button" data-val="false" class="active">단품</button>
+              <button type="button" data-val="true">묶음</button>
+            </div>
+          </div>
+          <div class="field" id="bundle-qty-field" style="display:none;">
+            <label>묶음 개수</label>
+            <input type="number" id="f-bundleqty" min="2" step="1" value="2" />
+            <span class="hint">매입단가는 개당 가격을 입력하세요</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="fsec">
+        <div class="fsec-head"><span class="ico">💴</span><span class="ttl">환율</span></div>
+        <div class="form-grid">
+          <div class="field full">
+            <label>환율 (₩ / ¥)</label>
+            <input type="number" id="f-rate" step="0.1" min="0" value="300" required />
+            <span class="hint">위안화 단가·판매가는 아래 "옵션"에서 옵션별로 입력합니다.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="fsec">
+        <div class="fsec-head"><span class="ico">🛃</span><span class="ttl">수입 비용</span></div>
+        <div class="form-grid">
+          <div class="field full">
+            <label>수입비용 계산 방식</label>
+            <div class="seg" id="seg-importmode" data-value="simple">
+              <button type="button" data-val="simple" class="active">간편 비율 적용 (환율에 포함)</button>
+              <button type="button" data-val="detail">실제 비용 입력</button>
+            </div>
+          </div>
+          <div class="field full" id="import-simple-hint">
+            <span class="hint">💡 간편 모드에서는 관세·부가세·국제배송·통관비를 따로 입력하지 않고, 위 "환율" 칸에 부가비용을 얹은 값을 입력해요. 예: 실제 환율 ¥1≈₩195 + 부가비용 추정 → <strong>환율 300원</strong>으로 입력 (기본값). 정확한 비용을 따로 계산하려면 "실제 비용 입력"을 선택하세요.</span>
+          </div>
+          <div id="import-detail-fields" class="form-grid" style="grid-column:1 / -1; padding:0; display:none;">
+            <div class="field">
+              <label>관세율 (%)</label>
+              <input type="number" id="f-duty" step="0.1" min="0" value="8" />
+            </div>
+            <div class="field check-row">
+              <input type="checkbox" id="f-vat" checked />
+              <label for="f-vat">수입부가세 10% 포함</label>
+            </div>
+            <div class="field">
+              <label>포워딩·국제배송비 (₩, 묶음당)</label>
+              <input type="number" id="f-forwarding" step="1" min="0" value="0" />
+            </div>
+            <div class="field">
+              <label>통관비 (₩, 묶음당)</label>
+              <input type="number" id="f-clearance" step="1" min="0" value="0" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="fsec">
+        <div class="fsec-head"><span class="ico">🛒</span><span class="ttl">쿠팡 판매 정보</span></div>
+        <div class="form-grid">
+          <div class="field half">
+            <label>쿠팡 카테고리 (수수료 자동 적용)</label>
+            <select id="f-coupangcat"></select>
+            <span class="readout" id="fee-readout"></span>
+          </div>
+          <div class="field" id="coupang-fee-manual-field" style="display:none;">
+            <label>수수료 직접입력 (%)</label>
+            <input type="number" id="f-fee-manual" step="0.1" min="0" value="11" />
+          </div>
+          <div class="field">
+            <label>판매 채널</label>
+            <div class="seg" id="seg-channel" data-value="rocket">
+              <button type="button" data-val="rocket" class="active">🚀 로켓그로스</button>
+              <button type="button" data-val="market">🏪 마켓플레이스</button>
+            </div>
+          </div>
+          <div class="field full" id="promo-field">
+            <label>🎁 로켓그로스 비용 제로 프로모션</label>
+            <div class="seg" id="seg-promo" data-value="none">
+              <button type="button" data-val="none" class="active">미적용</button>
+              <button type="button" data-val="90">첫 90일</button>
+              <button type="button" data-val="270">+270일</button>
+            </div>
+            <span class="hint" id="promo-hint"></span>
+          </div>
+          <div class="field" id="rocket-size-field">
+            <label>로켓그로스 상품 사이즈 (물류비 자동)</label>
+            <select id="f-rocketsize"></select>
+            <span class="readout" id="logistic-readout"></span>
+          </div>
+          <div class="field" id="rocket-fee-manual-field" style="display:none;">
+            <label>물류비 직접입력 (₩)</label>
+            <input type="number" id="f-rocket-fee-manual" step="1" min="0" value="2500" />
+          </div>
+          <div class="field" id="market-ship-field" style="display:none;">
+            <label>마켓플레이스 배송비 (₩)</label>
+            <input type="number" id="f-marketship" step="1" min="0" value="0" />
+          </div>
+          <div class="field full">
+            <span class="hint">쿠팡 판매가는 아래 "옵션"에서 옵션별로 입력합니다.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="fsec">
+        <div class="fsec-head"><span class="ico">🎯</span><span class="ttl">운영 비용</span></div>
+        <div class="form-grid">
+          <div class="field">
+            <label>광고비율 (%)</label>
+            <input type="number" id="f-ad" step="0.1" min="0" value="7" />
+          </div>
+          <div class="field">
+            <label>예상 반품율 (%)</label>
+            <input type="number" id="f-return" step="0.1" min="0" value="3" />
+            <span class="hint" id="return-promo-hint"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="fsec">
+        <div class="fsec-head"><span class="ico">📝</span><span class="ttl">메모</span></div>
+        <div class="form-grid">
+          <div class="field full">
+            <textarea id="f-memo" placeholder="MOQ, 공급처 평점 등"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="preview" id="preview-box"></div>
+
+      <div class="form-actions">
+        <button type="button" class="btn ghost" id="cancel-btn">취소</button>
+        <button type="submit" class="btn" id="submit-btn">항목 저장</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel compare-panel" id="compare-panel" hidden>
+    <div class="compare-head">
+      <h2>선택 항목 비교 (<span id="compare-count">0</span>개)</h2>
+      <div class="view-toggle">
+        <button class="tab active" data-ctab="table">📋 테이블</button>
+        <button class="tab" data-ctab="bar">📊 막대그래프</button>
+        <button class="tab" data-ctab="pie">🥧 원형그래프</button>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn ghost" id="compare-close-btn">닫기</button>
+    </div>
+    <div id="compare-body"></div>
+  </section>
+
+  <section class="panel" id="bulk-edit-panel" hidden>
+    <h2>선택 항목 일괄 수정 (<span id="bulk-edit-count">0</span>개)</h2>
+    <span class="hint">상단 "☐ 전체 선택"으로 모든 항목에, 폴더의 "☐ 폴더 전체선택"으로 특정 폴더에만 적용할 수 있어요. 체크한 항목만 한꺼번에 적용되고, 체크하지 않은 항목은 각 상품의 기존 값이 그대로 유지됩니다.</span>
+    <div class="form-grid" style="margin-top:14px;">
+      <div class="field full">
+        <label class="bulk-check-label"><input type="checkbox" id="bulk-coupangcat-chk" /> 쿠팡 카테고리(수수료) 변경</label>
+        <select id="bulk-coupangcat" disabled></select>
+      </div>
+      <div class="field full">
+        <label class="bulk-check-label"><input type="checkbox" id="bulk-channel-chk" /> 판매 채널 변경</label>
+        <div class="seg" id="bulk-seg-channel" data-value="rocket">
+          <button type="button" data-val="rocket" class="active" disabled>🚀 로켓그로스</button>
+          <button type="button" data-val="market" disabled>🏪 마켓플레이스</button>
+        </div>
+      </div>
+      <div class="field full">
+        <label class="bulk-check-label"><input type="checkbox" id="bulk-promo-chk" /> 🎁 로켓그로스 비용 제로 프로모션</label>
+        <div class="seg" id="bulk-seg-promo" data-value="none">
+          <button type="button" data-val="none" class="active" disabled>미적용</button>
+          <button type="button" data-val="90" disabled>첫 90일</button>
+          <button type="button" data-val="270" disabled>+270일</button>
+        </div>
+      </div>
+      <div class="field">
+        <label class="bulk-check-label"><input type="checkbox" id="bulk-rocketsize-chk" /> 로켓그로스 사이즈</label>
+        <select id="bulk-rocketsize" disabled></select>
+      </div>
+      <div class="field">
+        <label class="bulk-check-label"><input type="checkbox" id="bulk-marketship-chk" /> 마켓 배송비 (₩)</label>
+        <input type="number" id="bulk-marketship" step="1" min="0" value="0" disabled />
+      </div>
+      <div class="field">
+        <label class="bulk-check-label"><input type="checkbox" id="bulk-ad-chk" /> 광고비율 (%)</label>
+        <input type="number" id="bulk-ad" step="0.1" min="0" value="7" disabled />
+      </div>
+      <div class="field">
+        <label class="bulk-check-label"><input type="checkbox" id="bulk-return-chk" /> 예상 반품율 (%)</label>
+        <input type="number" id="bulk-return" step="0.1" min="0" value="3" disabled />
+      </div>
+      <div class="form-actions full" style="grid-column:1 / -1;">
+        <button type="button" class="btn ghost" id="bulk-edit-cancel-btn">취소</button>
+        <button type="button" class="btn amber" id="bulk-edit-apply-btn">선택 항목에 일괄 적용</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="grid-area">
+    <div class="loading-state">불러오는 중…</div>
+  </section>
+
+</div>
+
+<div class="selection-bar" id="selection-bar" hidden>
+  <span id="selection-count">0개 선택됨</span>
+  <button class="btn ghost" id="selection-clear-btn">선택 해제</button>
+  <button class="btn ghost" id="bulk-edit-open-btn">✏️ 운영비 일괄수정</button>
+  <button class="btn amber" id="selection-compare-btn">비교하기</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  const CATEGORIES = {
+    ACTIVE:{ label:'ACTIVE', hex:'#D98E3D', icon:'🏃' },
+    CAMP:{ label:'CAMP', hex:'#4F7864', icon:'⛺' },
+    HOME:{ label:'HOME', hex:'#5B7C99', icon:'🏠' },
+    PET:{ label:'PET', hex:'#B8453A', icon:'🐾' },
+    BAG:{ label:'BAG', hex:'#86586B', icon:'👜' },
+    ETC:{ label:'기타', hex:'#8B95A1', icon:'🏷️' }
+  };
+  const STATUSES = ['검토중','주문대기','주문완료','입고완료','판매중','보류','제외'];
+
+  // 쿠팡 공식 카테고리별 평균 수수료(%) — 직접입력 선택 시 수동 입력
+  const COUPANG_CATS = {
+    '생활/주방':11, '뷰티/코스메틱':11.5, '패션/의류':14, '패션잡화':12, '스포츠/레저':11,
+    '가전/디지털':10.8, '식품/건강':10.8, '반려동물':11, '완구/취미':11, '유아동':11.5,
+    '직접입력':null
+  };
+  // 로켓그로스 상품 사이즈별 물류비(₩) — 직접입력 선택 시 수동 입력
+  const ROCKET_SIZES = {
+    '극소형 (50g 이하)':1800, '소형 (2kg 이하)':2500, '중형 (5kg 이하)':3500,
+    '대형 (10kg 이하)':5000, '특대형 (10kg 초과)':7500,
+    '직접입력':null
+  };
+  // 브랜드 카테고리 → 쿠팡 카테고리 자동 매핑
+  const BRAND_TO_COUPANG = {
+    ACTIVE:'스포츠/레저', CAMP:'스포츠/레저', HOME:'생활/주방', PET:'반려동물', BAG:'패션잡화', ETC:'생활/주방'
+  };
+
+  const FALLBACK_IMG = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'>" +
+    "<rect width='200' height='200' fill='#EDE7D8'/>" +
+    "<text x='100' y='100' font-family='sans-serif' font-size='13' fill='#8B95A1' text-anchor='middle'>이미지 없음</text>" +
+    "<text x='100' y='118' font-family='sans-serif' font-size='10' fill='#8B95A1' text-anchor='middle'>(1688 핫링크 차단 가능)</text>" +
+    "</svg>"
+  );
+
+  // 1688/알리바바 계열 이미지는 핫링크(리퍼러) 차단이 걸려 있는 경우가 많아,
+  // 무료 이미지 프록시(weserv)를 거쳐서 불러오면 차단을 우회해 더 안정적으로 보인다.
+  const HOTLINK_DOMAINS = ['alicdn.com', '1688.com', 'taobao.com', 'tbcdn.cn', 'aliyuncs.com'];
+  function resolveImageSrc(url){
+    if(!url) return '';
+    try{
+      const u = new URL(url);
+      const isHotlinked = HOTLINK_DOMAINS.some(d => u.hostname.endsWith(d));
+      if(isHotlinked){
+        const bare = u.hostname + u.pathname + u.search;
+        return `https://images.weserv.nl/?url=${encodeURIComponent(bare)}&default=${encodeURIComponent(url)}`;
+      }
+      return url;
+    }catch(e){
+      return url;
+    }
+  }
+  const STORE_KEY = 'sourcing-items';
+  const hasClaudeStorage = (typeof window.storage !== 'undefined' && window.storage &&
+    typeof window.storage.get === 'function' && typeof window.storage.set === 'function');
+  // ⚠️ 이 토큰은 클라이언트 코드에 그대로 노출됩니다. 이 파일을 공개된 곳에 올리지 마세요.
+  // ── Cloudflare Worker 프록시 (토큰 없이 기기 간 동기화)
+  const WORKER_URL = 'https://moriva-github-proxy.moriva-hyeoncl.workers.dev';
+
+  function getGithubConfig(){ return { owner:'', repo:'', path:'', token:'' }; }
+  function getGithubAPI(){ return WORKER_URL; }
+
+  let githubSha = null;
+  let syncTimer = null;
+
+  let items = [];
+  let folderKeywords = {};     // 폴더별 아이템스카우트 키워드 분석 수동입력 데이터 { [folderKey]: {...} }
+  let editingKeywordFolderKey = null;
+  let expandedKeywordFolderKey = null;
+  let filterCategory = 'ALL';
+  let filterStatus = 'ALL';
+  let filterStarred = false;
+  let sortKey = 'marginDesc';
+  let taxType = localStorage.getItem('moriva_tax_type') || 'simplified'; // 'simplified'|'general'|'exempt'
+  let viewMode = 'group';      // 'group' | 'flat' | 'folders'
+  let displayMode = 'card';    // 'card' | 'table'
+  let editingId = null;
+  let editingFolderKey = null;
+  let movingFolderKey = null;   // 폴더별 "선택 항목 → 하위폴더로 이동" 패널이 열려있는 폴더 key
+  let quickEditId = null;       // 카드 인라인 단가/판매가 수정 중인 항목 id
+  let confirmingDeleteId = null;
+  let confirmTimer = null;
+  const expandedIds = new Set();
+  const expandedOptionIds = new Set();
+  const collapsedFolders = new Set();
+  const hiddenFolderKeys = new Set();  // 숨긴 폴더 key 목록 (하위폴더 포함 함께 숨김)
+  let hiddenFoldersPanelOpen = false;
+  let draftOptions = [];
+  const selectedIds = new Set();
+  let compareTab = 'table';    // 'table' | 'bar' | 'pie'
+  let liveRate = null;         // 마지막으로 확보한 위안화 환율 (실시간 조회 또는 직접입력)
+  let liveRateSource = null;   // 'live' | 'manual' | null
+  let targetMarginPct = null;  // 사용자가 입력한 타겟 마진율(%), 없으면 null
+
+  const $ = (sel) => document.querySelector(sel);
+  const gridArea = $('#grid-area');
+  const statsBar = $('#stats-bar');
+  const catTabs = $('#cat-tabs');
+  const statusFilterSel = $('#status-filter');
+  const sortSel = $('#sort-select');
+  const panel = $('#form-panel');
+  const panelTitle = $('#panel-title');
+  const form = $('#item-form');
+  const previewBox = $('#preview-box');
+  const toastEl = $('#toast');
+  const comparePanel = $('#compare-panel');
+  const compareBody = $('#compare-body');
+  const selectionBar = $('#selection-bar');
+  const bulkEditPanel = $('#bulk-edit-panel');
+
+  function uid(){
+    return (crypto && crypto.randomUUID) ? crypto.randomUUID() : 'id-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+  }
+
+  function showToast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastEl._t);
+    toastEl._t = setTimeout(()=> toastEl.classList.remove('show'), 2200);
+  }
+
+  function won(n){ return '₩' + Math.round(n||0).toLocaleString('ko-KR'); }
+  function pct(n){ return (n||0).toFixed(1) + '%'; }
+  function escapeHtml(s){
+    return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  /* ---------------- data model / calc ---------------- */
+
+  function normalizeItem(it){
+    it = it || {};
+    // 옵션 목록이 "대표값"을 갖는 새 구조. 옵션[0]이 카드/테이블/계산의 기본 값으로 쓰인다.
+    let options = Array.isArray(it.options) ? it.options.map(normalizeOption) : [];
+    const legacyCny = it.cny || 0;
+    const legacySell = it.sell || 0;
+    const legacyImage = it.image || '';
+    if(options.length === 0){
+      options = [normalizeOption({ name:'', cny: legacyCny, sell: legacySell, image: legacyImage })];
+    } else if(options[0].cny !== legacyCny || options[0].sell !== legacySell){
+      // 이전 버전(기본상품 + 별도 옵션 목록) 데이터 호환: 기존 기본 단가·판매가·이미지를 옵션1로 앞에 추가
+      options = [normalizeOption({ name:'', cny: legacyCny, sell: legacySell, image: legacyImage }), ...options];
+    }
+    const primary = options[0];
+    return {
+      id: it.id || uid(),
+      createdAt: it.createdAt || Date.now(),
+      name: it.name || '',
+      link: it.link || '',
+      image: primary.image,
+      folder: it.folder || '',
+      category: it.category || 'ACTIVE',
+      status: it.status || '검토중',
+      isBundle: !!it.isBundle,
+      bundleQty: it.bundleQty || 2,
+      cny: primary.cny,
+      rate: it.rate || 300,
+      importMode: it.importMode || 'simple',
+      duty: it.duty !== undefined ? it.duty : 8,
+      vatOn: it.vatOn !== undefined ? it.vatOn : true,
+      forwarding: it.forwarding !== undefined ? it.forwarding : (it.shipping || 0),
+      clearance: it.clearance || 0,
+      coupangCat: it.coupangCat || (it.fee !== undefined ? '직접입력' : (BRAND_TO_COUPANG[it.category] || '생활/주방')),
+      feeManual: it.feeManual !== undefined ? it.feeManual : (it.fee || 11),
+      channel: it.channel || 'rocket',
+      promo: it.promo || 'none',
+      rocketSize: it.rocketSize || '소형 (2kg 이하)',
+      rocketFeeManual: it.rocketFeeManual || 2500,
+      marketShip: it.marketShip || 0,
+      sell: primary.sell,
+      ad: it.ad || 0,
+      ret: it.ret || 0,
+      memo: it.memo || '',
+      starred: it.starred || false,
+      repOptionId: it.repOptionId || null,
+      options
+    };
+  }
+
+  function normalizeOption(o){
+    o = o || {};
+    return {
+      id: o.id || uid(),
+      name: o.name || '',
+      cny: o.cny || 0,
+      sell: o.sell || 0,
+      image: o.image || '',
+      inputMode: o.inputMode || (o.sell > 0 ? 'sell' : 'margin'),
+      savedMarginPct: o.savedMarginPct != null ? o.savedMarginPct : null  // 마진모드로 저장 시 입력한 마진율
+    };
+  }
+
+  function normalizeFolderKeyword(k){
+    k = k || {};
+    return {
+      keyword: k.keyword || '',
+      searchVolumeTotal: k.searchVolumeTotal || '',
+      searchVolumePc: k.searchVolumePc || '',
+      searchVolumeMobile: k.searchVolumeMobile || '',
+      competitionCount: k.competitionCount || '',
+      competitionScore: k.competitionScore || '',
+      competitionLevel: k.competitionLevel || '',
+      rocketRatio: k.rocketRatio || '',
+      rocketRatioLevel: k.rocketRatioLevel || '',
+      sellerRocketRatio: k.sellerRocketRatio || '',
+      sellerRocketRatioLevel: k.sellerRocketRatioLevel || '',
+      avgPrice: k.avgPrice || '',
+      avgReviewCount: k.avgReviewCount || '',
+      seasonNote: k.seasonNote || '',
+      sourceUrl: k.sourceUrl || '',
+      updatedAt: k.updatedAt || '',
+      memo: k.memo || ''
+    };
+  }
+  function hasFolderKeywordData(k){
+    if(!k) return false;
+    return !!(k.keyword || k.searchVolumeTotal || k.competitionCount || k.competitionScore || k.avgPrice || k.memo);
+  }
+
+  function resolveFee(it){
+    const v = COUPANG_CATS[it.coupangCat];
+    return (v !== null && v !== undefined) ? v : (it.feeManual || 0);
+  }
+  function resolveLogistic(it){
+    if(it.channel === 'market') return it.marketShip || 0;
+    const v = ROCKET_SIZES[it.rocketSize];
+    return (v !== null && v !== undefined) ? v : (it.rocketFeeManual || 0);
+  }
+
+  function calc(it){
+    const qty = it.isBundle ? (it.bundleQty || 1) : 1;
+    const buyKrw = (it.cny || 0) * (it.rate || 0) * qty;
+    let customs = 0, vatAmt = 0, forwarding = 0, clearance = 0, impTotal;
+    if(it.importMode === 'simple'){
+      impTotal = buyKrw;
+    } else {
+      customs = buyKrw * (it.duty || 0) / 100;
+      vatAmt = it.vatOn ? (buyKrw + customs) * 0.1 : 0;
+      forwarding = it.forwarding || 0;
+      clearance = it.clearance || 0;
+      impTotal = buyKrw + customs + vatAmt + forwarding + clearance;
+    }
+    const importExtra = impTotal - buyKrw;
+
+    // 판매 부가세: 일반과세자는 판매가의 10/110을 부가세로 납부
+    // 간이과세자(기본) / 면세사업자는 판매 부가세 없음
+    const sellVatAmt = (taxType === 'general') ? Math.round((it.sell || 0) * 10 / 110) : 0;
+    // 일반과세자는 수입 부가세를 매입세액공제로 돌려받음 → vatAmt 차감
+    const vatCredit = (taxType === 'general') ? vatAmt : 0;
+    const netSellVat = sellVatAmt - vatCredit; // 실제 추가 부담 (음수면 환급)
+
+    const promo = it.channel === 'rocket' ? (it.promo || 'none') : 'none';
+    const promoActive = promo !== 'none';
+
+    const feePct = resolveFee(it);
+    const commission = (it.sell || 0) * feePct / 100;
+    const baseLogistic = resolveLogistic(it);
+    const logistic = (promo === '90') ? 0 : baseLogistic;
+    const adCost = (it.sell || 0) * (it.ad || 0) / 100;
+    const retCost = promoActive ? 0 : (it.sell || 0) * (it.ret || 0) / 100 * 0.3;
+    const sellTotal = commission + logistic + adCost + retCost;
+
+    const totalCost = impTotal + sellTotal + netSellVat;
+    const margin = (it.sell || 0) - totalCost;
+    const marginPct = it.sell ? (margin / it.sell * 100) : 0;
+
+    return { qty, buyKrw, customs, vatAmt, forwarding, clearance, impTotal, importExtra,
+      feePct, commission, baseLogistic, logistic, adCost, retCost, sellTotal,
+      sellVatAmt, vatCredit, netSellVat,
+      totalCost, margin, marginPct, promo, promoActive };
+  }
+
+  function calcOption(it, opt){
+    // 옵션은 위안화 단가·판매가만 다르고, 환율·수입방식·수수료·물류·광고·반품·프로모션 등은 본품과 동일하다고 가정
+    return calc({ ...it, cny: opt.cny, sell: opt.sell });
+  }
+
+  function repOption(it){
+    // 카드/테이블/정렬 등에서 "대표"로 보여줄 옵션
+    // 1) 사용자가 직접 지정한 옵션(repOptionId)이 있으면 그 옵션
+    // 2) 없으면 옵션 중 마진율이 가장 높은 옵션 (기본은 옵션 1)
+    if(!it.options || it.options.length <= 1) return { cny: it.cny, sell: it.sell, image: it.image, name: '' };
+    if(it.repOptionId){
+      const picked = it.options.find(o => o.id === it.repOptionId);
+      if(picked) return picked;
+    }
+    return it.options.reduce((best, o) =>
+      calcOption(it, o).marginPct > calcOption(it, best).marginPct ? o : best
+    , it.options[0]);
+  }
+  function repCalc(it){
+    const rep = repOption(it);
+    return calc({ ...it, cny: rep.cny, sell: rep.sell });
+  }
+
+  function calcTargetSell(it, targetPct){
+    // 광고비·반품비·수수료처럼 판매가에 비례하는 비용 비율을 뺀 "여유 비율"로 고정비를 나눠 목표 마진을 만족하는 판매가를 역산
+    const feePct = resolveFee(it);
+    const promoActive = it.channel === 'rocket' && it.promo && it.promo !== 'none';
+    const effectiveRetPct = promoActive ? 0 : (it.ret || 0) * 0.3;
+    const totalPctCost = feePct + (it.ad || 0) + effectiveRetPct;
+    const availablePct = 100 - targetPct - totalPctCost;
+    if(availablePct <= 0){
+      return { achievable:false, totalPctCost };
+    }
+    const fixedCosts = calc({ ...it, sell:0 }).totalCost;
+    const targetSell = fixedCosts * 100 / availablePct;
+    return { achievable:true, targetSell, fixedCosts, totalPctCost };
+  }
+
+  function marginColor(marginPct){
+    if(marginPct < 0) return '#B8453A';
+    if(marginPct < 15) return '#D98E3D';
+    return '#4F7864';
+  }
+
+  /* ---------------- cost graph (bar + pie) ---------------- */
+  function costBarSegments(it){
+    const c = calc(it);
+    const sp = it.sell || 0;
+    const profit = Math.max(c.margin, 0);
+    const defs = [
+      { label:'수입원가', value:c.impTotal, color:'#5B7C99' },
+      { label:'수수료',   value:c.commission, color:'#D98E3D' },
+      { label:'물류비',   value:c.logistic, color:'#C2703D' },
+      { label:'광고비',   value:c.adCost, color:'#86586B' },
+      { label:'반품비',   value:c.retCost, color:'#B8453A' },
+      { label:'이익',     value:profit, color:'#4F7864' }
+    ];
+    return { defs, sp };
+  }
+  function costBarHtml(it, opts){
+    opts = opts || {};
+    const { defs, sp } = costBarSegments(it);
+    const h = opts.height || (opts.mini ? 8 : 12);
+    const segs = defs.filter(d => d.value > 0).map(d => {
+      const w = sp > 0 ? (d.value / sp * 100) : 0;
+      const p = sp > 0 ? (d.value / sp * 100).toFixed(1) : '0.0';
+      return `<div style="width:${w}%;background:${d.color}" title="${d.label} ${won(d.value)} (${p}%)"></div>`;
+    }).join('');
+    return `<div class="cost-bar" style="height:${h}px;">${segs}</div>`;
+  }
+  function costBarLegendHtml(it){
+    const { defs, sp } = costBarSegments(it);
+    return `<div class="cost-bar-legend">${defs.filter(d => d.value > 0).map(d => {
+      const p = sp > 0 ? (d.value / sp * 100).toFixed(1) : '0.0';
+      return `<span class="cbl-item"><i style="background:${d.color}"></i>${d.label} <b>${p}%</b></span>`;
+    }).join('')}</div>`;
+  }
+  function pieGradient(it){
+    const { defs, sp } = costBarSegments(it);
+    if(sp <= 0) return 'var(--paper-dim)';
+    let cum = 0;
+    const stops = [];
+    defs.forEach(d => {
+      if(d.value <= 0) return;
+      const start = Math.min(100, cum / sp * 100);
+      cum += d.value;
+      const end = Math.min(100, cum / sp * 100);
+      if(end > start) stops.push(`${d.color} ${start}% ${end}%`);
+    });
+    if(stops.length === 0) return 'var(--paper-dim)';
+    const last = Math.min(100, cum / sp * 100);
+    if(last < 100) stops.push(`var(--paper-dim) ${last}% 100%`);
+    return `conic-gradient(${stops.join(', ')})`;
+  }
+
+  function setSyncStatus(state, extra){
+    const el = $('#sync-status');
+    if(!el) return;
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2,'0');
+    const mm = String(now.getMinutes()).padStart(2,'0');
+    if(state === 'syncing'){
+      el.innerHTML = `<span class="sync-dot syncing"></span>GitHub 동기화 중…`;
+    } else if(state === 'synced'){
+      el.innerHTML = `<span class="sync-dot ok"></span>☁ GitHub 동기화됨 (${hh}:${mm})`;
+    } else if(state === 'offline'){
+      el.innerHTML = `<span class="sync-dot fail"></span>⚠ GitHub 연결 실패 — 이 기기에만 저장됨${extra ? ` (${extra})` : ''}`;
+    } else if(state === 'claude'){
+      el.innerHTML = `<span class="sync-dot ok"></span>클로드 저장소 사용 중`;
+    } else if(state === 'local'){
+      el.innerHTML = `<span class="sync-dot fail"></span>이 브라우저에만 저장됨 (클라우드 미설정)`;
+    }
+  }
+
+  /* ---------------- GitHub Contents API (cloud sync) ---------------- */
+  function utf8ToB64(str){
+    const bytes = new TextEncoder().encode(str);
+    let binary = '';
+    bytes.forEach(b => { binary += String.fromCharCode(b); });
+    return btoa(binary);
+  }
+  function b64ToUtf8(b64){
+    const binary = atob((b64 || '').replace(/\n/g, ''));
+    const bytes = new Uint8Array(binary.length);
+    for(let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new TextDecoder('utf-8').decode(bytes);
+  }
+  function githubErrorDetail(status){
+    if(status === 401) return '토큰 인증 실패(401) — 토큰이 잘못되었거나 만료됨';
+    if(status === 403) return '권한 부족(403) — 토큰의 Contents 쓰기 권한을 확인해주세요';
+    if(status === 404) return '저장소/파일을 찾을 수 없음(404) — 이름을 확인해주세요';
+    return `HTTP ${status}`;
+  }
+  function buildPayload(){
+    return { items, folderKeywords, hiddenFolders: Array.from(hiddenFolderKeys) };
+  }
+  function parseStoredPayload(raw){
+    if(Array.isArray(raw)) return { items: raw, folderKeywords: {}, hiddenFolders: [] };
+    if(raw && typeof raw === 'object'){
+      return {
+        items: Array.isArray(raw.items) ? raw.items : [],
+        folderKeywords: (raw.folderKeywords && typeof raw.folderKeywords === 'object') ? raw.folderKeywords : {},
+        hiddenFolders: Array.isArray(raw.hiddenFolders) ? raw.hiddenFolders : []
+      };
+    }
+    return { items: [], folderKeywords: {}, hiddenFolders: [] };
+  }
+  function applyFolderKeywords(rawMap){
+    const out = {};
+    Object.entries(rawMap || {}).forEach(([k, v]) => { out[k] = normalizeFolderKeyword(v); });
+    folderKeywords = out;
+  }
+  function applyHiddenFolders(rawArr){
+    hiddenFolderKeys.clear();
+    (rawArr || []).forEach(k => { if(typeof k === 'string' && k.trim()) hiddenFolderKeys.add(k); });
+  }
+
+  async function githubFetchFile(){
+    const res = await fetch(getGithubAPI(), {
+      headers: { 'Accept': 'application/vnd.github+json' },
+      cache: 'no-store'
+    });
+    if(res.status === 404){
+      // data.json이 아직 저장소에 없는 경우 — 빈 상태로 보고, 다음 저장 시 자동 생성한다
+      githubSha = null;
+      return { items: [], folderKeywords: {}, hiddenFolders: [] };
+    }
+    if(!res.ok) throw new Error(githubErrorDetail(res.status));
+    const data = await res.json();
+    githubSha = data.sha;
+    const content = b64ToUtf8(data.content);
+    try{
+      const parsed = JSON.parse(content || '[]');
+      return parseStoredPayload(parsed);
+    }catch(e){
+      throw new Error('data.json 내용이 올바른 JSON 형식이 아닙니다');
+    }
+  }
+  async function githubPushFile(payload, retried){
+    const body = {
+      message: `update sourcing data (${new Date().toISOString()})`,
+      content: utf8ToB64(JSON.stringify(payload, null, 2))
+    };
+    if(githubSha) body.sha = githubSha;
+    let res;
+    try{
+      res = await fetch(getGithubAPI(), {
+        method: 'PUT',
+        headers: {
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+    }catch(e){
+      return { ok:false, detail:`네트워크/CORS 차단 (${e.message})` };
+    }
+    if(res.ok){
+      const data = await res.json();
+      if(data.content && data.content.sha) githubSha = data.content.sha;
+      return { ok:true };
+    }
+    if(res.status === 409 && !retried){
+      // 다른 곳에서 먼저 저장해 sha가 오래된 경우 — 최신 sha를 다시 받아 한 번 더 시도
+      try{
+        await githubFetchFile();
+        return githubPushFile(payload, true);
+      }catch(e){
+        return { ok:false, detail:'충돌 해결 실패: ' + e.message };
+      }
+    }
+    return { ok:false, detail: githubErrorDetail(res.status) };
+  }
+
+  async function loadItems(){
+    if(hasClaudeStorage){
+      setSyncStatus('claude');
+      try{
+        const res = await window.storage.get(STORE_KEY, false);
+        if(res && res.value){
+          const parsed = parseStoredPayload(JSON.parse(res.value));
+          applyFolderKeywords(parsed.folderKeywords);
+          applyHiddenFolders(parsed.hiddenFolders);
+          return parsed.items.map(normalizeItem);
+        }
+        return [];
+      }catch(e){
+        console.error(e);
+        return [];
+      }
+    }
+    // GitHub(data.json)에서 우선 불러오기 — 다른 기기/브라우저와 동일한 데이터를 보기 위함
+    if(true){ // Worker 프록시 사용 — 토큰 불필요
+      setSyncStatus('syncing');
+      try{
+        const payload = await githubFetchFile();
+        if(payload.items.length === 0 && Object.keys(payload.folderKeywords).length === 0){
+          // GitHub가 비어있는 경우, 이 브라우저에 이미 저장된 데이터가 있다면 잃지 않도록 GitHub로 올려준다
+          let localPayload = { items: [], folderKeywords: {}, hiddenFolders: [] };
+          try{
+            const raw = localStorage.getItem(STORE_KEY);
+            if(raw) localPayload = parseStoredPayload(JSON.parse(raw));
+          }catch(e2){ console.error(e2); }
+          if(localPayload.items.length > 0){
+            const result = await githubPushFile(localPayload);
+            if(result.ok){
+              setSyncStatus('synced');
+              showToast(`이 기기에 있던 ${localPayload.items.length}개 항목을 GitHub로 옮겼습니다.`);
+            } else {
+              console.error('github migrate failed:', result.detail);
+              setSyncStatus('offline', result.detail);
+              showToast(`GitHub 업로드 실패: ${result.detail}`);
+            }
+            applyFolderKeywords(localPayload.folderKeywords);
+            applyHiddenFolders(localPayload.hiddenFolders);
+            return localPayload.items.map(normalizeItem);
+          }
+        }
+        localStorage.setItem(STORE_KEY, JSON.stringify(payload));
+        applyFolderKeywords(payload.folderKeywords);
+        applyHiddenFolders(payload.hiddenFolders);
+        setSyncStatus('synced');
+        return payload.items.map(normalizeItem);
+      }catch(e){
+        console.error(e);
+        setSyncStatus('offline', e.message);
+        try{
+          const raw = localStorage.getItem(STORE_KEY);
+          if(raw){
+            const parsed = parseStoredPayload(JSON.parse(raw));
+            applyFolderKeywords(parsed.folderKeywords);
+            applyHiddenFolders(parsed.hiddenFolders);
+            return parsed.items.map(normalizeItem);
+          }
+        }catch(e2){ console.error(e2); }
+        return [];
+      }
+    }
+    setSyncStatus('local');
+    try{
+      const raw = localStorage.getItem(STORE_KEY);
+      if(raw){
+        const parsed = parseStoredPayload(JSON.parse(raw));
+        applyFolderKeywords(parsed.folderKeywords);
+        applyHiddenFolders(parsed.hiddenFolders);
+        return parsed.items.map(normalizeItem);
+      }
+      return [];
+    }catch(e){
+      console.error(e);
+      return [];
+    }
+  }
+
+  async function saveItems(){
+    if(hasClaudeStorage){
+      try{
+        const res = await window.storage.set(STORE_KEY, JSON.stringify(buildPayload()), false);
+        if(!res){ showToast('저장에 실패했습니다.'); }
+        return;
+      }catch(e){
+        console.error(e);
+        showToast('저장 중 오류가 발생했습니다.');
+        return;
+      }
+    }
+    // 항상 로컬 캐시(오프라인 대비)에 먼저 저장
+    try{
+      localStorage.setItem(STORE_KEY, JSON.stringify(buildPayload()));
+    }catch(e){
+      console.error(e);
+      showToast('이 브라우저에서는 저장 공간이 부족하거나 차단되어 있습니다.');
+    }
+    if(false){ // Worker 프록시 사용 중 — 항상 동기화
+      setSyncStatus('local');
+      return;
+    }
+    // GitHub(data.json)에도 반영 — 다른 기기/브라우저에서 동일하게 보이도록
+    setSyncStatus('syncing');
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(async () => {
+      const result = await githubPushFile(buildPayload());
+      if(result.ok){
+        setSyncStatus('synced');
+      } else {
+        console.error('github sync failed:', result.detail);
+        setSyncStatus('offline', result.detail);
+        showToast(`GitHub 동기화 실패: ${result.detail} (이 기기에는 저장됨)`);
+      }
+    }, 600);
+  }
+
+  /* ---------------- select population ---------------- */
+
+  function fillStatusOptions(){
+    $('#f-status').innerHTML = STATUSES.map(s => `<option value="${s}">${s}</option>`).join('');
+  }
+  function fillCoupangCatOptions(targetId){
+    $(targetId || '#f-coupangcat').innerHTML = Object.entries(COUPANG_CATS).map(([label, fee]) =>
+      `<option value="${label}">${label}${fee !== null ? ' — ' + fee + '%' : ' — 직접입력'}</option>`
+    ).join('');
+  }
+  function fillRocketSizeOptions(targetId){
+    $(targetId || '#f-rocketsize').innerHTML = Object.entries(ROCKET_SIZES).map(([label, fee]) =>
+      `<option value="${label}">${label}${fee !== null ? ' — ' + fee.toLocaleString() + '원' : ' — 직접입력'}</option>`
+    ).join('');
+  }
+  function renderStatusFilterOptions(){
+    statusFilterSel.innerHTML = '<option value="ALL">전체 상태</option>' +
+      STATUSES.map(s => `<option value="${s}">${s}</option>`).join('');
+  }
+
+  const FOLDER_SEP = ' / ';
+  function splitFolderLabel(label){
+    const idx = label.indexOf(FOLDER_SEP);
+    if(idx === -1) return { parent: label, sub: null };
+    return { parent: label.slice(0, idx), sub: label.slice(idx + FOLDER_SEP.length) };
+  }
+  function getSubfolderSuggestions(parentLabel){
+    const set = new Set();
+    items.forEach(it => {
+      const f = (it.folder || '').trim();
+      if(f.startsWith(parentLabel + FOLDER_SEP)){
+        set.add(f.slice(parentLabel.length + FOLDER_SEP.length));
+      }
+    });
+    return Array.from(set).sort((a,b) => a.localeCompare(b, 'ko'));
+  }
+  function getFolderSelectionIds(key){
+    // 어떤 레벨의 폴더든 "전체선택"은 그 폴더 자신 + 모든 하위폴더의 항목까지 함께 대상이 된다.
+    return getFiltered().filter(it => {
+      const f = (it.folder || '').trim();
+      const itKey = f || '__NONE__';
+      if(itKey === key) return true;
+      if(key !== '__NONE__' && f.startsWith(key + FOLDER_SEP)) return true;
+      return false;
+    }).map(it => it.id);
+  }
+
+  // 폴더 문자열("상위 / 하위 / 하위하위")을 실제 트리 구조로 변환해서,
+  // 상위 폴더 컨테이너 안에 하위폴더 섹션이 진짜로 중첩되도록 렌더링하기 위한 헬퍼
+  function buildFolderTree(itemsWithFolder){
+    const roots = {};
+    itemsWithFolder.forEach(it => {
+      const raw = (it.folder || '').trim();
+      const segments = raw.split(FOLDER_SEP).map(s => s.trim()).filter(Boolean);
+      if(segments.length === 0) return;
+      let path = '';
+      let bucket = roots;
+      let node = null;
+      segments.forEach((seg, i) => {
+        path = path ? `${path}${FOLDER_SEP}${seg}` : seg;
+        if(!bucket[seg]) bucket[seg] = { key: path, label: seg, depth: i, items: [], children: {} };
+        node = bucket[seg];
+        bucket = node.children;
+      });
+      node.items.push(it);
+    });
+    return roots;
+  }
+  function collectSubtreeItems(node){
+    let all = node.items.slice();
+    Object.keys(node.children).forEach(k => { all = all.concat(collectSubtreeItems(node.children[k])); });
+    return all;
+  }
+
+  /* ---------------- folder hide/unhide ---------------- */
+  function folderKeyOf(it){
+    return (it.folder || '').trim() || '__NONE__';
+  }
+  function isFolderHidden(key){
+    // 상위 폴더가 숨겨져 있으면 모든 하위폴더도 함께 숨겨진다
+    if(key === '__NONE__') return hiddenFolderKeys.has('__NONE__');
+    const segs = key.split(FOLDER_SEP);
+    let path = '';
+    for(let i = 0; i < segs.length; i++){
+      path = path ? `${path}${FOLDER_SEP}${segs[i]}` : segs[i];
+      if(hiddenFolderKeys.has(path)) return true;
+    }
+    return false;
+  }
+  function hiddenFolderSummaries(){
+    return Array.from(hiddenFolderKeys).map(key => {
+      const label = key === '__NONE__' ? '미분류' : key;
+      const count = items.filter(it => {
+        const k = folderKeyOf(it);
+        return k === key || (key !== '__NONE__' && k.startsWith(key + FOLDER_SEP));
+      }).length;
+      return { key, label, count };
+    }).sort((a, b) => a.label.localeCompare(b.label, 'ko'));
+  }
+  function toggleFolderHidden(key){
+    const label = key === '__NONE__' ? '미분류' : key;
+    if(hiddenFolderKeys.has(key)){
+      hiddenFolderKeys.delete(key);
+      showToast(`"${label}" 폴더를 다시 표시합니다.`);
+    } else {
+      hiddenFolderKeys.add(key);
+      collapsedFolders.delete(key);
+      items.forEach(it => {
+        const k = folderKeyOf(it);
+        if(k === key || (key !== '__NONE__' && k.startsWith(key + FOLDER_SEP))) selectedIds.delete(it.id);
+      });
+      showToast(`"${label}" 폴더를 숨겼습니다. 상단 "🙈 숨긴 폴더"에서 다시 볼 수 있어요.`);
+    }
+    saveItems();
+    updateSelectionBar();
+    renderAll();
+  }
+  function updateHiddenFoldersBtn(){
+    const btn = $('#hidden-folders-btn');
+    if(!btn) return;
+    const n = hiddenFolderKeys.size;
+    btn.textContent = n > 0 ? `🙈 숨긴 폴더 (${n})` : '🙈 숨긴 폴더';
+    btn.classList.toggle('active', hiddenFoldersPanelOpen);
+  }
+  function renderHiddenFoldersPanel(){
+    const panelEl = $('#hidden-folders-panel');
+    if(!panelEl) return;
+    panelEl.hidden = !hiddenFoldersPanelOpen;
+    if(!hiddenFoldersPanelOpen) return;
+    const summaries = hiddenFolderSummaries();
+    panelEl.innerHTML = `
+      <div class="hf-title">🙈 숨긴 폴더${summaries.length ? ` (${summaries.length}개)` : ''}</div>
+      ${summaries.length ? `<div class="hidden-folders-list">${summaries.map(s => `
+        <div class="hidden-folder-chip">
+          <span>📁 ${escapeHtml(s.label)}</span>
+          <span class="hf-count">${s.count}개</span>
+          <button type="button" data-unhide="${escapeHtml(s.key)}">👁 다시 보이기</button>
+        </div>
+      `).join('')}</div>` : `<div class="hidden-folders-empty">숨긴 폴더가 없습니다. 폴더 상단의 "🙈 숨기기" 버튼을 누르면 이 목록으로 옮겨져요.</div>`}
+    `;
+    panelEl.querySelectorAll('[data-unhide]').forEach(btn =>
+      btn.addEventListener('click', () => toggleFolderHidden(btn.dataset.unhide)));
+  }
+  $('#hidden-folders-btn').addEventListener('click', () => {
+    hiddenFoldersPanelOpen = !hiddenFoldersPanelOpen;
+    renderHiddenFoldersPanel();
+    updateHiddenFoldersBtn();
+  });
+
+  function getFolderList(){
+    const set = new Set();
+    items.forEach(it => { const f = (it.folder || '').trim(); if(f) set.add(f); });
+    return Array.from(set).sort((a,b) => a.localeCompare(b, 'ko'));
+  }
+  function fillFolderSelect(selectedValue){
+    const folders = getFolderList();
+    const sel = $('#f-folder-select');
+    let html = `<option value="">미분류 (폴더 없음)</option>`;
+    html += folders.map(f => `<option value="${escapeHtml(f)}">${escapeHtml(f)}</option>`).join('');
+    html += `<option value="__NEW__">➕ 새 폴더 추가</option>`;
+    sel.innerHTML = html;
+    if(selectedValue && folders.includes(selectedValue)) sel.value = selectedValue;
+    else if(selectedValue) sel.value = '__NEW__';
+    else sel.value = '';
+    toggleNewFolderField();
+  }
+  function toggleNewFolderField(){
+    const isNew = $('#f-folder-select').value === '__NEW__';
+    $('#new-folder-field').style.display = isNew ? '' : 'none';
+    if(isNew) $('#f-folder-new').focus();
+  }
+  function getFolderValue(){
+    const sel = $('#f-folder-select').value;
+    return sel === '__NEW__' ? $('#f-folder-new').value.trim() : sel;
+  }
+  $('#f-folder-select').addEventListener('change', toggleNewFolderField);
+
+  /* ---------------- seg helpers ---------------- */
+  function setSeg(containerEl, value){
+    containerEl.dataset.value = value;
+    containerEl.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.val === value));
+  }
+  function getSeg(containerEl){ return containerEl.dataset.value; }
+
+  document.querySelectorAll('#seg-bundle button').forEach(b => {
+    b.addEventListener('click', () => { setSeg($('#seg-bundle'), b.dataset.val); refreshAutoFields(); });
+  });
+  document.querySelectorAll('#seg-channel button').forEach(b => {
+    b.addEventListener('click', () => { setSeg($('#seg-channel'), b.dataset.val); refreshAutoFields(); });
+  });
+  document.querySelectorAll('#seg-promo button').forEach(b => {
+    b.addEventListener('click', () => { setSeg($('#seg-promo'), b.dataset.val); refreshAutoFields(); });
+  });
+  document.querySelectorAll('#seg-importmode button').forEach(b => {
+    b.addEventListener('click', () => {
+      setSeg($('#seg-importmode'), b.dataset.val);
+      const rateInput = $('#f-rate');
+      if(b.dataset.val === 'simple'){
+        rateInput.value = 300;
+      } else if(b.dataset.val === 'detail'){
+        if(liveRate){
+          rateInput.value = liveRate.toFixed(2);
+        } else {
+          rateInput.value = 195;
+          showToast('실시간 환율이 아직 없어 195원으로 설정했어요. 위에서 환율을 직접 입력해보세요.');
+        }
+      }
+      refreshAutoFields();
+    });
+  });
+
+  function toggleBundleQtyVisibility(){
+    $('#bundle-qty-field').style.display = (getSeg($('#seg-bundle')) === 'true') ? '' : 'none';
+  }
+  function toggleImportModeFields(){
+    const mode = getSeg($('#seg-importmode'));
+    $('#import-detail-fields').style.display = mode === 'simple' ? 'none' : '';
+    $('#import-simple-hint').style.display = mode === 'simple' ? '' : 'none';
+  }
+  function toggleChannelFields(){
+    const channel = getSeg($('#seg-channel'));
+    $('#rocket-size-field').style.display = channel === 'rocket' ? '' : 'none';
+    $('#rocket-fee-manual-field').style.display = (channel === 'rocket' && $('#f-rocketsize').value === '직접입력') ? '' : 'none';
+    $('#market-ship-field').style.display = channel === 'market' ? '' : 'none';
+    $('#promo-field').style.display = channel === 'rocket' ? '' : 'none';
+    if(channel !== 'rocket') setSeg($('#seg-promo'), 'none');
+  }
+  function toggleCoupangManualFee(){
+    $('#coupang-fee-manual-field').style.display = ($('#f-coupangcat').value === '직접입력') ? '' : 'none';
+  }
+  function updatePromoHints(){
+    const promo = getSeg($('#seg-promo'));
+    const channel = getSeg($('#seg-channel'));
+    const promoActive = channel === 'rocket' && promo !== 'none';
+    const promoHint = $('#promo-hint');
+    if(promo === '90'){
+      promoHint.textContent = '✅ 첫 90일 — 물류비(입출고·배송) + 반품비 전액 무료';
+    } else if(promo === '270'){
+      promoHint.textContent = '✅ 추가 270일(로켓그로스 세이버) — 반품비만 계속 무료, 물류비는 정상 부과';
+    } else {
+      promoHint.textContent = '';
+    }
+    $('#return-promo-hint').textContent = promoActive ? '→ 프로모션으로 반품비 0원 처리됨' : '';
+  }
+  function updateReadouts(){
+    const draft = readFormItem();
+    const fee = resolveFee(draft);
+    const logi = resolveLogistic(draft);
+    const c = calc(draft);
+    $('#fee-readout').textContent = `→ 적용 수수료 ${fee.toFixed(1)}%`;
+    $('#logistic-readout').textContent = c.promo === '90'
+      ? `→ 적용 물류비 ${won(logi)} (프로모션으로 0원 처리됨)`
+      : `→ 적용 물류비 ${won(logi)}`;
+    updatePromoHints();
+  }
+  function refreshAutoFields(){
+    toggleBundleQtyVisibility();
+    toggleImportModeFields();
+    toggleChannelFields();
+    toggleCoupangManualFee();
+    updateReadouts();
+    updatePreview();
+    if(draftOptions.length) updateOptionMarginReadouts();
+  }
+
+  $('#f-category').addEventListener('change', () => {
+    const mapped = BRAND_TO_COUPANG[$('#f-category').value] || '생활/주방';
+    $('#f-coupangcat').value = mapped;
+    refreshAutoFields();
+  });
+  $('#f-coupangcat').addEventListener('change', refreshAutoFields);
+  $('#f-rocketsize').addEventListener('change', refreshAutoFields);
+
+  /* ---------------- selection / compare ---------------- */
+
+  function updateSelectionBar(){
+    const n = selectedIds.size;
+    selectionBar.hidden = (n === 0) || !panel.hidden;
+    if(n > 0) $('#selection-count').textContent = `${n}개 선택됨`;
+  }
+
+  function updateSelectAllBtn(){
+    const btn = $('#select-all-btn');
+    if(!btn) return;
+    btn.style.display = (viewMode === 'folders') ? 'none' : '';
+    const filteredIds = getFiltered().map(it => it.id);
+    const allSelected = filteredIds.length > 0 && filteredIds.every(id => selectedIds.has(id));
+    btn.textContent = allSelected ? '☑ 전체 해제' : '☐ 전체 선택';
+    btn.classList.toggle('active', allSelected);
+  }
+  function toggleSelectAll(){
+    const filteredIds = getFiltered().map(it => it.id);
+    if(filteredIds.length === 0) return;
+    const allSelected = filteredIds.every(id => selectedIds.has(id));
+    if(allSelected){
+      filteredIds.forEach(id => selectedIds.delete(id));
+    } else {
+      filteredIds.forEach(id => selectedIds.add(id));
+    }
+    updateSelectionBar();
+    renderGrid();
+    if(!comparePanel.hidden) renderCompareBody();
+  }
+  $('#select-all-btn').addEventListener('click', toggleSelectAll);
+
+  function getAllFolderKeys(){
+    const keys = new Set();
+    getFiltered().forEach(it => {
+      keys.add((it.folder || '').trim() || '__NONE__');
+    });
+    return Array.from(keys);
+  }
+  function updateCollapseAllBtn(){
+    const btn = $('#collapse-all-btn');
+    if(!btn) return;
+    const keys = getAllFolderKeys();
+    const allCollapsed = keys.length > 0 && keys.every(k => collapsedFolders.has(k));
+    btn.textContent = allCollapsed ? '▸ 전체 폴더 펼치기' : '▾ 전체 폴더 접기';
+    btn.classList.toggle('active', allCollapsed);
+    btn.style.display = (viewMode === 'group') ? '' : 'none';
+  }
+  function toggleCollapseAll(){
+    const keys = getAllFolderKeys();
+    if(keys.length === 0) return;
+    const allCollapsed = keys.every(k => collapsedFolders.has(k));
+    if(allCollapsed) keys.forEach(k => collapsedFolders.delete(k));
+    else keys.forEach(k => collapsedFolders.add(k));
+    renderGrid();
+  }
+  $('#collapse-all-btn').addEventListener('click', toggleCollapseAll);
+
+  $('#selection-clear-btn').addEventListener('click', () => {
+    selectedIds.clear();
+    updateSelectionBar();
+    comparePanel.hidden = true;
+    bulkEditPanel.hidden = true;
+    renderGrid();
+  });
+  $('#selection-compare-btn').addEventListener('click', () => {
+    bulkEditPanel.hidden = true;
+    comparePanel.hidden = false;
+    renderCompareBody();
+    comparePanel.scrollIntoView({ behavior:'smooth', block:'start' });
+  });
+  $('#compare-close-btn').addEventListener('click', () => { comparePanel.hidden = true; });
+  document.querySelectorAll('#compare-panel [data-ctab]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      compareTab = btn.dataset.ctab;
+      document.querySelectorAll('#compare-panel [data-ctab]').forEach(b => b.classList.toggle('active', b === btn));
+      renderCompareBody();
+    });
+  });
+
+  /* ---------------- bulk edit (selected items) ---------------- */
+  const BULK_CHECKS = [
+    { chk:'#bulk-coupangcat-chk', field:'#bulk-coupangcat' },
+    { chk:'#bulk-rocketsize-chk', field:'#bulk-rocketsize' },
+    { chk:'#bulk-marketship-chk', field:'#bulk-marketship' },
+    { chk:'#bulk-ad-chk', field:'#bulk-ad' },
+    { chk:'#bulk-return-chk', field:'#bulk-return' }
+  ];
+  BULK_CHECKS.forEach(({chk, field}) => {
+    $(chk).addEventListener('change', () => { $(field).disabled = !$(chk).checked; });
+  });
+  $('#bulk-channel-chk').addEventListener('change', () => {
+    const enabled = $('#bulk-channel-chk').checked;
+    document.querySelectorAll('#bulk-seg-channel button').forEach(b => b.disabled = !enabled);
+  });
+  document.querySelectorAll('#bulk-seg-channel button').forEach(b => {
+    b.addEventListener('click', () => setSeg($('#bulk-seg-channel'), b.dataset.val));
+  });
+  $('#bulk-promo-chk').addEventListener('change', () => {
+    const enabled = $('#bulk-promo-chk').checked;
+    document.querySelectorAll('#bulk-seg-promo button').forEach(b => b.disabled = !enabled);
+  });
+  document.querySelectorAll('#bulk-seg-promo button').forEach(b => {
+    b.addEventListener('click', () => setSeg($('#bulk-seg-promo'), b.dataset.val));
+  });
+
+  function openBulkEditPanel(){
+    if(selectedIds.size === 0){ showToast('일괄 수정할 항목을 먼저 선택해주세요. 상단 "전체 선택" 또는 폴더의 "폴더 전체선택"을 활용해보세요.'); return; }
+    $('#bulk-edit-count').textContent = selectedIds.size;
+    $('#bulk-coupangcat-chk').checked = false;
+    $('#bulk-channel-chk').checked = false;
+    $('#bulk-promo-chk').checked = false;
+    BULK_CHECKS.forEach(({chk, field}) => { $(chk).checked = false; $(field).disabled = true; });
+    $('#bulk-coupangcat').disabled = true;
+    document.querySelectorAll('#bulk-seg-channel button').forEach(b => b.disabled = true);
+    document.querySelectorAll('#bulk-seg-promo button').forEach(b => b.disabled = true);
+    comparePanel.hidden = true;
+    bulkEditPanel.hidden = false;
+    bulkEditPanel.scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+  function closeBulkEditPanel(){ bulkEditPanel.hidden = true; }
+
+  $('#bulk-edit-open-btn').addEventListener('click', openBulkEditPanel);
+  $('#bulk-edit-cancel-btn').addEventListener('click', closeBulkEditPanel);
+  $('#bulk-edit-apply-btn').addEventListener('click', () => {
+    const applyCoupang = $('#bulk-coupangcat-chk').checked;
+    const applyChannel = $('#bulk-channel-chk').checked;
+    const applyPromo = $('#bulk-promo-chk').checked;
+    const applyRocketSize = $('#bulk-rocketsize-chk').checked;
+    const applyMarketShip = $('#bulk-marketship-chk').checked;
+    const applyAd = $('#bulk-ad-chk').checked;
+    const applyReturn = $('#bulk-return-chk').checked;
+    if(!applyCoupang && !applyChannel && !applyPromo && !applyRocketSize && !applyMarketShip && !applyAd && !applyReturn){
+      showToast('적용할 항목을 하나 이상 체크해주세요.');
+      return;
+    }
+    const coupangVal = $('#bulk-coupangcat').value;
+    const channelVal = getSeg($('#bulk-seg-channel'));
+    const promoVal = getSeg($('#bulk-seg-promo'));
+    const rocketSizeVal = $('#bulk-rocketsize').value;
+    const marketShipVal = parseFloat($('#bulk-marketship').value) || 0;
+    const adVal = parseFloat($('#bulk-ad').value) || 0;
+    const returnVal = parseFloat($('#bulk-return').value) || 0;
+
+    let count = 0;
+    items.forEach(it => {
+      if(!selectedIds.has(it.id)) return;
+      if(applyCoupang) it.coupangCat = coupangVal;
+      if(applyChannel) it.channel = channelVal;
+      if(applyPromo) it.promo = (it.channel === 'rocket') ? promoVal : 'none';
+      if(applyRocketSize) it.rocketSize = rocketSizeVal;
+      if(applyMarketShip) it.marketShip = marketShipVal;
+      if(applyAd) it.ad = adVal;
+      if(applyReturn) it.ret = returnVal;
+      count++;
+    });
+    saveItems();
+    renderAll();
+    if(!comparePanel.hidden) renderCompareBody();
+    closeBulkEditPanel();
+    showToast(`${count}개 항목에 일괄 수정을 적용했습니다.`);
+  });
+
+  function renderCompareBody(){
+    const list = items.filter(it => selectedIds.has(it.id));
+    $('#compare-count').textContent = list.length;
+    if(list.length === 0){
+      compareBody.innerHTML = `<div class="empty">
+        <div class="big">선택된 항목이 없습니다</div>
+        <div>카드나 테이블에서 비교할 상품의 체크박스를 선택해주세요.</div>
+      </div>`;
+      return;
+    }
+    let bestId = null;
+    if(list.length > 1){
+      bestId = list.reduce((b, it) => {
+        const bc = repCalc(b), ic = repCalc(it);
+        const pctDiff = ic.marginPct - bc.marginPct;
+        if(Math.abs(pctDiff) > 0.05) return pctDiff > 0 ? it : b;
+        return ic.margin > bc.margin ? it : b;
+      }, list[0]).id;
+    }
+    if(compareTab === 'table') compareBody.innerHTML = tableHtml(sortList(list), true, bestId);
+    else if(compareTab === 'bar') compareBody.innerHTML = barCompareHtml(list);
+    else compareBody.innerHTML = pieCompareHtml(list);
+    bindInteractiveEvents(compareBody);
+  }
+
+  function barCompareHtml(list){
+    // 옵션이 2개 이상인 항목은 옵션별로 풀어서 각각 한 줄씩 비교 (단일 옵션 항목은 그대로 한 줄)
+    const flat = [];
+    list.forEach(it => {
+      const opts = (it.options && it.options.length > 1) ? it.options : null;
+      if(opts){
+        opts.forEach(o => {
+          flat.push({ merged: { ...it, cny: o.cny, sell: o.sell }, label: `${it.name} · ${o.name}` });
+        });
+      } else {
+        flat.push({ merged: it, label: it.name });
+      }
+    });
+    flat.sort((a,b) => calc(b.merged).marginPct - calc(a.merged).marginPct);
+    const legendDefs = [
+      { label:'수입원가', color:'#5B7C99' }, { label:'수수료', color:'#D98E3D' }, { label:'물류비', color:'#C2703D' },
+      { label:'광고비', color:'#86586B' }, { label:'반품비', color:'#B8453A' }, { label:'이익', color:'#4F7864' }
+    ];
+    const legendHtml = `<div class="cost-bar-legend">${legendDefs.map(d =>
+      `<span class="cbl-item"><i style="background:${d.color}"></i>${d.label}</span>`
+    ).join('')}</div>`;
+    const rowsHtml = flat.map(row => {
+      const c = calc(row.merged);
+      const mColor = marginColor(c.marginPct);
+      return `
+        <div class="cmp-cost-row">
+          <div class="cmp-cost-label" title="${escapeHtml(row.label)}">${escapeHtml(row.label)}</div>
+          <div class="cmp-cost-bar-wrap">${costBarHtml(row.merged, { height:22 })}</div>
+          <div class="cmp-cost-stats" style="color:${mColor}">${pct(c.marginPct)} · ${won(c.margin)}</div>
+        </div>
+      `;
+    }).join('');
+    return `
+      <div class="cmp-toolbar-static">${legendHtml}</div>
+      <div class="cmp-cost-rows">${rowsHtml}</div>
+    `;
+  }
+
+  function pieCompareHtml(list){
+    return `<div class="pie-grid">${list.map(it => {
+      const rep = repOption(it);
+      const repMerged = { ...it, cny: rep.cny, sell: rep.sell };
+      const label = (it.options && it.options.length > 1) ? `${it.name} · ${rep.name}` : it.name;
+      return `
+      <div class="pie-card">
+        <div class="pie-chart" style="background:${pieGradient(repMerged)}"></div>
+        <div class="pie-name">${escapeHtml(label)}</div>
+        ${costBarLegendHtml(repMerged)}
+      </div>
+    `;
+    }).join('')}</div>`;
+  }
+
+  /* ---------------- render: top controls ---------------- */
+
+  function renderCatTabs(){
+    const counts = { ALL: items.length };
+    Object.keys(CATEGORIES).forEach(c => counts[c] = items.filter(it => it.category === c).length);
+    const allBtn = `<button class="tab ${filterCategory==='ALL'?'active':''}" data-cat="ALL">전체 <span class="mono">${counts.ALL}</span></button>`;
+    const catBtns = Object.entries(CATEGORIES).map(([key, meta]) =>
+      `<button class="tab ${filterCategory===key?'active':''}" data-cat="${key}">
+        <span class="dot" style="background:${meta.hex}"></span>${meta.icon} ${meta.label} <span class="mono">${counts[key]}</span>
+      </button>`
+    ).join('');
+    catTabs.innerHTML = allBtn + catBtns;
+    catTabs.querySelectorAll('.tab').forEach(btn => {
+      btn.addEventListener('click', () => { filterCategory = btn.dataset.cat; renderAll(); });
+    });
+  }
+
+  function renderStats(){
+    const withSell = items.filter(it => repOption(it).sell > 0);
+    const avgMargin = withSell.length
+      ? withSell.reduce((a,it) => a + repCalc(it).marginPct, 0) / withSell.length
+      : 0;
+    const sellingCount = items.filter(it => it.status === '판매중').length;
+    const reviewCount = items.filter(it => it.status === '검토중').length;
+
+    const maxCount = Math.max(1, ...Object.keys(CATEGORIES).map(c => items.filter(it=>it.category===c).length));
+    const bars = Object.entries(CATEGORIES).map(([key, meta]) => {
+      const c = items.filter(it=>it.category===key).length;
+      const h = Math.max(4, Math.round((c / maxCount) * 40));
+      return `<div class="cat-bar">
+        <span class="ct">${c}</span>
+        <div class="bar" style="height:${h}px;background:${meta.hex}"></div>
+        <span class="nm">${meta.icon} ${meta.label}</span>
+      </div>`;
+    }).join('');
+
+    statsBar.innerHTML = `
+      <div class="stat-card"><div class="label">전체 등록</div><div class="value">${items.length}</div></div>
+      <div class="stat-card"><div class="label">평균 마진율</div><div class="value" style="color:${marginColor(avgMargin)}">${pct(avgMargin)}</div></div>
+      <div class="stat-card"><div class="label">검토중 / 판매중</div><div class="value">${reviewCount} / ${sellingCount}</div></div>
+      <div class="cat-dist">
+        <div class="label">카테고리 분포</div>
+        <div class="cat-bars">${bars}</div>
+      </div>
+    `;
+  }
+
+  function getFiltered(){
+    return items.filter(it => {
+      const catOk = filterCategory === 'ALL' || it.category === filterCategory;
+      const statusOk = filterStatus === 'ALL' || it.status === filterStatus;
+      const starOk = !filterStarred || it.starred;
+      const hideOk = !isFolderHidden(folderKeyOf(it));
+      return catOk && statusOk && starOk && hideOk;
+    });
+  }
+
+  function sortList(list){
+    let out = [...list];
+    // 마진율 동률 시 마진액으로 2차 정렬하는 비교 헬퍼
+    const byMarginDesc = (a,b) => {
+      const pctDiff = repCalc(b).marginPct - repCalc(a).marginPct;
+      if(Math.abs(pctDiff) > 0.05) return pctDiff; // 0.05% 이상 차이면 마진율 우선
+      return repCalc(b).margin - repCalc(a).margin;  // 동률이면 마진액 높은 순
+    };
+    const byMarginAsc = (a,b) => {
+      const pctDiff = repCalc(a).marginPct - repCalc(b).marginPct;
+      if(Math.abs(pctDiff) > 0.05) return pctDiff;
+      return repCalc(a).margin - repCalc(b).margin;
+    };
+    if(sortKey === 'marginDesc') out.sort(byMarginDesc);
+    else if(sortKey === 'marginAsc') out.sort(byMarginAsc);
+    else if(sortKey === 'marginAmtDesc') out.sort((a,b)=>repCalc(b).margin - repCalc(a).margin);
+    else if(sortKey === 'marginAmtAsc') out.sort((a,b)=>repCalc(a).margin - repCalc(b).margin);
+    else if(sortKey === 'starred') out.sort((a,b)=> (b.starred ? 1 : 0) - (a.starred ? 1 : 0) || byMarginDesc(a,b));
+    else out.sort((a,b)=> (b.createdAt||0) - (a.createdAt||0));
+    // 별표 항목은 어떤 정렬 기준이든 항상 앞으로 (별표 내에서도 마진율→마진액 순)
+    if(sortKey !== 'starred'){
+      out.sort((a,b) => {
+        const starDiff = (b.starred ? 1 : 0) - (a.starred ? 1 : 0);
+        if(starDiff !== 0) return starDiff;
+        return 0; // 별표 동률이면 기존 정렬 유지
+      });
+    }
+    return out;
+  }
+
+  /* ---------------- render: main grid ---------------- */
+
+  function renderGrid(){
+    const filtered = getFiltered();
+    if(items.length === 0){
+      gridArea.innerHTML = `<div class="empty">
+        <div class="big">아직 등록된 소싱 항목이 없습니다</div>
+        <div>위의 "+ 신규 항목 추가" 버튼으로 1688 상품을 첫 항목으로 등록해보세요.</div>
+      </div>`;
+      updateSelectAllBtn();
+      updateCollapseAllBtn();
+      return;
+    }
+    if(filtered.length === 0){
+      gridArea.innerHTML = `<div class="empty">
+        <div class="big">조건에 맞는 항목이 없습니다</div>
+        <div>필터를 변경해보세요.</div>
+      </div>`;
+      updateSelectAllBtn();
+      updateCollapseAllBtn();
+      return;
+    }
+
+    if(viewMode === 'flat'){
+      const list = sortList(filtered);
+      gridArea.innerHTML = displayMode === 'table'
+        ? tableHtml(list, true, null)
+        : `<div class="grid">${list.map(it => cardHtml(it, false)).join('')}</div>`;
+    } else if(viewMode === 'folders'){
+      gridArea.innerHTML = renderFolderCardsView(filtered);
+    } else {
+      const noneItems = sortList(filtered.filter(it => !((it.folder || '').trim())));
+      const treeSourceItems = filtered.filter(it => (it.folder || '').trim());
+      const tree = buildFolderTree(treeSourceItems);
+      const topKeys = Object.keys(tree).sort((a, b) => a.localeCompare(b, 'ko'));
+      let html = topKeys.map(k => renderFolderNode(tree[k])).join('');
+      if(noneItems.length){
+        html += renderFolderNode({ key: '__NONE__', label: '미분류', depth: 0, items: noneItems, children: {} });
+      }
+      gridArea.innerHTML = html;
+    }
+
+    bindInteractiveEvents(gridArea);
+    updateSelectAllBtn();
+    updateCollapseAllBtn();
+  }
+
+  /* ---------------- render: folder card view (폴더 자체를 카드로 나열) ---------------- */
+
+  function getTopLevelFolderTree(filtered){
+    const noneItems = sortList(filtered.filter(it => !((it.folder || '').trim())));
+    const treeSourceItems = filtered.filter(it => (it.folder || '').trim());
+    const tree = buildFolderTree(treeSourceItems);
+    return { tree, noneItems };
+  }
+
+  function renderFolderCardsView(filtered){
+    const { tree, noneItems } = getTopLevelFolderTree(filtered);
+    const topKeys = Object.keys(tree).sort((a, b) => a.localeCompare(b, 'ko'));
+    const cards = topKeys.map(k => folderCardHtml(tree[k]));
+    if(noneItems.length){
+      cards.push(folderCardHtml({ key: '__NONE__', label: '미분류', items: noneItems, children: {} }));
+    }
+    if(cards.length === 0){
+      return `<div class="empty">
+        <div class="big">표시할 폴더가 없습니다</div>
+        <div>필터를 변경하거나, 상단의 "🙈 숨긴 폴더"에서 숨긴 폴더를 확인해보세요.</div>
+      </div>`;
+    }
+    return `<div class="folder-card-grid">${cards.join('')}</div>`;
+  }
+
+  function folderCardHtml(node){
+    const key = node.key;
+    const label = node.label;
+    const subtreeItems = collectSubtreeItems(node);
+    const childCount = Object.keys(node.children || {}).length;
+    let bestItem = null;
+    if(subtreeItems.length){
+      bestItem = subtreeItems.reduce((best, it) => {
+        const bc = repCalc(best), ic = repCalc(it);
+        const pctDiff = ic.marginPct - bc.marginPct;
+        if(Math.abs(pctDiff) > 0.05) return pctDiff > 0 ? it : best;
+        return ic.margin > bc.margin ? it : best;
+      }, subtreeItems[0]);
+    }
+    const bestMargin = bestItem ? repCalc(bestItem).marginPct : null;
+    const thumbSrc = (() => {
+      const withImg = subtreeItems.find(it => (repOption(it).image || it.image));
+      if(!withImg) return '';
+      return resolveImageSrc(repOption(withImg).image || withImg.image);
+    })();
+    const mainCat = subtreeItems.length ? pickMostCommonCategory(subtreeItems) : 'ETC';
+    const catMeta = CATEGORIES[mainCat] || CATEGORIES.ETC;
+    return `
+      <div class="folder-card-tile" data-folder-open="${escapeHtml(key)}" title="열어서 비교하기">
+        <button type="button" class="folder-card-hide" data-folder-hide="${escapeHtml(key)}" title="이 폴더를 숨깁니다">🙈</button>
+        <div class="fc-thumb" ${thumbSrc ? `style="background-image:url('${escapeHtml(thumbSrc)}')"` : ''}>${thumbSrc ? '' : '📁'}</div>
+        <div class="fc-body">
+          <div class="fc-name">${escapeHtml(label)}</div>
+          <div class="fc-meta">
+            <span>${subtreeItems.length}개${childCount ? ` · 하위폴더 ${childCount}개` : ''}</span>
+            ${bestMargin !== null ? `<span class="fc-best">🏆 ${pct(bestMargin)}</span>` : ''}
+          </div>
+          <span class="fc-cat" style="color:${catMeta.hex}">${catMeta.icon} ${catMeta.label}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  function getTopLevelFolderKeys(){
+    const { tree, noneItems } = getTopLevelFolderTree(getFiltered());
+    const keys = Object.keys(tree);
+    if(noneItems.length) keys.push('__NONE__');
+    return keys;
+  }
+
+  function openFolderFromCard(key){
+    viewMode = 'group';
+    $('#view-group-btn').classList.add('active');
+    $('#view-flat-btn').classList.remove('active');
+    $('#view-folders-btn').classList.remove('active');
+    const topKeys = getTopLevelFolderKeys();
+    topKeys.forEach(k => { if(k === key) collapsedFolders.delete(k); else collapsedFolders.add(k); });
+    renderAll();
+    requestAnimationFrame(() => {
+      const btn = gridArea.querySelector(`[data-folder-collapse="${CSS.escape(key)}"]`);
+      const sectionEl = btn ? btn.closest('.folder-section') : null;
+      if(sectionEl) sectionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+
+  function renderFolderNode(node){
+    const key = node.key;
+    const label = node.label;
+    const childKeys = Object.keys(node.children).sort((a, b) => a.localeCompare(b, 'ko'));
+    const directItems = sortList(node.items);
+    const subtreeItems = collectSubtreeItems(node);
+    let bestId = null;
+    if(directItems.length > 1){
+      bestId = directItems.reduce((best, it) => {
+        const bc = repCalc(best), ic = repCalc(it);
+        const pctDiff = ic.marginPct - bc.marginPct;
+        if(Math.abs(pctDiff) > 0.05) return pctDiff > 0 ? it : best;
+        return ic.margin > bc.margin ? it : best;
+      }, directItems[0]).id;
+    }
+    const bestSubtreeItem = subtreeItems.length > 1
+      ? subtreeItems.reduce((best, it) => {
+          const bc = repCalc(best), ic = repCalc(it);
+          const pctDiff = ic.marginPct - bc.marginPct;
+          if(Math.abs(pctDiff) > 0.05) return pctDiff > 0 ? it : best;
+          return ic.margin > bc.margin ? it : best;
+        }, subtreeItems[0])
+      : (subtreeItems.length === 1 ? subtreeItems[0] : null);
+    const bestMargin = bestSubtreeItem ? repCalc(bestSubtreeItem).marginPct : null;
+    const settingsOpen = editingFolderKey === key;
+    const movingOpen = movingFolderKey === key;
+    const keywordEditOpen = editingKeywordFolderKey === key;
+    const keywordExpanded = expandedKeywordFolderKey === key;
+    const isCollapsed = collapsedFolders.has(key);
+    const mostCommonCat = pickMostCommonCategory(subtreeItems.length ? subtreeItems : directItems);
+    const folderSelectionIds = getFolderSelectionIds(key);
+    const allGroupSelected = folderSelectionIds.length > 0 && folderSelectionIds.every(id => selectedIds.has(id));
+    const selectedCountInFolder = directItems.filter(it => selectedIds.has(it.id)).length;
+    const kw = folderKeywords[key];
+    const ownBodyHtml = (isCollapsed || directItems.length === 0) ? '' : (displayMode === 'table'
+      ? tableHtml(directItems, false, bestId)
+      : `<div class="grid">${directItems.map(it => cardHtml(it, it.id === bestId)).join('')}</div>`);
+    const childrenHtml = isCollapsed ? '' : childKeys.map(ck => renderFolderNode(node.children[ck])).join('');
+    const countLabel = (directItems.length && directItems.length !== subtreeItems.length)
+      ? `${subtreeItems.length}개 비교중 (직접 ${directItems.length}개)`
+      : `${subtreeItems.length}개 비교중`;
+    return `
+      <div class="folder-section ${node.depth > 0 ? 'is-subfolder' : ''}">
+        <div class="folder-head">
+          <button type="button" class="folder-collapse-btn ${isCollapsed ? 'collapsed' : ''}" data-folder-collapse="${escapeHtml(key)}" title="${isCollapsed ? '펼치기' : '접기'}">▾</button>
+          <span class="fname">${escapeHtml(label)}</span>
+          <span class="fcount">${countLabel}</span>
+          <div class="fhead-right">
+            ${bestMargin !== null ? `<span class="fbest">🏆 최고 마진율 ${pct(bestMargin)}</span>` : ''}
+            <button type="button" class="icon-btn" data-folder-add="${escapeHtml(key)}" data-folder-add-label="${escapeHtml(label)}" data-folder-add-cat="${escapeHtml(mostCommonCat)}">➕ 신규 항목 추가</button>
+            <button type="button" class="icon-btn" data-folder-select-all="${escapeHtml(key)}">${allGroupSelected ? '☑ 폴더 전체해제' : '☐ 폴더 전체선택'}</button>
+            <button type="button" class="icon-btn ${movingOpen ? 'active' : ''}" data-folder-move-open="${escapeHtml(key)}" title="선택한 항목을 이 폴더의 하위폴더로 이동합니다">📁 하위폴더로 이동${selectedCountInFolder > 0 ? ` (${selectedCountInFolder})` : ''}</button>
+            <button type="button" class="icon-btn ${keywordExpanded ? 'active' : ''}" data-folder-keyword="${escapeHtml(key)}">🔍 키워드 분석</button>
+            <button type="button" class="icon-btn" data-folder-settings="${escapeHtml(key)}">⚙️ 폴더 설정</button>
+            <button type="button" class="icon-btn" data-folder-hide="${escapeHtml(key)}" title="이 폴더를 숨깁니다">🙈 숨기기</button>
+          </div>
+        </div>
+        ${(!keywordEditOpen && !keywordExpanded) ? folderKeywordSummaryHtml(key, kw) : ''}
+        ${settingsOpen ? folderSettingsHtml(key, label, mostCommonCat) : ''}
+        ${movingOpen ? folderMoveHtml(key, label, selectedCountInFolder) : ''}
+        ${keywordExpanded ? folderKeywordDetailHtml(key, kw) : ''}
+        ${keywordEditOpen ? folderKeywordEditHtml(key, kw) : ''}
+        ${ownBodyHtml}
+        ${childrenHtml}
+      </div>
+    `;
+  }
+
+  function pickMostCommonCategory(list){
+    const counts = {};
+    list.forEach(it => { counts[it.category] = (counts[it.category]||0) + 1; });
+    let best = list[0] ? list[0].category : 'ACTIVE';
+    let bestN = 0;
+    Object.entries(counts).forEach(([k,n]) => { if(n > bestN){ best = k; bestN = n; } });
+    return best;
+  }
+
+  function folderMoveHtml(key, label, selectedCount){
+    const suggestions = getSubfolderSuggestions(label);
+    const datalistHtml = suggestions.length
+      ? `<datalist id="fm-suggest-${escapeHtml(key)}">${suggestions.map(s => `<option value="${escapeHtml(s)}"></option>`).join('')}</datalist>`
+      : '';
+    return `
+      <div class="folder-move" data-folder-key="${escapeHtml(key)}">
+        <div class="fs-row">
+          <div class="field full">
+            <label>선택한 ${selectedCount}개 항목을 하위폴더로 이동</label>
+            <input type="text" class="fm-name-input" placeholder="예: 봄가을 시즌" list="fm-suggest-${escapeHtml(key)}" />
+            ${datalistHtml}
+            <span class="hint">새 이름을 입력하면 새 하위폴더가 만들어지고, 기존 하위폴더 이름을 입력하면 그 폴더로 합쳐집니다. (예: "${escapeHtml(label)}${FOLDER_SEP}봄가을 시즌")</span>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn ghost fm-cancel">취소</button>
+          <button type="button" class="btn amber fm-apply">하위폴더로 이동</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function folderSettingsHtml(key, label, currentCat){
+    const nameVal = key === '__NONE__' ? '' : label;
+    const catOptions = Object.entries(CATEGORIES).map(([k,m]) =>
+      `<option value="${k}" ${k===currentCat?'selected':''}>${m.label}</option>`
+    ).join('');
+    return `
+      <div class="folder-settings" data-folder-key="${escapeHtml(key)}">
+        <div class="fs-row">
+          <div class="field">
+            <label>폴더명 변경</label>
+            <input type="text" class="fs-name-input" value="${escapeHtml(nameVal)}" placeholder="폴더명 입력 (빈칸 = 미분류)" />
+          </div>
+          <div class="field">
+            <label>브랜드 카테고리 일괄 변경</label>
+            <select class="fs-cat-select">${catOptions}</select>
+          </div>
+        </div>
+        <span class="hint">이 폴더의 모든 항목에 적용됩니다. 카테고리를 바꾸면 쿠팡 카테고리·수수료도 함께 자동 갱신됩니다.</span>
+        <div class="form-actions">
+          <button type="button" class="btn ghost fs-cancel">취소</button>
+          <button type="button" class="btn amber fs-apply">전체 적용</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function applyFolderSettings(oldKey, newName, newCategory){
+    const newCoupangCat = BRAND_TO_COUPANG[newCategory];
+    let changed = 0;
+    items.forEach(it => {
+      const f = (it.folder || '').trim();
+      const key = f || '__NONE__';
+      if(key === oldKey){
+        it.folder = newName;
+        it.category = newCategory;
+        if(newCoupangCat) it.coupangCat = newCoupangCat;
+        changed++;
+      } else if(oldKey !== '__NONE__' && f.startsWith(oldKey + FOLDER_SEP)){
+        // 상위 폴더 이름/카테고리 변경은 모든 하위폴더의 항목까지 함께 적용된다
+        it.folder = newName + f.slice(oldKey.length);
+        it.category = newCategory;
+        if(newCoupangCat) it.coupangCat = newCoupangCat;
+        changed++;
+      }
+    });
+    editingFolderKey = null;
+    saveItems();
+    renderAll();
+    showToast(`${changed}개 항목에 폴더 설정을 적용했습니다.`);
+  }
+
+  function setRepOption(itemId, optionId){
+    const it = items.find(x => x.id === itemId);
+    if(!it) return;
+    it.repOptionId = optionId || null;
+    saveItems();
+    renderGrid();
+    showToast(optionId ? '대표 옵션을 지정했습니다.' : '대표 옵션을 자동(최고마진)으로 되돌렸습니다.');
+  }
+
+  function toggleStar(itemId){
+    const it = items.find(x => x.id === itemId);
+    if(!it) return;
+    it.starred = !it.starred;
+    saveItems();
+    renderGrid();
+  }
+
+  function applyFolderMove(key, label, rawSubName){
+    if(key === '__NONE__'){
+      showToast('미분류 항목은 먼저 폴더를 지정한 뒤 하위폴더를 만들 수 있어요.');
+      return;
+    }
+    const subName = (rawSubName || '').trim();
+    if(!subName){
+      showToast('하위폴더 이름을 입력해주세요.');
+      return;
+    }
+    const groupIds = getFiltered()
+      .filter(it => ((it.folder || '').trim() || '__NONE__') === key)
+      .map(it => it.id);
+    const targetIds = groupIds.filter(id => selectedIds.has(id));
+    if(targetIds.length === 0){
+      showToast('이동할 항목을 먼저 체크해주세요.');
+      return;
+    }
+    const newFolder = `${label}${FOLDER_SEP}${subName}`;
+    let changed = 0;
+    items.forEach(it => {
+      if(targetIds.includes(it.id)){
+        it.folder = newFolder;
+        selectedIds.delete(it.id);
+        changed++;
+      }
+    });
+    movingFolderKey = null;
+    saveItems();
+    renderAll();
+    updateSelectionBar();
+    showToast(`${changed}개 항목을 "${newFolder}" 하위폴더로 이동했습니다.`);
+  }
+
+
+  function quickEditHtml(it){
+    const rows = (it.options && it.options.length ? it.options : [{ id:'__single__', name:'', cny: it.cny, sell: it.sell }]);
+    const base = it; // for calc context
+    const rowsHtml = rows.map((o, i) => {
+      const optKey = o.id === '__single__' ? '__single__' : o.id;
+      const merged = { ...base, cny: o.cny, sell: o.sell };
+      const c = calc(merged);
+      const marginPct = o.sell ? Math.round(c.marginPct * 10) / 10 : '';
+      const label = rows.length > 1 ? `<div class="qe-opt-label">옵션 ${i+1}${o.name ? ` · ${escapeHtml(o.name)}` : ''}</div>` : '';
+      return `
+        <div class="qe-row" data-qe-opt="${escapeHtml(optKey)}">
+          ${label}
+          <div class="qe-cost-row">
+            <span class="qe-cost-label">원가 (¥)</span>
+            <span class="qe-cost-val mono">¥${(o.cny||0).toFixed(2)} = ${won(Math.round((o.cny||0) * base.rate))}</span>
+          </div>
+          <div class="qe-fields">
+            <div class="qe-field-group">
+              <label>마진율 (%)</label>
+              <input type="number" class="qe-margin" step="0.1" min="0" max="99" value="${marginPct}" placeholder="예: 30" />
+            </div>
+            <span class="qe-arrow">⇄</span>
+            <div class="qe-field-group">
+              <label>판매가 (₩)</label>
+              <input type="number" class="qe-sell" step="100" min="0" value="${o.sell||''}" placeholder="예: 15000" />
+            </div>
+          </div>
+          <div class="qe-margin-readout" data-qe-readout="${escapeHtml(optKey)}"></div>
+        </div>
+      `;
+    }).join('');
+    return `
+      <div class="quick-edit-panel" data-qe-item="${it.id}">
+        <div class="qe-title">⚡ 빠른수정 — 원가 고정, 마진% 또는 판매가 입력</div>
+        ${rowsHtml}
+        <div class="qe-actions">
+          <button type="button" class="btn ghost qe-cancel">취소</button>
+          <button type="button" class="btn amber qe-save">저장</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function applyQuickEdit(panel){
+    const itemId = panel.dataset.qeItem;
+    const it = items.find(x => x.id === itemId);
+    if(!it) return;
+    panel.querySelectorAll('.qe-row').forEach(row => {
+      const optKey = row.dataset.qeOpt;
+      const sell = parseInt(row.querySelector('.qe-sell').value) || 0;
+      if(optKey === '__single__'){
+        it.sell = sell;
+        // 옵션 배열이 있으면 동일하게 반영
+        if(it.options && it.options.length === 1){
+          it.options[0].sell = sell;
+        } else if(!it.options || it.options.length === 0){
+          // 옵션 없는 단일 상품은 it.sell만 업데이트
+        }
+      } else {
+        const opt = it.options && it.options.find(o => o.id === optKey);
+        if(opt){
+          opt.sell = sell;
+          // 대표 옵션이 이 옵션이면 it.sell도 동기화
+          if(!it.repOptionId || it.repOptionId === opt.id){
+            it.sell = sell;
+          }
+        }
+      }
+    });
+    quickEditId = null;
+    saveItems();
+    renderAll(); // 그래프(costBar)까지 완전히 재렌더
+    showToast('판매가를 저장했습니다.');
+  }
+
+  /* ---------------- folder keyword analysis (아이템스카우트 등 수동입력) ---------------- */
+  function folderKeywordSummaryHtml(key, kw){
+    if(!hasFolderKeywordData(kw)) return '';
+    const chips = [];
+    if(kw.searchVolumeTotal) chips.push(`<span class="kw-chip">월검색량 <b>${escapeHtml(String(kw.searchVolumeTotal))}</b></span>`);
+    if(kw.competitionCount) chips.push(`<span class="kw-chip">경쟁상품 <b>${escapeHtml(String(kw.competitionCount))}</b>개</span>`);
+    if(kw.competitionLevel) chips.push(`<span class="kw-chip">경쟁강도 <b>${escapeHtml(kw.competitionLevel)}</b></span>`);
+    if(kw.avgPrice) chips.push(`<span class="kw-chip">평균가 <b>₩${escapeHtml(String(kw.avgPrice))}</b></span>`);
+    if(kw.avgReviewCount) chips.push(`<span class="kw-chip">평균리뷰 <b>${escapeHtml(String(kw.avgReviewCount))}</b>개</span>`);
+    return `
+      <div class="folder-keyword-summary">
+        <span class="kw-keyword">🔍 ${escapeHtml(kw.keyword || '키워드 미입력')}</span>
+        ${chips.join('')}
+        ${kw.seasonNote ? `<span class="kw-chip kw-season">📅 ${escapeHtml(kw.seasonNote)}</span>` : ''}
+        ${kw.sourceUrl ? `<a class="kw-chip kw-link" href="${kw.sourceUrl}" target="_blank" rel="noopener noreferrer">↗ 조사 링크</a>` : ''}
+        ${kw.updatedAt ? `<span class="kw-updated">갱신 ${escapeHtml(kw.updatedAt)}</span>` : ''}
+      </div>
+      ${kw.memo ? `<div class="folder-keyword-memo">${escapeHtml(kw.memo)}</div>` : ''}
+    `;
+  }
+
+  function competitionLevelColor(level){
+    if(level === '아주좋음' || level === '좋음') return 'var(--jade)';
+    if(level === '보통') return 'var(--amber)';
+    if(level === '나쁨') return 'var(--rust)';
+    if(level === '아주나쁨') return 'var(--seal)';
+    return 'var(--mist)';
+  }
+
+  function folderKeywordDetailHtml(key, kw){
+    if(!hasFolderKeywordData(kw)){
+      return `
+        <div class="kwd-empty">
+          <span>아직 입력된 키워드 분석 정보가 없습니다.</span>
+          <button type="button" class="icon-btn" data-kwd-edit="${escapeHtml(key)}">✏️ 키워드 분석 입력하기</button>
+        </div>
+      `;
+    }
+    const lvColor = competitionLevelColor(kw.competitionLevel);
+    const rocketColor = competitionLevelColor(kw.rocketRatioLevel);
+    const sellerColor = competitionLevelColor(kw.sellerRocketRatioLevel);
+    const subParts = [];
+    if(kw.competitionCount) subParts.push(`쿠팡 상품수 ${escapeHtml(String(kw.competitionCount))}개`);
+    if(kw.searchVolumeTotal) subParts.push(`÷ 월간 검색수(네이버)<br/>${escapeHtml(String(kw.searchVolumeTotal))}회`);
+    return `
+      <div class="kwd-card">
+        <div class="kwd-keyword-line">🔍 대표 키워드 <b>${escapeHtml(kw.keyword || key)}</b></div>
+        <div class="kwd-top">
+          <div class="kwd-grade-box" style="color:${lvColor}">
+            <div class="kwd-grade-word">${kw.competitionLevel ? escapeHtml(kw.competitionLevel) : '-'}</div>
+            <div class="kwd-grade-caption">쿠팡 상품지표</div>
+          </div>
+          <div class="kwd-stat-row">
+            <div class="kwd-stat-item">
+              <div class="kwd-stat-label">쿠팡 경쟁강도</div>
+              <div class="kwd-stat-main">
+                <span class="kwd-stat-num">${kw.competitionScore ? escapeHtml(String(kw.competitionScore)) : '-'}</span>
+                ${kw.competitionLevel ? `<span class="kwd-badge" style="background:${lvColor}">${escapeHtml(kw.competitionLevel)}</span>` : ''}
+              </div>
+              ${subParts.length ? `<div class="kwd-stat-sub">${subParts.join(' ')}</div>` : ''}
+            </div>
+            <div class="kwd-stat-item">
+              <div class="kwd-stat-label">로켓상품 비율</div>
+              <div class="kwd-stat-main">
+                <span class="kwd-stat-num">${kw.rocketRatio ? escapeHtml(String(kw.rocketRatio)) : '-'}</span>
+                ${kw.rocketRatioLevel ? `<span class="kwd-badge" style="background:${rocketColor}">${escapeHtml(kw.rocketRatioLevel)}</span>` : ''}
+              </div>
+            </div>
+            <div class="kwd-stat-item">
+              <div class="kwd-stat-label">판매자로켓 비율</div>
+              <div class="kwd-stat-main">
+                <span class="kwd-stat-num">${kw.sellerRocketRatio ? escapeHtml(String(kw.sellerRocketRatio)) : '-'}</span>
+                ${kw.sellerRocketRatioLevel ? `<span class="kwd-badge" style="background:${sellerColor}">${escapeHtml(kw.sellerRocketRatioLevel)}</span>` : ''}
+              </div>
+            </div>
+            <div class="kwd-stat-item">
+              <div class="kwd-stat-label">평균 판매가</div>
+              <div class="kwd-stat-main"><span class="kwd-stat-num">${kw.avgPrice ? `₩${escapeHtml(String(kw.avgPrice))}` : '-'}</span></div>
+            </div>
+            <div class="kwd-stat-item">
+              <div class="kwd-stat-label">평균 리뷰</div>
+              <div class="kwd-stat-main"><span class="kwd-stat-num">${kw.avgReviewCount ? `${escapeHtml(String(kw.avgReviewCount))}개` : '-'}</span></div>
+            </div>
+          </div>
+          <button type="button" class="icon-btn kwd-edit-btn-top" data-kwd-edit="${escapeHtml(key)}">✏️ 수정</button>
+        </div>
+        ${kw.seasonNote ? `<div class="kwd-note"><span class="kwd-note-label">📅 시즌성/트렌드</span>${escapeHtml(kw.seasonNote)}</div>` : ''}
+        ${kw.memo ? `<div class="kwd-memo">${escapeHtml(kw.memo)}</div>` : ''}
+        <div class="kwd-footer">
+          <span class="kwd-meta">📌 조사 시점: <b>${kw.updatedAt ? escapeHtml(kw.updatedAt) : '미상'}</b> · 매출·판매량 지표는 통상 최근 6개월 누적 기준이에요</span>
+          ${kw.sourceUrl ? `<a class="kwd-source-link" href="${kw.sourceUrl}" target="_blank" rel="noopener noreferrer">↗ 조사 원본 보기</a>` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  function levelSelectOptionsHtml(current){
+    const levels = ['아주좋음','좋음','보통','나쁨','아주나쁨'];
+    return `<option value="" ${!current ? 'selected':''}>선택 안 함</option>` +
+      levels.map(lv => `<option value="${lv}" ${current===lv?'selected':''}>${lv}</option>`).join('');
+  }
+  function folderKeywordEditHtml(key, kw){
+    const v = kw || normalizeFolderKeyword();
+    return `
+      <div class="folder-settings folder-keyword-edit" data-folder-key="${escapeHtml(key)}">
+        <span class="hint">아이템스카우트 등에서 직접 조사한 수치를 입력해두면, 이 폴더를 볼 때마다 마진 정보와 함께 표시됩니다. (자동 조회는 지원되지 않아요 — 로그인이 필요한 유료 서비스라서요)</span>
+        <div class="fs-row" style="margin-top:10px;">
+          <div class="field">
+            <label>대표 키워드</label>
+            <input type="text" class="kw-keyword-input" value="${escapeHtml(v.keyword)}" placeholder="예: 캠핑의자" />
+          </div>
+          <div class="field">
+            <label>월간 검색량 합계 (PC+모바일, 네이버 기준)</label>
+            <input type="text" class="kw-volume-input" value="${escapeHtml(String(v.searchVolumeTotal))}" placeholder="예: 12,400" />
+          </div>
+        </div>
+        <div class="fs-row">
+          <div class="field">
+            <label>쿠팡 경쟁강도 (점수)</label>
+            <input type="text" class="kw-compscore-input" value="${escapeHtml(String(v.competitionScore))}" placeholder="예: 1.83" />
+          </div>
+          <div class="field">
+            <label>쿠팡 경쟁강도 등급</label>
+            <select class="kw-complevel-input">${levelSelectOptionsHtml(v.competitionLevel)}</select>
+          </div>
+        </div>
+        <div class="fs-row">
+          <div class="field">
+            <label>쿠팡 상품수</label>
+            <input type="text" class="kw-compcount-input" value="${escapeHtml(String(v.competitionCount))}" placeholder="예: 45,452" />
+          </div>
+          <div class="field">
+            <label>평균 리뷰수 (진입장벽 참고용)</label>
+            <input type="text" class="kw-avgreview-input" value="${escapeHtml(String(v.avgReviewCount))}" placeholder="예: 661" />
+          </div>
+        </div>
+        <div class="fs-row">
+          <div class="field">
+            <label>로켓상품 비율</label>
+            <input type="text" class="kw-rocketratio-input" value="${escapeHtml(String(v.rocketRatio))}" placeholder="예: 16.67%" />
+          </div>
+          <div class="field">
+            <label>로켓상품 비율 등급</label>
+            <select class="kw-rocketlevel-input">${levelSelectOptionsHtml(v.rocketRatioLevel)}</select>
+          </div>
+        </div>
+        <div class="fs-row">
+          <div class="field">
+            <label>판매자로켓 비율</label>
+            <input type="text" class="kw-sellerratio-input" value="${escapeHtml(String(v.sellerRocketRatio))}" placeholder="예: 66.67%" />
+          </div>
+          <div class="field">
+            <label>판매자로켓 비율 등급</label>
+            <select class="kw-sellerlevel-input">${levelSelectOptionsHtml(v.sellerRocketRatioLevel)}</select>
+          </div>
+        </div>
+        <div class="fs-row">
+          <div class="field">
+            <label>쿠팡 평균 판매가 (₩)</label>
+            <input type="text" class="kw-avgprice-input" value="${escapeHtml(String(v.avgPrice))}" placeholder="예: 28,928" />
+          </div>
+          <div class="field">
+            <label>조사 링크 (선택)</label>
+            <input type="url" class="kw-source-input" value="${escapeHtml(v.sourceUrl)}" placeholder="아이템스카우트 등 조사 화면 URL" />
+          </div>
+        </div>
+        <div class="field full">
+          <label>시즌성/트렌드 메모</label>
+          <input type="text" class="kw-season-input" value="${escapeHtml(v.seasonNote)}" placeholder="예: 봄가을 성수기, 여름 비수기" />
+        </div>
+        <div class="field full">
+          <label>메모</label>
+          <textarea class="kw-memo-input" placeholder="추가로 기록해둘 분석 내용">${escapeHtml(v.memo)}</textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn ghost kw-cancel">취소</button>
+          <button type="button" class="btn amber kw-save">저장</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function saveFolderKeyword(key, data){
+    folderKeywords[key] = normalizeFolderKeyword({ ...data, updatedAt: new Date().toLocaleDateString('ko-KR') });
+    editingKeywordFolderKey = null;
+    expandedKeywordFolderKey = key;
+    saveItems();
+    renderAll();
+    showToast('키워드 분석 정보를 저장했습니다.');
+  }
+
+  function bindInteractiveEvents(root){
+    root.querySelectorAll('img[data-fallback]').forEach(img =>
+      img.addEventListener('error', () => { img.onerror = null; img.src = FALLBACK_IMG; }));
+    root.querySelectorAll('[data-edit]').forEach(btn =>
+      btn.addEventListener('click', () => openForm(btn.dataset.edit)));
+    root.querySelectorAll('[data-del]').forEach(btn =>
+      btn.addEventListener('click', () => onDeleteClick(btn.dataset.del)));
+    root.querySelectorAll('[data-toggle-detail]').forEach(btn =>
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.toggleDetail;
+        if(expandedIds.has(id)) expandedIds.delete(id); else expandedIds.add(id);
+        renderGrid();
+      }));
+    root.querySelectorAll('[data-toggle-options]').forEach(btn =>
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.toggleOptions;
+        if(expandedOptionIds.has(id)) expandedOptionIds.delete(id); else expandedOptionIds.add(id);
+        renderGrid();
+      }));
+    root.querySelectorAll('[data-folder-collapse]').forEach(btn =>
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.folderCollapse;
+        if(collapsedFolders.has(key)) collapsedFolders.delete(key); else collapsedFolders.add(key);
+        renderGrid();
+      }));
+    root.querySelectorAll('[data-folder-add]').forEach(btn =>
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.folderAdd;
+        const cat = btn.dataset.folderAddCat || 'ACTIVE';
+        // folder 값은 full path (key 자체). __NONE__이면 빈 문자열
+        openForm(null, { folder: key === '__NONE__' ? '' : key, category: cat });
+      }));
+    root.querySelectorAll('[data-folder-select-all]').forEach(btn =>
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.folderSelectAll;
+        const groupIds = getFolderSelectionIds(key);
+        if(groupIds.length === 0) return;
+        const allSelected = groupIds.every(id => selectedIds.has(id));
+        if(allSelected) groupIds.forEach(id => selectedIds.delete(id));
+        else groupIds.forEach(id => selectedIds.add(id));
+        updateSelectionBar();
+        renderGrid();
+        if(!comparePanel.hidden) renderCompareBody();
+      }));
+    root.querySelectorAll('[data-folder-settings]').forEach(btn =>
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.folderSettings;
+        editingFolderKey = (editingFolderKey === key) ? null : key;
+        editingKeywordFolderKey = null;
+        expandedKeywordFolderKey = null;
+        movingFolderKey = null;
+        renderGrid();
+      }));
+    root.querySelectorAll('[data-folder-move-open]').forEach(btn =>
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.folderMoveOpen;
+        if(key === '__NONE__'){
+          showToast('미분류 항목은 먼저 폴더를 지정한 뒤 하위폴더를 만들 수 있어요.');
+          return;
+        }
+        const groupIds = getFiltered()
+          .filter(it => ((it.folder || '').trim() || '__NONE__') === key)
+          .map(it => it.id);
+        const hasSelection = groupIds.some(id => selectedIds.has(id));
+        if(!hasSelection && movingFolderKey !== key){
+          showToast('이동할 항목을 먼저 체크해주세요. (카드의 "선택" 체크박스를 이용하세요)');
+          return;
+        }
+        movingFolderKey = (movingFolderKey === key) ? null : key;
+        editingFolderKey = null;
+        editingKeywordFolderKey = null;
+        expandedKeywordFolderKey = null;
+        renderGrid();
+      }));
+    root.querySelectorAll('.fm-cancel').forEach(btn =>
+      btn.addEventListener('click', () => { movingFolderKey = null; renderGrid(); }));
+    root.querySelectorAll('.fm-apply').forEach(btn =>
+      btn.addEventListener('click', () => {
+        const fmPanel = btn.closest('.folder-move');
+        const key = fmPanel.dataset.folderKey;
+        const label = key === '__NONE__' ? '' : key;
+        const subName = fmPanel.querySelector('.fm-name-input').value;
+        applyFolderMove(key, label, subName);
+      }));
+    root.querySelectorAll('.fs-cancel').forEach(btn =>
+      btn.addEventListener('click', () => { editingFolderKey = null; renderGrid(); }));
+    root.querySelectorAll('.fs-apply').forEach(btn =>
+      btn.addEventListener('click', () => {
+        const fsPanel = btn.closest('.folder-settings');
+        const key = fsPanel.dataset.folderKey;
+        const newName = fsPanel.querySelector('.fs-name-input').value.trim();
+        const newCat = fsPanel.querySelector('.fs-cat-select').value;
+        applyFolderSettings(key, newName, newCat);
+      }));
+    root.querySelectorAll('[data-folder-keyword]').forEach(btn =>
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.folderKeyword;
+        expandedKeywordFolderKey = (expandedKeywordFolderKey === key) ? null : key;
+        editingKeywordFolderKey = null;
+        editingFolderKey = null;
+        movingFolderKey = null;
+        renderGrid();
+      }));
+    root.querySelectorAll('[data-folder-hide]').forEach(btn =>
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleFolderHidden(btn.dataset.folderHide);
+      }));
+    root.querySelectorAll('[data-folder-open]').forEach(tile =>
+      tile.addEventListener('click', (e) => {
+        if(e.target.closest('[data-folder-hide]')) return;
+        openFolderFromCard(tile.dataset.folderOpen);
+      }));
+    root.querySelectorAll('[data-kwd-edit]').forEach(btn =>
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.kwdEdit;
+        editingKeywordFolderKey = key;
+        expandedKeywordFolderKey = null;
+        renderGrid();
+      }));
+    root.querySelectorAll('.kw-cancel').forEach(btn =>
+      btn.addEventListener('click', () => { editingKeywordFolderKey = null; renderGrid(); }));
+    root.querySelectorAll('.kw-save').forEach(btn =>
+      btn.addEventListener('click', () => {
+        const kwPanel = btn.closest('.folder-keyword-edit');
+        const key = kwPanel.dataset.folderKey;
+        saveFolderKeyword(key, {
+          keyword: kwPanel.querySelector('.kw-keyword-input').value.trim(),
+          searchVolumeTotal: kwPanel.querySelector('.kw-volume-input').value.trim(),
+          competitionCount: kwPanel.querySelector('.kw-compcount-input').value.trim(),
+          competitionScore: kwPanel.querySelector('.kw-compscore-input').value.trim(),
+          competitionLevel: kwPanel.querySelector('.kw-complevel-input').value,
+          rocketRatio: kwPanel.querySelector('.kw-rocketratio-input').value.trim(),
+          rocketRatioLevel: kwPanel.querySelector('.kw-rocketlevel-input').value,
+          sellerRocketRatio: kwPanel.querySelector('.kw-sellerratio-input').value.trim(),
+          sellerRocketRatioLevel: kwPanel.querySelector('.kw-sellerlevel-input').value,
+          avgPrice: kwPanel.querySelector('.kw-avgprice-input').value.trim(),
+          avgReviewCount: kwPanel.querySelector('.kw-avgreview-input').value.trim(),
+          seasonNote: kwPanel.querySelector('.kw-season-input').value.trim(),
+          sourceUrl: kwPanel.querySelector('.kw-source-input').value.trim(),
+          memo: kwPanel.querySelector('.kw-memo-input').value.trim()
+        });
+      }));
+    root.querySelectorAll('[data-star]').forEach(btn =>
+      btn.addEventListener('click', () => toggleStar(btn.dataset.star)));
+    root.querySelectorAll('[data-select]').forEach(cb =>
+      cb.addEventListener('change', () => {
+        const id = cb.dataset.select;
+        if(cb.checked) selectedIds.add(id); else selectedIds.delete(id);
+        const cardEl = cb.closest('.card'); if(cardEl) cardEl.classList.toggle('selected', cb.checked);
+        const trEl = cb.closest('tr'); if(trEl) trEl.classList.toggle('selected-row', cb.checked);
+        updateSelectionBar();
+        if(!comparePanel.hidden) renderCompareBody();
+      }));
+    root.querySelectorAll('[data-quick-edit]').forEach(btn =>
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.quickEdit;
+        quickEditId = quickEditId === id ? null : id;
+        renderGrid();
+      }));
+    root.querySelectorAll('.qe-cancel').forEach(btn =>
+      btn.addEventListener('click', () => { quickEditId = null; renderGrid(); }));
+    root.querySelectorAll('.qe-save').forEach(btn =>
+      btn.addEventListener('click', () => {
+        const qePanel = btn.closest('.quick-edit-panel');
+        if(qePanel) applyQuickEdit(qePanel);
+      }));
+    // 빠른수정: 마진%↔판매가 실시간 양방향 계산
+    root.querySelectorAll('.quick-edit-panel').forEach(qePanel => {
+      const itemId = qePanel.dataset.qeItem;
+      const it = items.find(x => x.id === itemId);
+      if(!it) return;
+      qePanel.querySelectorAll('.qe-row').forEach(row => {
+        const optKey = row.dataset.qeOpt;
+        const srcOpt = optKey === '__single__'
+          ? { cny: it.cny }
+          : (it.options || []).find(o => o.id === optKey) || { cny: 0 };
+        const marginInput = row.querySelector('.qe-margin');
+        const sellInput   = row.querySelector('.qe-sell');
+        const readout     = row.querySelector('.qe-margin-readout');
+
+        function calcSellFromMargin(pct){
+          // sell = cost / (1 - pct/100) where cost = all non-sell costs
+          // Use calc() with sell=0 to get base cost estimate, then back-calculate
+          const tempMerged = { ...it, cny: srcOpt.cny, sell: 0 };
+          const costBase = calc(tempMerged);
+          // cost = buyKrw + commission_on_sell + logistic + ad_on_sell + ret_on_sell
+          // simplified back-calc: sell = costBase.cost / (1 - feeRatio - adRatio - retRatio)
+          const feeRatio = (costBase.feePct || 0) / 100;
+          const adRatio  = (it.ad || 0) / 100;
+          const retRatio = (it.ret || 0) / 100 * 0.3;
+          const fixedCost = costBase.buyKrw + (costBase.promoActive ? 0 : costBase.logistic);
+          const varRatio  = feeRatio + adRatio + retRatio;
+          const targetRatio = (100 - pct) / 100;
+          if(targetRatio <= varRatio) return 0;
+          return Math.round(fixedCost / (targetRatio - varRatio) / 100) * 100;
+        }
+
+        function updateReadout(){
+          const sell = parseInt(sellInput.value) || 0;
+          if(!sell){ readout.textContent = ''; return; }
+          const merged = { ...it, cny: srcOpt.cny, sell };
+          const c = calc(merged);
+          readout.innerHTML = `<span style="color:${marginColor(c.marginPct)}">→ 마진 ${pct(c.marginPct)} · ${won(c.margin)}</span>`;
+        }
+
+        let lastChanged = 'sell'; // track which field was last edited
+        marginInput.addEventListener('input', () => {
+          lastChanged = 'margin';
+          const mVal = parseFloat(marginInput.value);
+          if(!isNaN(mVal) && mVal > 0){
+            const computed = calcSellFromMargin(mVal);
+            if(computed > 0){ sellInput.value = computed; }
+          }
+          updateReadout();
+        });
+        sellInput.addEventListener('input', () => {
+          lastChanged = 'sell';
+          const sell = parseInt(sellInput.value) || 0;
+          if(sell > 0){
+            const merged = { ...it, cny: srcOpt.cny, sell };
+            const c = calc(merged);
+            marginInput.value = Math.round(c.marginPct * 10) / 10;
+          }
+          updateReadout();
+        });
+        updateReadout(); // initial render
+      });
+    });
+    root.querySelectorAll('[data-set-rep-item]').forEach(btn =>
+      btn.addEventListener('click', () => {
+        setRepOption(btn.dataset.setRepItem, btn.dataset.setRepOpt);
+      }));
+  }
+
+  /* ---------------- card view ---------------- */
+
+  function optionsBlockHtml(it){
+    if(!it.options || it.options.length <= 1) return '';
+    const isExpanded = expandedOptionIds.has(it.id);
+    const rep = repOption(it);
+    const isManual = !!it.repOptionId;
+    const rows = it.options.map(o => {
+      const merged = { ...it, cny: o.cny, sell: o.sell };
+      const c = calc(merged);
+      const mColor = marginColor(c.marginPct);
+      const isRep = o.id === rep.id;
+      return `
+        <div class="opt-item-block ${isRep ? 'opt-item-rep' : ''}">
+          <div class="opt-item-row">
+            <span class="opt-item-name">${escapeHtml(o.name)}</span>
+            <span class="opt-item-stat mono">¥${(o.cny||0).toFixed(2)} → ${won(o.sell)}</span>
+            <span class="opt-item-margin mono" style="color:${mColor}">${pct(c.marginPct)} · ${won(c.margin)}</span>
+            ${isRep
+              ? `<span class="opt-rep-badge" title="현재 카드에 대표로 표시되는 옵션입니다">${isManual ? '📌 대표' : '🏆 대표'}</span>`
+              : `<button type="button" class="opt-rep-btn" data-set-rep-item="${it.id}" data-set-rep-opt="${o.id}">대표로 지정</button>`}
+          </div>
+          ${costBarHtml(merged, { height:10 })}
+          ${targetPriceRowHtml(merged, o.sell)}
+        </div>
+      `;
+    }).join('');
+    return `
+      <button type="button" class="detail-toggle" data-toggle-options="${it.id}">${isExpanded ? `옵션 ${it.options.length}개 접기 ▴` : `옵션 ${it.options.length}개 보기 ▾`}</button>
+      ${isExpanded ? `<div class="details-block opt-list">
+        ${isManual ? `<div class="opt-rep-reset-row"><span class="hint">📌 대표 옵션이 직접 지정되어 있어요.</span><button type="button" class="opt-rep-btn opt-rep-reset" data-set-rep-item="${it.id}" data-set-rep-opt="">자동(최고마진)으로 되돌리기</button></div>` : ''}
+        ${rows}
+      </div>` : ''}
+    `;
+  }
+
+  function cardHtml(it, isWinner){
+    const rep = repOption(it);
+    const repMerged = { ...it, cny: rep.cny, sell: rep.sell };
+    const c = calc(repMerged);
+    const hasMultiOptions = it.options && it.options.length > 1;
+    const meta = CATEGORIES[it.category] || CATEGORIES.ETC;
+    const mColor = marginColor(c.marginPct);
+    const isConfirming = confirmingDeleteId === it.id;
+    const isExpanded = expandedIds.has(it.id);
+    const isSelected = selectedIds.has(it.id);
+    return `
+      <div class="card ${isWinner ? 'winner' : ''} ${isSelected ? 'selected' : ''} ${it.starred ? 'starred' : ''}">
+        <div class="card-top-row">
+          <label class="card-select">
+            <input type="checkbox" data-select="${it.id}" ${isSelected ? 'checked' : ''} />
+            <span>선택</span>
+          </label>
+          <span class="cat-pill" style="background:${meta.hex}" title="${meta.label}">${meta.icon}</span>
+          ${hasMultiOptions ? `<span class="opt-pill" title="옵션 ${it.options.length}개">🎨 옵션 ${it.options.length}</span>` : ''}
+          ${c.promoActive ? `<span class="opt-pill promo-pill" title="로켓그로스 비용 제로 프로모션">🎁 ${c.promo === '90' ? '첫90일' : '+270일'}</span>` : ''}
+          ${isWinner ? '<span class="winner-tag" title="이 폴더 최고 마진">🏆 최고 마진</span>' : ''}
+          <button type="button" class="star-btn ${it.starred ? 'on' : ''}" data-star="${it.id}" title="${it.starred ? '별표 해제' : '별표 추가'}">${it.starred ? '★' : '☆'}</button>
+        </div>
+        <div class="img-wrap">
+          <img data-fallback src="${resolveImageSrc(rep.image || it.image) || FALLBACK_IMG}" alt="${escapeHtml(it.name)}" />
+          ${it.isBundle ? `<span class="bundle-pill">×${it.bundleQty} 묶음</span>` : ''}
+          <span class="stamp-badge" style="color:${meta.hex}">${it.status}</span>
+          ${it.link ? `<a class="link-btn" href="${it.link}" target="_blank" rel="noopener noreferrer" title="1688 링크 열기">↗</a>` : ''}
+        </div>
+        <div class="card-name">${escapeHtml(it.name)}</div>
+        ${hasMultiOptions ? `<div class="rep-note">${it.repOptionId ? '📌 대표 옵션 직접 지정 중' : '🏆 최고 마진 옵션 표시 중'}: <b>${escapeHtml(rep.name)}</b></div>` : ''}
+        <div class="cny-price">¥${(rep.cny||0).toFixed(2)}<span class="cny-unit">/ 개당 위안화 단가${it.isBundle ? ` · 묶음 ${it.bundleQty}개` : ''}</span></div>
+        <div class="ledger">
+          <div class="row"><span>수입원가 (관부가세·물류 포함)</span><span>${won(c.impTotal)}</span></div>
+          <div class="row"><span>판매·운영비 (수수료 ${c.feePct.toFixed(1)}%+물류+광고+반품+포장)</span><span>${won(c.sellTotal)}</span></div>
+          ${taxType === 'general' ? `<div class="row tax-row"><span>부가세 납부 (일반과세·매입공제 반영)</span><span>${won(c.netSellVat)}</span></div>` : ''}
+          <div class="row"><span>쿠팡 판매가</span><span>${won(rep.sell)}</span></div>
+          <div class="row margin" style="color:${mColor}"><span>예상 마진 (${pct(c.marginPct)})</span><span>${won(c.margin)}</span></div>
+          ${targetPriceRowHtml(repMerged, rep.sell)}
+        </div>
+        ${costBarHtml(repMerged)}
+        <button type="button" class="detail-toggle" data-toggle-detail="${it.id}">${isExpanded ? '상세 비용 접기 ▴' : '상세 비용 보기 ▾'}</button>
+        ${isExpanded ? `
+        <div class="details-block">
+          <div class="grp">📦 수입원가 (×${c.qty}개)</div>
+          <div class="row"><span>매입원가 (¥${(rep.cny||0).toFixed(2)} × ${it.rate} × ${c.qty})</span><span>${won(c.buyKrw)}</span></div>
+          ${it.importMode === 'simple' ? `
+          <div class="note">간편 모드 — 환율(₩${it.rate}/¥)에 관세·부가세·국제배송·통관비가 이미 포함되어 있다고 가정합니다.</div>
+          ` : `
+          <div class="row"><span>관세 (${it.duty}%)</span><span>${won(c.customs)}</span></div>
+          <div class="row"><span>수입부가세 ${it.vatOn ? '(10%)' : '(미포함)'}</span><span>${won(c.vatAmt)}</span></div>
+          <div class="row"><span>포워딩·국제배송비</span><span>${won(c.forwarding)}</span></div>
+          <div class="row"><span>통관비</span><span>${won(c.clearance)}</span></div>
+          `}
+          <div class="grp">🛒 판매·운영비${c.promoActive ? ` · 🎁 ${c.promo === '90' ? '첫 90일' : '+270일'} 혜택 적용 중` : ''}</div>
+          <div class="row"><span>카테고리 수수료 (${it.coupangCat}, ${c.feePct.toFixed(1)}%)</span><span>${won(c.commission)}</span></div>
+          <div class="row"><span>${it.channel === 'rocket' ? '로켓그로스 물류비' : '마켓플레이스 배송비'}${c.promo === '90' ? ' (혜택 0원)' : ''}</span><span>${won(c.logistic)}</span></div>
+          <div class="row"><span>광고비 (${it.ad}%)</span><span>${won(c.adCost)}</span></div>
+          <div class="row"><span>반품비용 (${it.ret}% × 30%)${c.promoActive ? ' (혜택 0원)' : ''}</span><span>${won(c.retCost)}</span></div>
+          ${taxType === 'general' ? `
+          <div class="grp">🧾 부가세 (일반과세)</div>
+          <div class="row"><span>판매 부가세 (10/110)</span><span>${won(c.sellVatAmt)}</span></div>
+          <div class="row"><span>매입세액공제 (수입부가세 환급)</span><span>-${won(c.vatCredit)}</span></div>
+          <div class="row"><span>순 부가세 부담</span><span>${won(c.netSellVat)}</span></div>
+          ` : taxType === 'simplified' ? `
+          <div class="note">🧾 간이과세 — 연 4,800만원 미만 부가세 면제. 판매 부가세 별도 반영 없음.</div>
+          ` : `
+          <div class="note">🧾 면세사업자 — 부가세 납부 의무 없음.</div>
+          `}
+          ${costBarLegendHtml(repMerged)}
+        </div>` : ''}
+        ${optionsBlockHtml(it)}
+        ${it.memo ? `<div class="memo">${escapeHtml(it.memo)}</div>` : ''}
+        ${quickEditId === it.id ? quickEditHtml(it) : ''}
+        <div class="card-foot">
+          <div class="card-actions">
+            ${it.link
+              ? `<a class="icon-btn link-cta" href="${it.link}" target="_blank" rel="noopener noreferrer">🔗 1688 보기</a>`
+              : `<button type="button" class="icon-btn link-cta muted" data-edit="${it.id}" title="1688 링크를 추가하려면 수정을 눌러주세요">🔗 링크 없음</button>`}
+            <button class="icon-btn ${quickEditId === it.id ? 'active' : ''}" data-quick-edit="${it.id}" title="단가·판매가만 빠르게 수정">⚡ 빠른수정</button>
+            <button class="icon-btn" data-edit="${it.id}">수정</button>
+            <button class="icon-btn danger ${isConfirming?'confirming':''}" data-del="${it.id}">${isConfirming ? '정말 삭제?' : '삭제'}</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /* ---------------- table view ---------------- */
+
+  function tableHtml(list, showFolderCol, bestId){
+    const head = `
+      <tr>
+        <th></th>
+        <th></th>
+        <th>상품명</th>
+        ${showFolderCol ? '<th>폴더</th>' : ''}
+        <th>상태</th>
+        <th>옵션</th>
+        <th>단가(¥)</th>
+        <th>수입원가</th>
+        <th>수수료</th>
+        <th>물류비</th>
+        <th>광고비</th>
+        <th>반품비</th>
+        <th>판매가</th>
+        <th>총비용</th>
+        <th>마진</th>
+        <th>마진율</th>
+        ${targetMarginPct !== null ? '<th>🎯타겟가</th>' : ''}
+        <th>비용 구성</th>
+        <th></th>
+      </tr>
+    `;
+    const rows = list.map(it => {
+      const rep = repOption(it);
+      const repMerged = { ...it, cny: rep.cny, sell: rep.sell };
+      const c = calc(repMerged);
+      const mColor = marginColor(c.marginPct);
+      const isConfirming = confirmingDeleteId === it.id;
+      const isBest = bestId && it.id === bestId;
+      const isSelected = selectedIds.has(it.id);
+      const hasMultiOptions = it.options && it.options.length > 1;
+      const rowClasses = [isBest ? 'winner-row' : '', isSelected ? 'selected-row' : ''].filter(Boolean).join(' ');
+      const optTitle = (it.options||[]).map(o => {
+        const oc = calcOption(it, o);
+        return `${o.name}: ¥${(o.cny||0).toFixed(2)}→₩${Math.round(o.sell)} (마진율 ${oc.marginPct.toFixed(1)}%)`;
+      }).join('\n');
+      const nameLabel = hasMultiOptions
+        ? `${escapeHtml(it.name)} <span class="rep-opt-tag">· ${escapeHtml(rep.name)} 🏆</span>`
+        : escapeHtml(it.name);
+      const promoTag = c.promoActive ? ` <span class="stamp-mini promo-mini">🎁 ${c.promo === '90' ? '첫90일' : '+270일'}</span>` : '';
+      const mainRow = `
+        <tr class="${rowClasses}">
+          <td><input type="checkbox" data-select="${it.id}" ${isSelected ? 'checked' : ''} /></td>
+          <td><img class="thumb" data-fallback src="${resolveImageSrc(rep.image || it.image) || FALLBACK_IMG}" alt="" /></td>
+          <td class="name-cell">${isBest ? '🏆 ' : ''}${nameLabel}${it.isBundle ? ` <span class="stamp-mini">×${it.bundleQty}</span>` : ''}${promoTag}</td>
+          ${showFolderCol ? `<td class="name-cell">${escapeHtml(it.folder || '미분류')}</td>` : ''}
+          <td><span class="stamp-mini">${it.status}</span></td>
+          <td>${hasMultiOptions ? `<span class="opt-pill" title="${escapeHtml(optTitle)}">🎨 ${it.options.length}</span>` : '<span style="color:var(--mist)">-</span>'}</td>
+          <td>¥${(rep.cny||0).toFixed(2)}</td>
+          <td>${won(c.impTotal)}</td>
+          <td>${won(c.commission)} <span style="color:var(--mist)">(${c.feePct.toFixed(1)}%)</span></td>
+          <td>${won(c.logistic)}</td>
+          <td>${won(c.adCost)}</td>
+          <td>${won(c.retCost)}</td>
+          <td>${won(rep.sell)}</td>
+          <td>${won(c.totalCost)}</td>
+          <td style="color:${mColor};font-weight:700;">${won(c.margin)}</td>
+          <td style="color:${mColor};font-weight:700;">${pct(c.marginPct)}</td>
+          ${targetMarginPct !== null ? `<td class="mono">${targetCellHtml(repMerged, rep.sell)}</td>` : ''}
+          <td class="bar-cell">${costBarHtml(repMerged, {mini:true})}</td>
+          <td>
+            <div class="card-actions">
+              ${it.link ? `<a class="icon-btn link-cta" href="${it.link}" target="_blank" rel="noopener noreferrer" title="1688 보기">🔗</a>` : ''}
+              <button class="icon-btn" data-edit="${it.id}">수정</button>
+              <button class="icon-btn danger ${isConfirming?'confirming':''}" data-del="${it.id}">${isConfirming ? '정말 삭제?' : '삭제'}</button>
+            </div>
+          </td>
+        </tr>
+      `;
+      let subRows = '';
+      if(hasMultiOptions){
+        subRows = it.options.filter(o => o.id !== rep.id).map(o => {
+          const merged = { ...it, cny: o.cny, sell: o.sell };
+          const oc = calc(merged);
+          const omColor = marginColor(oc.marginPct);
+          return `
+            <tr class="opt-subrow">
+              <td></td>
+              <td><img class="thumb" data-fallback src="${resolveImageSrc(o.image || it.image) || FALLBACK_IMG}" alt="" /></td>
+              <td class="name-cell opt-subrow-name">↳ ${escapeHtml(o.name)}</td>
+              ${showFolderCol ? '<td></td>' : ''}
+              <td></td>
+              <td></td>
+              <td>¥${(o.cny||0).toFixed(2)}</td>
+              <td>${won(oc.impTotal)}</td>
+              <td>${won(oc.commission)} <span style="color:var(--mist)">(${oc.feePct.toFixed(1)}%)</span></td>
+              <td>${won(oc.logistic)}</td>
+              <td>${won(oc.adCost)}</td>
+              <td>${won(oc.retCost)}</td>
+              <td>${won(o.sell)}</td>
+              <td>${won(oc.totalCost)}</td>
+              <td style="color:${omColor};font-weight:700;">${won(oc.margin)}</td>
+              <td style="color:${omColor};font-weight:700;">${pct(oc.marginPct)}</td>
+              ${targetMarginPct !== null ? `<td class="mono">${targetCellHtml(merged, o.sell)}</td>` : ''}
+              <td class="bar-cell">${costBarHtml(merged, {mini:true})}</td>
+              <td></td>
+            </tr>
+          `;
+        }).join('');
+      }
+      return mainRow + subRows;
+    }).join('');
+    return `<div class="table-wrap"><table class="cmp-table"><thead>${head}</thead><tbody>${rows}</tbody></table></div>`;
+  }
+
+  function renderAll(){
+    renderCatTabs();
+    renderStats();
+    renderGrid();
+    renderHiddenFoldersPanel();
+    updateHiddenFoldersBtn();
+  }
+
+  /* ---------------- delete with confirm-tap ---------------- */
+  function onDeleteClick(id){
+    if(confirmingDeleteId === id){
+      items = items.filter(it => it.id !== id);
+      selectedIds.delete(id);
+      confirmingDeleteId = null;
+      saveItems();
+      renderAll();
+      updateSelectionBar();
+      if(!comparePanel.hidden) renderCompareBody();
+      showToast('삭제했습니다.');
+    } else {
+      confirmingDeleteId = id;
+      renderGrid();
+      if(!comparePanel.hidden) renderCompareBody();
+      clearTimeout(confirmTimer);
+      confirmTimer = setTimeout(() => {
+        confirmingDeleteId = null;
+        renderGrid();
+        if(!comparePanel.hidden) renderCompareBody();
+      }, 3000);
+    }
+  }
+
+  /* ---------------- form ---------------- */
+
+  function openForm(id, presetData){
+    editingId = id || null;
+    panel.hidden = false;
+    bulkEditPanel.hidden = true;
+    updateSelectionBar();
+    if(id){
+      const it = items.find(x => x.id === id);
+      if(!it) return;
+      panelTitle.textContent = '소싱 항목 수정';
+      $('#f-name').value = it.name;
+      fillFolderSelect(it.folder);
+      $('#f-folder-new').value = '';
+      $('#f-link').value = it.link;
+      $('#f-category').value = it.category;
+      $('#f-status').value = it.status;
+      setSeg($('#seg-bundle'), it.isBundle ? 'true' : 'false');
+      $('#f-bundleqty').value = it.bundleQty;
+      $('#f-rate').value = it.rate;
+      setSeg($('#seg-importmode'), it.importMode || 'simple');
+      $('#f-duty').value = it.duty;
+      $('#f-vat').checked = it.vatOn;
+      $('#f-forwarding').value = it.forwarding;
+      $('#f-clearance').value = it.clearance;
+      $('#f-coupangcat').value = it.coupangCat;
+      $('#f-fee-manual').value = it.feeManual;
+      setSeg($('#seg-channel'), it.channel);
+      setSeg($('#seg-promo'), it.channel === 'rocket' ? (it.promo || 'none') : 'none');
+      $('#f-rocketsize').value = it.rocketSize;
+      $('#f-rocket-fee-manual').value = it.rocketFeeManual;
+      $('#f-marketship').value = it.marketShip;
+      $('#f-ad').value = it.ad;
+      $('#f-return').value = it.ret;
+      $('#f-memo').value = it.memo;
+      {
+        const baseForCalc = readFormItem();
+        const rawOptions = (it.options && it.options.length ? it.options : [{ id: uid(), name:'', cny: it.cny, sell: it.sell, image: it.image }]);
+        draftOptions = rawOptions.map(o => {
+          const savedMode = o.inputMode || (o.sell > 0 ? 'sell' : 'margin');
+          if(savedMode === 'sell'){
+            return { ...o, _mode: 'sell', _targetMarginPct: '' };
+          } else {
+            // savedMarginPct에 저장된 값이 있으면 그대로, 없으면 sell에서 역산
+            let pct = '';
+            if(o.savedMarginPct != null){
+              pct = o.savedMarginPct;
+            } else if(o.sell > 0){
+              const c = calc({ ...baseForCalc, cny: o.cny, sell: o.sell });
+              pct = Math.round(c.marginPct * 10) / 10;
+            }
+            return { ...o, _mode: 'margin', _targetMarginPct: pct };
+          }
+        });
+      }
+    } else {
+      panelTitle.textContent = '신규 소싱 항목 추가';
+      form.reset();
+      const presetFolder = presetData && typeof presetData.folder === 'string' ? presetData.folder : '';
+      const presetCategory = presetData && presetData.category ? presetData.category : 'ACTIVE';
+      fillFolderSelect(presetFolder);
+      $('#f-folder-new').value = '';
+      $('#f-status').value = '검토중';
+      $('#f-category').value = presetCategory;
+      setSeg($('#seg-bundle'), 'false');
+      $('#f-bundleqty').value = 2;
+      $('#f-rate').value = 300;
+      setSeg($('#seg-importmode'), 'simple');
+      $('#f-duty').value = 8;
+      $('#f-vat').checked = true;
+      $('#f-forwarding').value = 0;
+      $('#f-clearance').value = 0;
+      $('#f-coupangcat').value = BRAND_TO_COUPANG[presetCategory] || BRAND_TO_COUPANG.ACTIVE;
+      $('#f-fee-manual').value = 11;
+      setSeg($('#seg-channel'), 'rocket');
+      setSeg($('#seg-promo'), 'none');
+      $('#f-rocketsize').value = '소형 (2kg 이하)';
+      $('#f-rocket-fee-manual').value = 2500;
+      $('#f-marketship').value = 0;
+      $('#f-ad').value = 7;
+      $('#f-return').value = 3;
+      draftOptions = [{ id: uid(), name:'', cny:0, sell:0, image:'', _mode:'margin', _targetMarginPct:'' }];
+    }
+    renderOptionsList();
+    refreshAutoFields();
+    panel.scrollIntoView({ behavior:'smooth', block:'start' });
+    if(id){
+      // 수정 시 옵션(단가/판매가) 섹션으로 자동 스크롤
+      setTimeout(() => {
+        const optSec = document.getElementById('fsec-options');
+        if(optSec) optSec.scrollIntoView({ behavior:'smooth', block:'start' });
+      }, 120);
+    }
+  }
+
+  function closeForm(){
+    panel.hidden = true;
+    editingId = null;
+    form.reset();
+    draftOptions = [];
+    updateSelectionBar();
+  }
+
+  function renderOptionsList(){
+    const wrap = $('#options-list');
+    wrap.innerHTML = draftOptions.map((o, idx) => {
+      const mode = o._mode || 'margin';
+      return `
+      <div class="option-card" data-idx="${idx}">
+        <div class="option-card-head">
+          <span class="option-num">옵션 ${idx + 1}</span>
+          <input type="text" class="opt-name" placeholder="옵션명 (선택, 예: 블랙 / L)" value="${escapeHtml(o.name)}" />
+          <button type="button" class="icon-btn danger opt-remove-btn" ${draftOptions.length <= 1 ? 'disabled title="최소 1개의 옵션이 필요합니다"' : 'title="옵션 삭제"'}>삭제</button>
+        </div>
+        <div class="option-card-body">
+          <input type="url" class="opt-image" placeholder="이미지 URL" value="${escapeHtml(o.image)}" />
+          <input type="number" class="opt-cny" step="0.01" min="0" placeholder="1688 원가 (¥)" value="${o.cny || ''}" />
+          <div class="opt-price-cell">
+            <input type="number" class="opt-sell" step="1" min="0" placeholder="쿠팡 판매가 (₩)" value="${o.sell || ''}" ${mode === 'margin' ? 'style="display:none;"' : ''} />
+            <input type="number" class="opt-target-margin" step="0.1" min="0" max="99" placeholder="목표 마진율 (%)" value="${o._targetMarginPct || ''}" ${mode === 'sell' ? 'style="display:none;"' : ''} />
+            <button type="button" class="opt-mode-toggle" title="입력 방식 전환 (판매가 직접입력 ↔ 목표 마진율로 역산)">${mode === 'sell' ? '₩→%' : '%→₩'}</button>
+          </div>
+          <span class="opt-margin-readout" data-idx="${idx}"></span>
+        </div>
+      </div>
+    `;
+    }).join('');
+    wrap.querySelectorAll('.option-card').forEach(row => {
+      const idx = parseInt(row.dataset.idx, 10);
+      row.querySelector('.opt-name').addEventListener('input', e => { draftOptions[idx].name = e.target.value; });
+      row.querySelector('.opt-cny').addEventListener('input', e => { draftOptions[idx].cny = parseFloat(e.target.value) || 0; updateOptionMarginReadouts(); });
+      row.querySelector('.opt-sell').addEventListener('input', e => { draftOptions[idx].sell = parseFloat(e.target.value) || 0; updateOptionMarginReadouts(); });
+      row.querySelector('.opt-target-margin').addEventListener('input', e => { draftOptions[idx]._targetMarginPct = parseFloat(e.target.value) || 0; updateOptionMarginReadouts(); });
+      row.querySelector('.opt-image').addEventListener('input', e => { draftOptions[idx].image = e.target.value; });
+      row.querySelector('.opt-mode-toggle').addEventListener('click', () => {
+        draftOptions[idx]._mode = (draftOptions[idx]._mode || 'margin') === 'sell' ? 'margin' : 'sell';
+        renderOptionsList();
+      });
+      const removeBtn = row.querySelector('.opt-remove-btn');
+      if(!removeBtn.disabled){
+        removeBtn.addEventListener('click', () => { draftOptions.splice(idx, 1); renderOptionsList(); });
+      }
+    });
+    updateOptionMarginReadouts();
+  }
+  function updateOptionMarginReadouts(){
+    const base = readFormItem();
+    draftOptions.forEach((o, idx) => {
+      const el = document.querySelector(`.opt-margin-readout[data-idx="${idx}"]`);
+      if(!el) return;
+      const mode = o._mode || 'margin';
+      if(mode === 'margin'){
+        const targetPct = parseFloat(o._targetMarginPct) || 0;
+        const merged = { ...base, cny: o.cny };
+        const t = calcTargetSell(merged, targetPct);
+        if(!t.achievable){
+          el.innerHTML = `<span style="color:var(--seal)">달성 불가 (비율비용 ${t.totalPctCost.toFixed(1)}%가 타겟보다 높음)</span>`;
+        } else {
+          o.sell = Math.round(t.targetSell);
+          const c = calc({ ...merged, sell: o.sell });
+          const mColor = marginColor(c.marginPct);
+          el.innerHTML = `<span style="color:${mColor}">→ 판매가 ${won(o.sell)} · 마진 ${won(c.margin)}</span>`;
+        }
+      } else {
+        const c = calc({ ...base, cny: o.cny, sell: o.sell });
+        const mColor = marginColor(c.marginPct);
+        el.innerHTML = `<span style="color:${mColor}">마진율 ${pct(c.marginPct)} · ${won(c.margin)}</span>`;
+      }
+    });
+  }
+  $('#add-option-btn').addEventListener('click', () => {
+    const last = draftOptions[draftOptions.length - 1];
+    draftOptions.push({
+      id: uid(),
+      name: '',
+      cny: last ? last.cny : 0,
+      sell: last ? last.sell : 0,
+      image: '',
+      _mode: last ? (last._mode || 'margin') : 'margin',
+      _targetMarginPct: last ? last._targetMarginPct : ''
+    });
+    renderOptionsList();
+  });
+
+  function buildFinalOptions(){
+    const list = draftOptions.map((o, idx) => normalizeOption({
+      ...o,
+      name: (o.name || '').trim() || `옵션 ${idx + 1}`,
+      inputMode: o._mode || (o.sell > 0 ? 'sell' : 'margin'),
+      savedMarginPct: o._mode === 'margin' ? (parseFloat(o._targetMarginPct) || null) : null
+    }));
+    const cleaned = list.filter((o, idx) => idx === 0 || o.cny || o.sell || o.image || !/^옵션 \d+$/.test(o.name));
+    return cleaned.length > 0 ? cleaned : [normalizeOption({ name:'옵션 1' })];
+  }
+
+  function readFormItem(){
+    const options = buildFinalOptions();
+    const primary = options[0];
+    return {
+      name: $('#f-name').value.trim(),
+      folder: getFolderValue(),
+      link: $('#f-link').value.trim(),
+      image: primary.image,
+      category: $('#f-category').value,
+      status: $('#f-status').value,
+      isBundle: getSeg($('#seg-bundle')) === 'true',
+      bundleQty: parseInt($('#f-bundleqty').value, 10) || 2,
+      cny: primary.cny,
+      rate: parseFloat($('#f-rate').value) || 0,
+      importMode: getSeg($('#seg-importmode')),
+      duty: parseFloat($('#f-duty').value) || 0,
+      vatOn: $('#f-vat').checked,
+      forwarding: parseFloat($('#f-forwarding').value) || 0,
+      clearance: parseFloat($('#f-clearance').value) || 0,
+      coupangCat: $('#f-coupangcat').value,
+      feeManual: parseFloat($('#f-fee-manual').value) || 0,
+      channel: getSeg($('#seg-channel')),
+      promo: getSeg($('#seg-promo')) || 'none',
+      rocketSize: $('#f-rocketsize').value,
+      rocketFeeManual: parseFloat($('#f-rocket-fee-manual').value) || 0,
+      marketShip: parseFloat($('#f-marketship').value) || 0,
+      sell: primary.sell,
+      ad: parseFloat($('#f-ad').value) || 0,
+      ret: parseFloat($('#f-return').value) || 0,
+      memo: $('#f-memo').value.trim(),
+      options
+    };
+  }
+
+  function updatePreview(){
+    const draft = readFormItem();
+    const c = calc(draft);
+    const mColor = marginColor(c.marginPct);
+    previewBox.innerHTML = `
+      <div class="pv-item"><div class="pv-label">수입원가 합계</div><div class="pv-val">${won(c.impTotal)}</div></div>
+      <div class="pv-item"><div class="pv-label">판매·운영비 합계</div><div class="pv-val">${won(c.sellTotal)}</div></div>
+      <div class="pv-item"><div class="pv-label">예상 마진</div><div class="pv-val" style="color:${mColor}">${won(c.margin)}</div></div>
+      <div class="pv-item"><div class="pv-label">마진율</div><div class="pv-val" style="color:${mColor}">${pct(c.marginPct)}</div></div>
+    `;
+  }
+
+  form.addEventListener('input', () => { updateReadouts(); updatePreview(); if(draftOptions.length) updateOptionMarginReadouts(); });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const draft = readFormItem();
+    if(!draft.name || !draft.sell){
+      showToast('상품명과 옵션 1의 판매가는 필수입니다.');
+      return;
+    }
+    if(editingId){
+      const idx = items.findIndex(x => x.id === editingId);
+      if(idx > -1) items[idx] = { ...items[idx], ...draft };
+      showToast('항목을 수정했습니다.');
+    } else {
+      items.unshift({ id: uid(), createdAt: Date.now(), ...draft });
+      showToast('새 항목을 등록했습니다.');
+    }
+    await saveItems();
+    closeForm();
+    renderAll();
+    if(!comparePanel.hidden) renderCompareBody();
+  });
+
+  $('#cancel-btn').addEventListener('click', closeForm);
+  $('#add-btn').addEventListener('click', () => openForm(null));
+
+  const taxTypeSel = $('#tax-type-select');
+  taxTypeSel.value = taxType;
+  taxTypeSel.addEventListener('change', () => {
+    taxType = taxTypeSel.value;
+    localStorage.setItem('moriva_tax_type', taxType);
+    renderAll();
+  });
+  statusFilterSel.addEventListener('change', () => { filterStatus = statusFilterSel.value; renderGrid(); });
+  sortSel.addEventListener('change', () => { sortKey = sortSel.value; renderGrid(); });
+  const starFilterBtn = $('#star-filter-btn');
+  starFilterBtn.addEventListener('click', () => {
+    filterStarred = !filterStarred;
+    starFilterBtn.classList.toggle('active', filterStarred);
+    starFilterBtn.textContent = filterStarred ? '★ 별표만' : '☆ 별표만';
+    renderAll();
+  });
+
+  $('#view-group-btn').addEventListener('click', () => {
+    viewMode = 'group';
+    $('#view-group-btn').classList.add('active');
+    $('#view-flat-btn').classList.remove('active');
+    $('#view-folders-btn').classList.remove('active');
+    renderGrid();
+  });
+  $('#view-flat-btn').addEventListener('click', () => {
+    viewMode = 'flat';
+    $('#view-flat-btn').classList.add('active');
+    $('#view-group-btn').classList.remove('active');
+    $('#view-folders-btn').classList.remove('active');
+    renderGrid();
+  });
+  $('#view-folders-btn').addEventListener('click', () => {
+    viewMode = 'folders';
+    $('#view-folders-btn').classList.add('active');
+    $('#view-group-btn').classList.remove('active');
+    $('#view-flat-btn').classList.remove('active');
+    renderGrid();
+  });
+  $('#display-card-btn').addEventListener('click', () => {
+    displayMode = 'card';
+    $('#display-card-btn').classList.add('active');
+    $('#display-table-btn').classList.remove('active');
+    renderGrid();
+  });
+  $('#display-table-btn').addEventListener('click', () => {
+    displayMode = 'table';
+    $('#display-table-btn').classList.add('active');
+    $('#display-card-btn').classList.remove('active');
+    renderGrid();
+  });
+
+  /* ---------------- CSV export ---------------- */
+  $('#export-btn').addEventListener('click', () => {
+    if(items.length === 0){ showToast('내보낼 항목이 없습니다.'); return; }
+    const header = ['상품명','폴더','브랜드카테고리','쿠팡카테고리','상태','묶음여부','묶음개수',
+      '1688링크','이미지URL','위안단가','환율','수입계산방식','관세율%','부가세포함','포워딩비','통관비','수입원가합계',
+      '판매채널','프로모션','물류비','수수료%','광고비%','반품율%','쿠팡판매가','총비용','예상마진','마진율%','옵션수','옵션목록','메모'];
+    const rows = items.map(it => {
+      const rep = repOption(it);
+      const c = calc({ ...it, cny: rep.cny, sell: rep.sell });
+      const optList = (it.options||[]).map(o => {
+        const oc = calcOption(it, o);
+        return `${o.name}(¥${(o.cny||0).toFixed(2)}→₩${Math.round(o.sell)}, 마진율${oc.marginPct.toFixed(1)}%)`;
+      }).join(' | ');
+      const promoLabel = c.promo === '90' ? '첫90일' : c.promo === '270' ? '+270일' : '미적용';
+      return [
+        it.name, it.folder, (CATEGORIES[it.category]||{}).label || it.category, it.coupangCat, it.status,
+        it.isBundle ? '묶음' : '단품', it.isBundle ? it.bundleQty : 1,
+        it.link, rep.image || it.image, rep.cny, it.rate,
+        it.importMode === 'simple' ? '간편비율(환율포함)' : '실제비용',
+        it.duty, it.vatOn ? 'Y' : 'N', it.forwarding, it.clearance, Math.round(c.impTotal),
+        it.channel === 'rocket' ? '로켓그로스' : '마켓플레이스', promoLabel, Math.round(c.logistic), c.feePct.toFixed(1), it.ad, it.ret,
+        rep.sell, Math.round(c.totalCost), Math.round(c.margin), c.marginPct.toFixed(1),
+        (it.options||[]).length, optList, it.memo
+      ].map(v => `"${String(v??'').replace(/"/g,'""')}"`).join(',');
+    });
+    const csv = '\uFEFF' + [header.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `소싱매니페스트_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('CSV 파일을 내보냈습니다.');
+  });
+
+  /* ---------------- JSON backup / restore ---------------- */
+  $('#backup-btn').addEventListener('click', () => {
+    if(items.length === 0 && Object.keys(folderKeywords).length === 0){ showToast('백업할 항목이 없습니다.'); return; }
+    const json = JSON.stringify(buildPayload(), null, 2);
+    const blob = new Blob([json], { type:'application/json;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `소싱매니페스트_백업_${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast(`${items.length}개 항목(+ 폴더 키워드 정보)을 JSON으로 백업했습니다.`);
+  });
+
+  $('#restore-btn').addEventListener('click', () => { $('#restore-input').click(); });
+  $('#restore-input').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    try{
+      const text = await file.text();
+      const parsedRaw = JSON.parse(text);
+      const parsed = parseStoredPayload(parsedRaw);
+      const incoming = parsed.items.map(normalizeItem);
+      let added = 0, updated = 0;
+      incoming.forEach(inc => {
+        const idx = items.findIndex(it => it.id === inc.id);
+        if(idx > -1){ items[idx] = inc; updated++; }
+        else { items.push(inc); added++; }
+      });
+      let kwMerged = 0;
+      Object.entries(parsed.folderKeywords || {}).forEach(([key, kw]) => {
+        folderKeywords[key] = normalizeFolderKeyword(kw);
+        kwMerged++;
+      });
+      await saveItems();
+      renderAll();
+      if(!comparePanel.hidden) renderCompareBody();
+      showToast(`복원 완료 — 신규 ${added}개, 갱신 ${updated}개${kwMerged ? `, 키워드정보 ${kwMerged}개` : ''}`);
+    }catch(err){
+      console.error(err);
+      showToast('백업 파일을 읽을 수 없습니다. JSON 형식을 확인해주세요.');
+    }
+    e.target.value = '';
+  });
+
+  /* ---------------- live CNY exchange rate ---------------- */
+  const RATE_PROVIDERS = [
+    { name:'Frankfurter', url:'https://api.frankfurter.app/latest?from=CNY&to=KRW',
+      parse:(d)=> d && d.rates && d.rates.KRW, date:(d)=> d && d.date },
+    { name:'ExchangeRate-API', url:'https://open.er-api.com/v6/latest/CNY',
+      parse:(d)=> d && d.rates && d.rates.KRW, date:(d)=> d && d.time_last_update_utc ? d.time_last_update_utc.slice(0,16) : '' },
+    { name:'ExchangeRate-API(v4)', url:'https://api.exchangerate-api.com/v4/latest/CNY',
+      parse:(d)=> d && d.rates && d.rates.KRW, date:(d)=> d && d.date }
+  ];
+
+  function showLiveRateEditMode(prefill){
+    $('#live-rate-edit-wrap').style.display = 'flex';
+    $('#live-rate-right').style.display = 'none';
+    const input = $('#live-rate-manual-input');
+    input.value = prefill !== undefined && prefill !== null ? prefill : (liveRate || '');
+    input.focus();
+  }
+  function hideLiveRateEditMode(){
+    $('#live-rate-edit-wrap').style.display = 'none';
+    $('#live-rate-right').style.display = '';
+  }
+  function applyManualRate(){
+    const v = parseFloat($('#live-rate-manual-input').value);
+    if(!v || v <= 0){ showToast('올바른 환율 값을 입력해주세요.'); return; }
+    liveRate = v;
+    liveRateSource = 'manual';
+    $('#live-rate-value').textContent = `¥1 = ₩${v.toFixed(2)}`;
+    $('#live-rate-date').textContent = '직접 입력한 값';
+    hideLiveRateEditMode();
+    showToast('환율을 직접 입력했습니다.');
+  }
+  $('#live-rate-edit-btn').addEventListener('click', () => showLiveRateEditMode());
+  $('#live-rate-manual-cancel-btn').addEventListener('click', hideLiveRateEditMode);
+  $('#live-rate-manual-save-btn').addEventListener('click', applyManualRate);
+  $('#live-rate-manual-input').addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); applyManualRate(); } });
+
+  async function fetchLiveRate(){
+    const valueEl = $('#live-rate-value');
+    const dateEl = $('#live-rate-date');
+    hideLiveRateEditMode();
+    valueEl.textContent = '조회 중…';
+    dateEl.textContent = '';
+    for(const provider of RATE_PROVIDERS){
+      try{
+        const res = await fetch(provider.url);
+        if(!res.ok) continue;
+        const data = await res.json();
+        const rate = provider.parse(data);
+        if(!rate || rate <= 0) continue;
+        liveRate = rate;
+        liveRateSource = 'live';
+        valueEl.textContent = `¥1 = ₩${rate.toFixed(2)}`;
+        dateEl.textContent = `기준 ${provider.date(data) || ''} · ${provider.name}`;
+        return;
+      }catch(e){
+        console.error(provider.name, e);
+      }
+    }
+    valueEl.textContent = '실시간 환율 조회 실패';
+    dateEl.textContent = '네트워크가 차단된 환경일 수 있어요';
+    showLiveRateEditMode(liveRate);
+  }
+  $('#live-rate-refresh-btn').addEventListener('click', fetchLiveRate);
+
+  /* ---------------- target margin ---------------- */
+  $('#target-margin-input').addEventListener('input', () => {
+    const raw = $('#target-margin-input').value;
+    const v = parseFloat(raw);
+    targetMarginPct = (raw === '' || isNaN(v)) ? null : v;
+    renderGrid();
+    if(!comparePanel.hidden) renderCompareBody();
+  });
+  $('#target-margin-clear-btn').addEventListener('click', () => {
+    $('#target-margin-input').value = '';
+    targetMarginPct = null;
+    renderGrid();
+    if(!comparePanel.hidden) renderCompareBody();
+  });
+  function targetPriceRowHtml(merged, currentSell){
+    if(targetMarginPct === null) return '';
+    const t = calcTargetSell(merged, targetMarginPct);
+    if(!t.achievable){
+      return `<div class="row target-row"><span>🎯 타겟 ${targetMarginPct}% 적정가</span><span style="color:var(--seal)">달성 불가 (수수료+광고비+반품비 ${t.totalPctCost.toFixed(1)}%가 너무 높음)</span></div>`;
+    }
+    const diff = (currentSell||0) - t.targetSell;
+    const diffHtml = diff >= 0
+      ? `<span style="color:var(--jade)">✅ 충족 (+${won(diff)})</span>`
+      : `<span style="color:var(--seal)">⬆ ${won(-diff)} 인상 필요</span>`;
+    return `<div class="row target-row"><span>🎯 타겟 ${targetMarginPct}% 적정가</span><span style="color:var(--ink);font-weight:700;">${won(t.targetSell)} ${diffHtml}</span></div>`;
+  }
+  function targetCellHtml(merged, currentSell){
+    if(targetMarginPct === null) return '<span style="color:var(--mist)">-</span>';
+    const t = calcTargetSell(merged, targetMarginPct);
+    if(!t.achievable) return `<span style="color:var(--seal)" title="수수료+광고비+반품비 ${t.totalPctCost.toFixed(1)}%가 타겟보다 높아 달성 불가">달성불가</span>`;
+    const diff = (currentSell||0) - t.targetSell;
+    const badge = diff >= 0
+      ? `<span style="color:var(--jade)" title="현재가가 타겟 마진을 충족합니다">✅</span>`
+      : `<span style="color:var(--seal)" title="타겟 마진을 맞추려면 이만큼 더 올려야 해요">⬆${won(-diff)}</span>`;
+    return `${won(t.targetSell)} ${badge}`;
+  }
+
+  /* ---------------- init ---------------- */
+  async function init(){
+    fillStatusOptions();
+    fillCoupangCatOptions();
+    fillRocketSizeOptions();
+    fillCoupangCatOptions('#bulk-coupangcat');
+    fillRocketSizeOptions('#bulk-rocketsize');
+    renderStatusFilterOptions();
+    fetchLiveRate();
+    items = await loadItems();
+    renderAll();
+    if(items.length > 0){
+      showToast(`이전에 저장된 ${items.length}개 항목을 불러왔습니다.`);
+    }
+  }
+  init();
+})();
+</script>
+<script src="./moriva-sync.js"></script>
+</body>
+</html>

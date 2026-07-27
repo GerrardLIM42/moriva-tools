@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>소싱 가격비교</title>
+<style>
+  :root{
+    --bg:#F6F3EC; --panel:#FFFDF8; --border:#DCD5C3; --text:#1B2A3D;
+    --sub:#8B95A1; --accent:#1B2A3D; --accent-light:#E7ECF0;
+    --danger:#B8453A; --gold:#D98E3D; --radius:12px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Malgun Gothic",sans-serif;background:var(--bg);color:var(--text);}
+  .app{display:flex;height:100vh;}
+
+  /* Sidebar */
+  .sidebar{width:280px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;}
+  .sidebar-header{padding:18px 16px 10px;}
+  .sidebar-header h1{font-size:17px;margin:0 0 12px;}
+  .btn-add-product{width:100%;padding:10px;border:none;border-radius:var(--radius);background:var(--accent);color:#fff;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:8px;}
+  .btn-add-product:hover{background:#0F1B2C;}
+  .data-toolbar{display:flex;gap:6px;margin-bottom:8px;}
+  .data-toolbar button{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:#fff;color:var(--sub);font-size:12px;font-weight:600;cursor:pointer;}
+  .data-toolbar button:hover{background:var(--bg);color:var(--accent);}
+  .btn-github{width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:#fff;color:var(--sub);font-size:12px;font-weight:600;cursor:pointer;}
+  .btn-github:hover{background:var(--bg);color:var(--accent);}
+  .sync-status{font-size:11px;color:var(--sub);margin-top:6px;padding:0 2px;line-height:1.4;}
+  .sync-status.ok{color:#4F7864;}
+  .sync-status.error{color:var(--danger);}
+  .sync-status.busy, .sync-status.pending{color:var(--accent);}
+  .product-list{flex:1;overflow-y:auto;padding:8px;}
+  .product-item{padding:12px;border-radius:10px;cursor:pointer;margin-bottom:6px;position:relative;}
+  .product-item:hover{background:var(--bg);}
+  .product-item.active{background:var(--accent-light);}
+  .product-item .pname{font-size:14px;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .product-item .pmeta{font-size:12px;color:var(--sub);}
+  .product-item .pdel{position:absolute;right:8px;top:8px;background:none;border:none;color:var(--sub);cursor:pointer;font-size:13px;opacity:0;padding:2px 6px;}
+  .product-item:hover .pdel{opacity:1;}
+  .empty-hint{padding:20px 12px;color:var(--sub);font-size:13px;line-height:1.6;}
+
+  /* Main */
+  .main{flex:1;overflow-y:auto;padding:24px 32px;}
+  .main-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px;}
+  .main-title{font-size:22px;font-weight:700;display:flex;align-items:center;gap:8px;}
+  .main-title input{font-size:22px;font-weight:700;border:none;background:transparent;color:var(--text);padding:2px 4px;border-radius:6px;}
+  .main-title input:focus{outline:1px solid var(--accent);background:#fff;}
+  .btn-primary{padding:10px 16px;border:none;border-radius:var(--radius);background:var(--accent);color:#fff;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;}
+  .btn-primary:hover{background:#0F1B2C;}
+  .btn-secondary{padding:7px 12px;border-radius:8px;background:#fff;border:1px solid var(--border);color:var(--sub);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;}
+  .btn-secondary:hover{background:var(--bg);}
+
+  .seller-section{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:20px;}
+  .seller-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px;}
+  .move-btns{display:flex;flex-direction:column;gap:2px;flex-shrink:0;}
+  .move-btns button{width:22px;height:18px;border:1px solid var(--border);background:#fff;color:var(--sub);border-radius:4px;font-size:10px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;}
+  .move-btns button:hover:not(:disabled){background:var(--bg);color:var(--accent);border-color:var(--accent);}
+  .move-btns button:disabled{opacity:0.3;cursor:default;}
+  .seller-fields{display:flex;flex-direction:column;gap:6px;flex:1;min-width:220px;}
+  .seller-link-display{font-size:15px;font-weight:700;color:var(--accent);text-decoration:none;padding:4px 6px;border-radius:6px;display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .seller-link-display:hover{text-decoration:underline;}
+  .seller-link-display.empty{color:var(--sub);font-weight:600;cursor:default;}
+  .seller-sub-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .seller-sub-row input{font-size:12px;border:1px solid transparent;background:transparent;color:var(--sub);padding:4px 6px;border-radius:6px;flex:1;min-width:160px;}
+  .seller-sub-row input:hover{border-color:var(--border);}
+  .seller-sub-row input:focus{outline:1px solid var(--accent);background:var(--bg);border-color:transparent;}
+  .seller-count{font-size:12px;color:var(--sub);font-weight:500;white-space:nowrap;padding:4px 6px;}
+  .seller-actions{display:flex;gap:6px;align-items:flex-start;}
+  .seller-del{background:none;border:none;color:var(--sub);cursor:pointer;font-size:13px;padding:6px 8px;border-radius:6px;}
+  .seller-del:hover{color:var(--danger);background:#fdeaea;}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;}
+  .card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;position:relative;display:flex;flex-direction:column;}
+  .card.cheapest{border-color:var(--gold);box-shadow:0 0 0 2px rgba(245,158,11,0.25);background:#fffaf0;}
+  .badge{position:absolute;top:8px;left:8px;background:var(--gold);color:#fff;font-size:11px;font-weight:700;padding:4px 8px;border-radius:20px;z-index:2;}
+  .card-move-btns{position:absolute;top:8px;right:8px;display:flex;gap:3px;z-index:2;}
+  .card-move-btns button{width:22px;height:22px;border:1px solid var(--border);background:rgba(255,255,255,0.92);color:var(--sub);border-radius:5px;font-size:11px;line-height:1;cursor:pointer;padding:0;}
+  .card-move-btns button:hover:not(:disabled){background:#fff;color:var(--accent);border-color:var(--accent);}
+  .card-move-btns button:disabled{opacity:0.35;cursor:default;}
+  .card-img{width:100%;aspect-ratio:1/1;background:#eceef1 center/cover no-repeat;display:flex;align-items:center;justify-content:center;color:#b8bcc4;font-size:13px;}
+  .card-body{padding:10px 12px 12px;display:flex;flex-direction:column;gap:4px;flex:1;}
+  .card-option-name{font-size:12px;font-weight:600;color:var(--sub);text-transform:uppercase;letter-spacing:.02em;}
+  .card-price{font-size:18px;font-weight:800;color:var(--text);}
+  .card-memo{font-size:12px;color:var(--sub);line-height:1.5;white-space:pre-wrap;margin-top:2px;}
+  .card-actions{display:flex;gap:6px;margin-top:8px;}
+  .card-actions button{flex:1;padding:6px 0;font-size:12px;border-radius:8px;border:1px solid var(--border);background:#fff;cursor:pointer;color:var(--sub);}
+  .card-actions .del:hover{color:var(--danger);border-color:var(--danger);}
+
+  .add-card{border:2px dashed var(--border);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;min-height:200px;color:var(--sub);cursor:pointer;font-size:13px;font-weight:600;flex-direction:column;gap:6px;background:var(--panel);}
+  .add-card:hover{border-color:var(--accent);color:var(--accent);}
+  .add-card .plus{font-size:26px;line-height:1;}
+
+  .add-seller-card{border:2px dashed var(--border);border-radius:14px;display:flex;align-items:center;justify-content:center;min-height:90px;color:var(--sub);cursor:pointer;font-size:14px;font-weight:600;gap:8px;}
+  .add-seller-card:hover{border-color:var(--accent);color:var(--accent);}
+
+  .empty-state{color:var(--sub);text-align:center;margin-top:120px;font-size:15px;line-height:1.8;}
+  .option-empty{color:var(--sub);font-size:13px;padding:24px 0;text-align:center;grid-column:1/-1;}
+
+  /* Modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);display:none;align-items:center;justify-content:center;z-index:50;}
+  .modal-overlay.show{display:flex;}
+  .modal{background:#fff;border-radius:14px;width:400px;max-width:92vw;max-height:88vh;overflow-y:auto;padding:22px;}
+  .modal h2{margin:0 0 16px;font-size:17px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--sub);margin-bottom:5px;}
+  .field input[type=text], .field input[type=number], .field input[type=url], .field textarea{
+    width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;
+  }
+  .field textarea{resize:vertical;min-height:56px;}
+  .field .hint{font-size:11px;color:var(--sub);margin-top:4px;}
+  .img-preview-box{border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;color:var(--sub);font-size:13px;margin-top:8px;min-height:60px;display:flex;align-items:center;justify-content:center;}
+  .img-preview-box img{max-width:100%;max-height:160px;border-radius:8px;display:block;margin:0 auto;}
+  .price-input-wrap{position:relative;}
+  .price-input-wrap span{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--sub);font-size:14px;}
+  .price-input-wrap input{padding-left:26px !important;}
+  .modal-actions{display:flex;gap:8px;margin-top:18px;}
+  .modal-actions button{flex:1;padding:10px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;}
+  .modal-actions .cancel{background:#fff;border:1px solid var(--border);color:var(--sub);}
+  .modal-actions .save{background:var(--accent);border:none;color:#fff;}
+  .modal-actions .save:hover{background:#0F1B2C;}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h1>🛒 소싱 가격비교</h1>
+      <button class="btn-add-product" id="btnAddProduct">+ 새 상품 추가</button>
+      <div class="data-toolbar">
+        <button id="btnExport">⬇ 내보내기</button>
+        <button id="btnImport">⬆ 불러오기</button>
+        <input type="file" id="importFileInput" accept="application/json,.json" style="display:none">
+      </div>
+      <button class="btn-github" id="btnGithubSync">⚙ GitHub 동기화</button>
+      <div class="sync-status" id="syncStatusLine">GitHub 연동 안 됨</div>
+    </div>
+    <div class="product-list" id="productList"></div>
+  </div>
+
+  <div class="main" id="main">
+    <!-- rendered by JS -->
+  </div>
+</div>
+
+<!-- Product modal -->
+<div class="modal-overlay" id="productModalOverlay">
+  <div class="modal">
+    <h2 id="productModalTitle">새 상품</h2>
+    <div class="field">
+      <label>상품명</label>
+      <input type="text" id="productNameInput" placeholder="예: 무선 이어폰 케이스">
+    </div>
+    <div class="modal-actions">
+      <button class="cancel" id="productCancelBtn">취소</button>
+      <button class="save" id="productSaveBtn">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- Seller modal -->
+<div class="modal-overlay" id="sellerModalOverlay">
+  <div class="modal">
+    <h2 id="sellerModalTitle">새 판매자</h2>
+    <div class="field">
+      <label>판매자 링크</label>
+      <input type="url" id="sellerLinkInput" placeholder="https://...">
+      <div class="hint">클릭하면 해당 사이트로 바로 이동해요</div>
+    </div>
+    <div class="field">
+      <label>메모/비고 (선택)</label>
+      <textarea id="sellerMemoInput" placeholder="배송비, MOQ, 품질 등 자유 메모"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="cancel" id="sellerCancelBtn">취소</button>
+      <button class="save" id="sellerSaveBtn">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- Entry modal (option: name + image + price) -->
+<div class="modal-overlay" id="entryModalOverlay">
+  <div class="modal">
+    <h2 id="entryModalTitle">옵션 추가</h2>
+    <div class="field">
+      <label>옵션명</label>
+      <input type="text" id="optionNameInput" placeholder="예: 블랙 / 256GB">
+    </div>
+    <div class="field">
+      <label>이미지 링크 (URL)</label>
+      <input type="url" id="imgUrlInput" placeholder="https://example.com/image.jpg">
+      <div class="img-preview-box" id="imgPreviewBox">
+        <span id="imgPreviewPlaceholder">이미지 링크를 입력하면 미리보기가 표시돼요</span>
+        <img id="imgPreview" style="display:none;">
+      </div>
+    </div>
+    <div class="field">
+      <label>가격 (위안, ¥)</label>
+      <div class="price-input-wrap">
+        <span>¥</span>
+        <input type="number" id="priceInput" placeholder="예: 12.5" min="0" step="0.01">
+      </div>
+    </div>
+    <div class="field">
+      <label>메모/비고 (선택)</label>
+      <textarea id="entryMemoInput" placeholder="이 옵션에 대한 자유 메모"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="cancel" id="entryCancelBtn">취소</button>
+      <button class="save" id="entrySaveBtn">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- GitHub sync modal -->
+<div class="modal-overlay" id="githubModalOverlay">
+  <div class="modal">
+    <h2>GitHub 동기화 설정</h2>
+    <div class="field">
+      <label>Personal Access Token</label>
+      <input type="password" id="ghTokenInput" placeholder="ghp_...">
+      <div class="hint">GitHub → Settings → Developer settings → Personal access tokens 에서 "repo" 쓰기 권한으로 발급하세요. 이 토큰은 브라우저에만 저장되고 저장소 코드에는 절대 포함되지 않아요.</div>
+    </div>
+    <div class="field">
+      <label>GitHub 사용자명 / 조직</label>
+      <input type="text" id="ghOwnerInput" placeholder="예: GerrardLIM42">
+    </div>
+    <div class="field">
+      <label>저장소 이름</label>
+      <input type="text" id="ghRepoInput" placeholder="예: sourcing-price-compare">
+    </div>
+    <div class="field">
+      <label>브랜치</label>
+      <input type="text" id="ghBranchInput" placeholder="main">
+    </div>
+    <div class="field">
+      <label>상태</label>
+      <div class="hint" id="ghModalStatusText">아직 연결되지 않았어요.</div>
+    </div>
+    <div class="modal-actions">
+      <button class="cancel" id="ghDisconnectBtn">연결 해제</button>
+      <button class="save" id="ghSaveBtn">저장하고 연결</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'sourcing_compare_data_v3';
+
+function loadData(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return { products: [] };
+}
+function saveData(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  scheduleSync();
+}
+
+let state = loadData();
+let activeProductId = state.products[0]?.id || null;
+let editingEntryId = null;   // option entry being edited (null = new)
+let entryModalSellerId = null;
+let entryModalProductId = null;
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+function formatPrice(n){
+  const num = Number(n);
+  const formatted = num.toLocaleString('zh-CN', {minimumFractionDigits:0, maximumFractionDigits:2});
+  return '¥' + formatted;
+}
+function allEntries(product){
+  return product.sellers.flatMap(s=>s.options);
+}
+function displayLink(url){
+  if(!url) return '';
+  try{
+    const u = new URL(url);
+    return u.hostname.replace(/^www\./,'') + (u.pathname !== '/' ? u.pathname : '');
+  }catch(e){
+    return url;
+  }
+}
+// group entries by normalized option name to find the cross-seller cheapest for that option
+function buildMinByOptionName(product){
+  const map = {};
+  allEntries(product).forEach(e=>{
+    const key = (e.optionName||'').trim().toLowerCase();
+    if(!key) return;
+    if(!map[key]) map[key] = { min: Number(e.price), count: 0 };
+    map[key].count += 1;
+    if(Number(e.price) < map[key].min) map[key].min = Number(e.price);
+  });
+  return map;
+}
+
+/* ---------- Rendering ---------- */
+function render(){
+  renderProductList();
+  renderMain();
+}
+
+function renderProductList(){
+  const list = document.getElementById('productList');
+  if(state.products.length === 0){
+    list.innerHTML = '<div class="empty-hint">아직 등록된 상품이 없어요.<br>“+ 새 상품 추가”로 시작하세요.</div>';
+    return;
+  }
+  list.innerHTML = state.products.map(p => {
+    const entries = allEntries(p);
+    const min = entries.length ? Math.min(...entries.map(e=>Number(e.price))) : null;
+    return `
+      <div class="product-item ${p.id===activeProductId?'active':''}" data-id="${p.id}">
+        <div class="pname">${escapeHtml(p.name)}</div>
+        <div class="pmeta">판매자 ${p.sellers.length}곳${min!==null ? ' · 최저 '+formatPrice(min) : ''}</div>
+        <button class="pdel" data-id="${p.id}" title="상품 삭제">✕</button>
+      </div>`;
+  }).join('');
+
+  list.querySelectorAll('.product-item').forEach(el=>{
+    el.addEventListener('click', (e)=>{
+      if(e.target.classList.contains('pdel')) return;
+      activeProductId = el.dataset.id;
+      render();
+    });
+  });
+  list.querySelectorAll('.pdel').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      if(confirm('이 상품과 등록된 모든 판매자/옵션을 삭제할까요?')){
+        state.products = state.products.filter(p=>p.id!==btn.dataset.id);
+        if(activeProductId === btn.dataset.id){
+          activeProductId = state.products[0]?.id || null;
+        }
+        saveData(); render();
+      }
+    });
+  });
+}
+
+function renderMain(){
+  const main = document.getElementById('main');
+  const product = state.products.find(p=>p.id===activeProductId);
+
+  if(!product){
+    main.innerHTML = `<div class="empty-state">👈 왼쪽에서 상품을 추가하면<br>판매자별로 옵션(이미지·가격, ¥)을 비교할 수 있어요.</div>`;
+    return;
+  }
+
+  main.innerHTML = `
+    <div class="main-header">
+      <div class="main-title">📦 <input type="text" id="productNameEdit" value="${escapeHtml(product.name)}"></div>
+      <button class="btn-primary" id="btnAddSeller">+ 판매자 추가</button>
+    </div>
+    <div id="sellersWrap"></div>
+  `;
+
+  document.getElementById('productNameEdit').addEventListener('change', (e)=>{
+    product.name = e.target.value.trim() || '이름없는 상품';
+    saveData(); renderProductList();
+  });
+  document.getElementById('btnAddSeller').addEventListener('click', ()=>openSellerModal(product.id));
+
+  const wrap = document.getElementById('sellersWrap');
+
+  if(product.sellers.length === 0){
+    wrap.innerHTML = `<div class="add-seller-card" id="addSellerCard"><div class="plus">＋</div><div>첫 판매자를 추가해보세요</div></div>`;
+    document.getElementById('addSellerCard').addEventListener('click', ()=>openSellerModal(product.id));
+    return;
+  }
+
+  const minByOption = buildMinByOptionName(product);
+
+  wrap.innerHTML = product.sellers.map((seller, sIdx)=>{
+    const cardsHtml = seller.options.map((e, eIdx)=>{
+      const key = (e.optionName||'').trim().toLowerCase();
+      const group = key ? minByOption[key] : null;
+      const isCheapest = group && group.count > 1 && Number(e.price) === group.min;
+      const isFirst = eIdx === 0;
+      const isLast = eIdx === seller.options.length - 1;
+      return `
+        <div class="card ${isCheapest?'cheapest':''}" data-id="${e.id}">
+          <div class="card-move-btns">
+            <button class="opt-move-up" data-seller="${seller.id}" data-id="${e.id}" title="위로" ${isFirst?'disabled':''}>▲</button>
+            <button class="opt-move-down" data-seller="${seller.id}" data-id="${e.id}" title="아래로" ${isLast?'disabled':''}>▼</button>
+          </div>
+          ${isCheapest?'<div class="badge">★ 최저가</div>':''}
+          <div class="card-img" style="${e.image ? `background-image:url('${e.image}')` : ''}">${e.image?'':'이미지 없음'}</div>
+          <div class="card-body">
+            ${e.optionName ? `<div class="card-option-name">${escapeHtml(e.optionName)}</div>` : ''}
+            <div class="card-price">${formatPrice(e.price)}</div>
+            ${e.memo ? `<div class="card-memo">${escapeHtml(e.memo)}</div>` : ''}
+            <div class="card-actions">
+              <button class="edit" data-seller="${seller.id}" data-id="${e.id}">수정</button>
+              <button class="del" data-seller="${seller.id}" data-id="${e.id}">삭제</button>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+
+    const emptyHtml = seller.options.length === 0 ? `<div class="option-empty">아직 등록된 옵션이 없어요. 이미지와 가격을 추가해보세요.</div>` : '';
+    const isFirstSeller = sIdx === 0;
+    const isLastSeller = sIdx === product.sellers.length - 1;
+
+    return `
+      <div class="seller-section" data-seller="${seller.id}">
+        <div class="seller-header">
+          <div class="move-btns">
+            <button class="seller-move-up" data-seller="${seller.id}" title="위로" ${isFirstSeller?'disabled':''}>▲</button>
+            <button class="seller-move-down" data-seller="${seller.id}" title="아래로" ${isLastSeller?'disabled':''}>▼</button>
+          </div>
+          <div class="seller-fields">
+            ${seller.link
+              ? `<a class="seller-link-display" href="${escapeAttr(seller.link)}" target="_blank" rel="noopener" title="${escapeAttr(seller.link)}">🔗 ${escapeHtml(displayLink(seller.link))}</a>`
+              : `<span class="seller-link-display empty">링크가 없어요</span>`
+            }
+            <div class="seller-sub-row">
+              <input type="url" data-seller="${seller.id}" data-field="link" placeholder="판매자 링크 (클릭 시 이동)" value="${escapeAttr(seller.link||'')}">
+              <input type="text" data-seller="${seller.id}" data-field="memo" placeholder="메모 (선택)" value="${escapeAttr(seller.memo||'')}">
+            </div>
+          </div>
+          <div class="seller-actions">
+            <span class="seller-count">옵션 ${seller.options.length}개</span>
+            <button class="btn-secondary btn-add-entry" data-seller="${seller.id}">+ 옵션 추가</button>
+            <button class="seller-del" data-seller="${seller.id}" title="판매자 삭제">✕</button>
+          </div>
+        </div>
+        <div class="grid">
+          ${emptyHtml}
+          ${cardsHtml}
+          <div class="add-card add-entry-tile" data-seller="${seller.id}">
+            <div class="plus">＋</div>
+            <div>옵션 추가</div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  // seller field inline edit (link/memo)
+  wrap.querySelectorAll('.seller-fields input').forEach(inp=>{
+    inp.addEventListener('change', (e)=>{
+      const seller = product.sellers.find(s=>s.id===inp.dataset.seller);
+      seller[inp.dataset.field] = e.target.value.trim();
+      saveData(); render();
+    });
+  });
+  // seller delete
+  wrap.querySelectorAll('.seller-del').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(confirm('이 판매자와 등록된 모든 옵션을 삭제할까요?')){
+        product.sellers = product.sellers.filter(s=>s.id!==btn.dataset.seller);
+        saveData(); render();
+      }
+    });
+  });
+  // seller move up/down
+  wrap.querySelectorAll('.seller-move-up').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const idx = product.sellers.findIndex(s=>s.id===btn.dataset.seller);
+      moveInArray(product.sellers, idx, -1);
+      saveData(); render();
+    });
+  });
+  wrap.querySelectorAll('.seller-move-down').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const idx = product.sellers.findIndex(s=>s.id===btn.dataset.seller);
+      moveInArray(product.sellers, idx, 1);
+      saveData(); render();
+    });
+  });
+  // add entry buttons
+  wrap.querySelectorAll('.btn-add-entry, .add-entry-tile').forEach(btn=>{
+    btn.addEventListener('click', ()=>openEntryModal(product.id, btn.dataset.seller));
+  });
+  // edit entry
+  wrap.querySelectorAll('.edit').forEach(b=>{
+    b.addEventListener('click', ()=>openEntryModal(product.id, b.dataset.seller, b.dataset.id));
+  });
+  // option move up/down
+  wrap.querySelectorAll('.opt-move-up').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const seller = product.sellers.find(s=>s.id===btn.dataset.seller);
+      const idx = seller.options.findIndex(e=>e.id===btn.dataset.id);
+      moveInArray(seller.options, idx, -1);
+      saveData(); render();
+    });
+  });
+  wrap.querySelectorAll('.opt-move-down').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const seller = product.sellers.find(s=>s.id===btn.dataset.seller);
+      const idx = seller.options.findIndex(e=>e.id===btn.dataset.id);
+      moveInArray(seller.options, idx, 1);
+      saveData(); render();
+    });
+  });
+  // delete entry
+  wrap.querySelectorAll('.del').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      if(confirm('이 옵션을 삭제할까요?')){
+        const seller = product.sellers.find(s=>s.id===b.dataset.seller);
+        seller.options = seller.options.filter(e=>e.id!==b.dataset.id);
+        saveData(); render();
+      }
+    });
+  });
+
+}
+
+// swap item at index with its neighbor (direction: -1 = up, 1 = down)
+function moveInArray(arr, index, direction){
+  const target = index + direction;
+  if(index < 0 || target < 0 || target >= arr.length) return;
+  [arr[index], arr[target]] = [arr[target], arr[index]];
+}
+
+function escapeHtml(str){
+  return String(str||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function escapeAttr(str){ return escapeHtml(str); }
+
+/* ---------- Export / Import ---------- */
+document.getElementById('btnExport').addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `소싱-가격비교-백업-${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('btnImport').addEventListener('click', ()=>{
+  document.getElementById('importFileInput').click();
+});
+document.getElementById('importFileInput').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  e.target.value = '';
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    let parsed;
+    try{
+      parsed = JSON.parse(ev.target.result);
+    }catch(err){
+      alert('파일을 읽을 수 없어요. 올바른 백업(.json) 파일인지 확인해주세요.');
+      return;
+    }
+    if(!parsed || !Array.isArray(parsed.products)){
+      alert('올바른 백업 파일 형식이 아니에요.');
+      return;
+    }
+    if(!confirm('현재 데이터를 불러온 파일 내용으로 덮어쓸까요? 되돌릴 수 없어요.')) return;
+    state = parsed;
+    activeProductId = state.products[0]?.id || null;
+    saveData();
+    render();
+    alert('불러오기가 완료됐어요.');
+  };
+  reader.readAsText(file);
+});
+
+/* ---------- GitHub sync ---------- */
+const GH_CONFIG_KEY = 'sourcing_compare_github_config_v1';
+const GH_DATA_PATH = 'data.json';
+const GH_SYNC_DELAY_MS = 2500;
+
+function loadGithubConfig(){
+  try{
+    const raw = localStorage.getItem(GH_CONFIG_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return null;
+}
+function saveGithubConfig(cfg){ localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(cfg)); }
+function clearGithubConfig(){ localStorage.removeItem(GH_CONFIG_KEY); }
+
+let githubConfig = loadGithubConfig();
+let githubFileSha = null;
+let syncTimer = null;
+
+function toBase64Utf8(str){ return btoa(unescape(encodeURIComponent(str))); }
+function fromBase64Utf8(b64){ return decodeURIComponent(escape(atob(b64))); }
+
+function setSyncStatus(text, kind){
+  [document.getElementById('syncStatusLine'), document.getElementById('ghModalStatusText')].forEach(el=>{
+    if(!el) return;
+    el.textContent = text;
+    el.className = el.id === 'syncStatusLine' ? ('sync-status ' + (kind||'')) : 'hint';
+  });
+}
+
+function ghApiUrl(cfg){
+  return `https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}/contents/${GH_DATA_PATH}`;
+}
+function ghHeaders(cfg){
+  return {
+    'Authorization': `token ${cfg.token}`,
+    'Accept': 'application/vnd.github+json'
+  };
+}
+
+async function fetchFromGithub(cfg){
+  const res = await fetch(`${ghApiUrl(cfg)}?ref=${encodeURIComponent(cfg.branch||'main')}`, { headers: ghHeaders(cfg) });
+  if(res.status === 404){
+    githubFileSha = null;
+    return null;
+  }
+  if(!res.ok){
+    const body = await res.json().catch(()=>({}));
+    throw new Error(body.message || `읽기 실패 (${res.status})`);
+  }
+  const data = await res.json();
+  githubFileSha = data.sha;
+  return JSON.parse(fromBase64Utf8(data.content.replace(/\n/g,'')));
+}
+
+async function pushToGithub(isRetry){
+  if(!githubConfig || !githubConfig.token || !githubConfig.owner || !githubConfig.repo) return;
+  setSyncStatus('동기화 중...', 'busy');
+  try{
+    const body = {
+      message: 'Update sourcing data',
+      content: toBase64Utf8(JSON.stringify(state, null, 2)),
+      branch: githubConfig.branch || 'main'
+    };
+    if(githubFileSha) body.sha = githubFileSha;
+    const res = await fetch(ghApiUrl(githubConfig), {
+      method: 'PUT',
+      headers: { ...ghHeaders(githubConfig), 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if((res.status === 409 || res.status === 422) && !isRetry){
+      await fetchFromGithub(githubConfig);
+      return pushToGithub(true);
+    }
+    if(!res.ok){
+      const errBody = await res.json().catch(()=>({}));
+      throw new Error(errBody.message || `저장 실패 (${res.status})`);
+    }
+    const data = await res.json();
+    githubFileSha = data.content.sha;
+    setSyncStatus(`✓ 저장됨 (${new Date().toLocaleTimeString('ko-KR')})`, 'ok');
+  }catch(err){
+    setSyncStatus(`⚠ ${err.message}`, 'error');
+  }
+}
+
+function scheduleSync(){
+  if(!githubConfig || !githubConfig.token) return;
+  if(syncTimer) clearTimeout(syncTimer);
+  setSyncStatus('변경사항 대기 중...', 'pending');
+  syncTimer = setTimeout(()=>{ pushToGithub(false); }, GH_SYNC_DELAY_MS);
+}
+
+async function connectGithub(){
+  setSyncStatus('연결 확인 중...', 'busy');
+  try{
+    const remote = await fetchFromGithub(githubConfig);
+    if(remote && Array.isArray(remote.products) && remote.products.length){
+      const useRemote = confirm('GitHub 저장소에 이미 저장된 데이터가 있어요. 이 데이터를 불러올까요?\n(취소를 누르면 현재 로컬 데이터로 GitHub의 내용을 덮어씁니다)');
+      if(useRemote){
+        state = remote;
+        activeProductId = state.products[0]?.id || null;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        render();
+        setSyncStatus(`✓ GitHub에서 불러옴 (${new Date().toLocaleTimeString('ko-KR')})`, 'ok');
+        return;
+      }
+    }
+    await pushToGithub(false);
+  }catch(err){
+    setSyncStatus(`⚠ 연결 오류: ${err.message}`, 'error');
+  }
+}
+
+async function initGithubSync(){
+  if(!githubConfig || !githubConfig.token || !githubConfig.owner || !githubConfig.repo){
+    setSyncStatus('GitHub 연동 안 됨', '');
+    return;
+  }
+  setSyncStatus('불러오는 중...', 'busy');
+  try{
+    const remote = await fetchFromGithub(githubConfig);
+    if(remote && Array.isArray(remote.products)){
+      state = remote;
+      activeProductId = state.products[0]?.id || null;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      render();
+    }
+    setSyncStatus(`✓ 연결됨 (${new Date().toLocaleTimeString('ko-KR')})`, 'ok');
+  }catch(err){
+    setSyncStatus(`⚠ 연결 오류: ${err.message}`, 'error');
+  }
+}
+
+const githubModalOverlay = document.getElementById('githubModalOverlay');
+document.getElementById('btnGithubSync').addEventListener('click', ()=>{
+  document.getElementById('ghTokenInput').value = githubConfig?.token || '';
+  document.getElementById('ghOwnerInput').value = githubConfig?.owner || '';
+  document.getElementById('ghRepoInput').value = githubConfig?.repo || '';
+  document.getElementById('ghBranchInput').value = githubConfig?.branch || 'main';
+  document.getElementById('ghModalStatusText').textContent = githubConfig ? '연결됨. 아래에서 설정을 변경하거나 연결을 해제할 수 있어요.' : '아직 연결되지 않았어요.';
+  githubModalOverlay.classList.add('show');
+});
+document.getElementById('ghSaveBtn').addEventListener('click', async ()=>{
+  const token = document.getElementById('ghTokenInput').value.trim();
+  const owner = document.getElementById('ghOwnerInput').value.trim();
+  const repo = document.getElementById('ghRepoInput').value.trim();
+  const branch = document.getElementById('ghBranchInput').value.trim() || 'main';
+  if(!token || !owner || !repo){ alert('토큰, 사용자명, 저장소 이름을 모두 입력해주세요.'); return; }
+  githubConfig = { token, owner, repo, branch };
+  saveGithubConfig(githubConfig);
+  githubModalOverlay.classList.remove('show');
+  await connectGithub();
+});
+document.getElementById('ghDisconnectBtn').addEventListener('click', ()=>{
+  if(!confirm('GitHub 연동을 해제할까요? 로컬 데이터는 그대로 유지돼요.')) return;
+  githubConfig = null;
+  githubFileSha = null;
+  clearGithubConfig();
+  if(syncTimer) clearTimeout(syncTimer);
+  setSyncStatus('GitHub 연동 안 됨', '');
+  githubModalOverlay.classList.remove('show');
+});
+
+/* ---------- Product modal ---------- */
+const productModalOverlay = document.getElementById('productModalOverlay');
+document.getElementById('btnAddProduct').addEventListener('click', ()=>{
+  document.getElementById('productModalTitle').textContent = '새 상품';
+  document.getElementById('productNameInput').value = '';
+  productModalOverlay.classList.add('show');
+  setTimeout(()=>document.getElementById('productNameInput').focus(), 50);
+});
+document.getElementById('productCancelBtn').addEventListener('click', ()=>productModalOverlay.classList.remove('show'));
+document.getElementById('productSaveBtn').addEventListener('click', ()=>{
+  const name = document.getElementById('productNameInput').value.trim();
+  if(!name){ alert('상품명을 입력해주세요.'); return; }
+  const p = { id: uid(), name, sellers: [] };
+  state.products.push(p);
+  activeProductId = p.id;
+  saveData();
+  productModalOverlay.classList.remove('show');
+  render();
+});
+document.getElementById('productNameInput').addEventListener('keydown', (e)=>{
+  if(e.key==='Enter') document.getElementById('productSaveBtn').click();
+});
+
+/* ---------- Seller modal ---------- */
+const sellerModalOverlay = document.getElementById('sellerModalOverlay');
+let sellerModalProductId = null;
+
+function openSellerModal(productId){
+  sellerModalProductId = productId;
+  document.getElementById('sellerModalTitle').textContent = '새 판매자';
+  document.getElementById('sellerLinkInput').value = '';
+  document.getElementById('sellerMemoInput').value = '';
+  sellerModalOverlay.classList.add('show');
+  setTimeout(()=>document.getElementById('sellerLinkInput').focus(), 50);
+}
+document.getElementById('sellerCancelBtn').addEventListener('click', ()=>sellerModalOverlay.classList.remove('show'));
+document.getElementById('sellerSaveBtn').addEventListener('click', ()=>{
+  const link = document.getElementById('sellerLinkInput').value.trim();
+  const memo = document.getElementById('sellerMemoInput').value.trim();
+  if(!link){ alert('판매자 링크를 입력해주세요.'); return; }
+  const product = state.products.find(p=>p.id===sellerModalProductId);
+  product.sellers.push({ id: uid(), link, memo, options: [] });
+  saveData();
+  sellerModalOverlay.classList.remove('show');
+  render();
+});
+document.getElementById('sellerLinkInput').addEventListener('keydown', (e)=>{
+  if(e.key==='Enter') document.getElementById('sellerSaveBtn').click();
+});
+
+/* ---------- Entry modal (option: name + image + price) ---------- */
+const entryModalOverlay = document.getElementById('entryModalOverlay');
+
+function openEntryModal(productId, sellerId, entryId){
+  entryModalProductId = productId;
+  entryModalSellerId = sellerId;
+  editingEntryId = entryId || null;
+
+  const product = state.products.find(p=>p.id===productId);
+  const seller = product.sellers.find(s=>s.id===sellerId);
+  const entry = entryId ? seller.options.find(e=>e.id===entryId) : null;
+
+  document.getElementById('entryModalTitle').textContent = entry ? '옵션 수정' : '옵션 추가';
+  document.getElementById('optionNameInput').value = entry ? (entry.optionName||'') : '';
+  document.getElementById('priceInput').value = entry ? entry.price : '';
+  document.getElementById('entryMemoInput').value = entry ? (entry.memo||'') : '';
+  document.getElementById('imgUrlInput').value = entry ? (entry.image||'') : '';
+  updateImgPreview(entry ? (entry.image||'') : '');
+
+  entryModalOverlay.classList.add('show');
+  setTimeout(()=>document.getElementById('optionNameInput').focus(), 50);
+}
+
+function updateImgPreview(url){
+  const preview = document.getElementById('imgPreview');
+  const placeholder = document.getElementById('imgPreviewPlaceholder');
+  if(url && url.trim()){
+    preview.src = url.trim();
+    preview.style.display = 'block';
+    placeholder.style.display = 'none';
+  } else {
+    preview.removeAttribute('src');
+    preview.style.display = 'none';
+    placeholder.style.display = 'block';
+    placeholder.textContent = '이미지 링크를 입력하면 미리보기가 표시돼요';
+  }
+}
+document.getElementById('imgPreview').addEventListener('error', ()=>{
+  document.getElementById('imgPreview').style.display = 'none';
+  const placeholder = document.getElementById('imgPreviewPlaceholder');
+  placeholder.style.display = 'block';
+  placeholder.textContent = '이미지를 불러올 수 없어요. 링크를 확인해주세요.';
+});
+
+document.getElementById('entryCancelBtn').addEventListener('click', ()=>entryModalOverlay.classList.remove('show'));
+
+document.getElementById('imgUrlInput').addEventListener('input', (e)=>{
+  updateImgPreview(e.target.value);
+});
+
+document.getElementById('entrySaveBtn').addEventListener('click', ()=>{
+  const optionName = document.getElementById('optionNameInput').value.trim();
+  const price = document.getElementById('priceInput').value;
+  const memo = document.getElementById('entryMemoInput').value.trim();
+  const image = document.getElementById('imgUrlInput').value.trim();
+
+  if(price === '' || isNaN(Number(price)) || Number(price) < 0){ alert('올바른 가격을 입력해주세요.'); return; }
+
+  const product = state.products.find(p=>p.id===entryModalProductId);
+  const seller = product.sellers.find(s=>s.id===entryModalSellerId);
+
+  if(editingEntryId){
+    const e = seller.options.find(e=>e.id===editingEntryId);
+    e.optionName = optionName; e.price = Number(price); e.memo = memo; e.image = image || null;
+  } else {
+    seller.options.push({
+      id: uid(), optionName, price: Number(price), memo,
+      image: image || null
+    });
+  }
+  saveData();
+  entryModalOverlay.classList.remove('show');
+  render();
+});
+
+[productModalOverlay, sellerModalOverlay, entryModalOverlay, githubModalOverlay].forEach(ov=>{
+  ov.addEventListener('click', (e)=>{ if(e.target===ov) ov.classList.remove('show'); });
+});
+
+render();
+initGithubSync();
+</script>
+<script src="./moriva-sync.js"></script>
+</body>
+</html>

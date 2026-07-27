@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>쿠팡 상품런칭 캘린더</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231b2a4e'/%3E%3Cpolyline points='8,46 24,14 40,46' fill='none' stroke='white' stroke-width='6' stroke-linejoin='miter' stroke-linecap='butt'/%3E%3Cpolyline points='22,46 38,14 54,46' fill='none' stroke='white' stroke-width='6' stroke-linejoin='miter' stroke-linecap='butt'/%3E%3Crect x='29' y='17' width='7' height='7' fill='%23c9a227' transform='rotate(45 32.5 20.5)'/%3E%3C/svg%3E">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --primary:#1b2a4e;
+    --primary-dark:#101a34;
+    --gold:#c9a227;
+    --gold-light:#e6c65c;
+    --bg:#f5f6fa;
+    --card:#ffffff;
+    --border:#e2e4ea;
+    --text:#1b2330;
+    --sub:#6b7280;
+    --today:#fbeec4;
+    --danger:#c0392b;
+    --ok:#1f7a4d;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Pretendard','Malgun Gothic',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--text);}
+  header.app{background:linear-gradient(90deg,var(--primary),var(--primary-dark));color:#fff;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;border-bottom:3px solid var(--gold);}
+  header.app .brand{display:flex;align-items:center;gap:14px;}
+  header.app .brand svg{width:46px;height:34px;flex-shrink:0;}
+  header.app .brand-text{display:flex;flex-direction:column;}
+  header.app .wordmark{font-size:15px;font-weight:800;letter-spacing:2px;color:var(--gold-light);line-height:1.1;}
+  header.app .wordmark small{display:block;font-size:10px;letter-spacing:1px;color:rgba(255,255,255,.6);font-weight:600;margin-top:1px;}
+  header.app h1{font-size:19px;margin:0;font-weight:800;}
+  header.app .sub{font-size:12px;opacity:.85;margin-top:2px;}
+  .top-actions{display:flex;gap:8px;}
+  .top-actions button{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.4);color:#fff;padding:7px 12px;border-radius:8px;cursor:pointer;font-size:12px;}
+  .top-actions button:hover{background:rgba(255,255,255,.28);}
+  .wrap{max-width:1320px;margin:0 auto;padding:18px 24px 60px;}
+  .tabsbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+  .ptab{padding:8px 14px;border-radius:999px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;color:var(--text);}
+  .ptab.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+  .ptab .dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
+  .ptab .thumb{width:20px;height:20px;border-radius:50%;object-fit:cover;border:1px solid rgba(0,0,0,.1);display:inline-block;}
+  .ptab.addbtn{background:#fff;border:1px dashed #9ca3af;color:#6b7280;}
+  .ptab.custombtn{background:#fff;border:1px dashed var(--primary);color:var(--primary);}
+  .tab-x{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;font-size:10px;margin-left:2px;color:inherit;opacity:.6;}
+  .tab-x:hover{opacity:1;background:rgba(0,0,0,.12);}
+  .ptab.active .tab-x:hover{background:rgba(255,255,255,.25);}
+  .option-tag{font-size:10px;background:#eef0f7;color:var(--sub);padding:1px 6px;border-radius:6px;margin-left:2px;font-weight:600;}
+  .ptab.active .option-tag{background:rgba(255,255,255,.2);color:#fff;}
+  .prod-thumb{width:44px;height:44px;border-radius:10px;object-fit:cover;border:1px solid var(--border);flex-shrink:0;}
+  .prod-thumb-sm{width:26px;height:26px;border-radius:8px;object-fit:cover;border:1px solid var(--border);flex-shrink:0;vertical-align:middle;}
+  .img-upload-preview{display:flex;align-items:center;gap:10px;margin-top:6px;}
+  .img-upload-preview img{width:70px;height:70px;object-fit:cover;border-radius:10px;border:1px solid var(--border);}
+  .compare-picklist{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+  .compare-pick{display:flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:5px 10px;font-size:12.5px;cursor:pointer;background:#fff;}
+  .compare-pick input{margin:0;}
+  table.comparetable{width:100%;border-collapse:collapse;font-size:12.5px;}
+  table.comparetable th,table.comparetable td{border:1px solid var(--border);padding:7px 8px;text-align:center;}
+  table.comparetable th{background:#f1f2f8;font-weight:700;}
+  table.comparetable td.name-cell{text-align:left;display:flex;align-items:center;gap:8px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px;}
+  .summary-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
+  .stat{flex:1;min-width:150px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;}
+  .stat .label{font-size:11px;color:var(--sub);margin-bottom:4px;}
+  .stat .value{font-size:18px;font-weight:800;}
+  .viewtabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
+  .viewtabs button{padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px;font-weight:600;color:var(--sub);}
+  .viewtabs button.active{background:var(--text);color:#fff;border-color:var(--text);}
+  .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .cal-header .nav{display:flex;gap:6px;align-items:center;}
+  .cal-header button{border:1px solid var(--border);background:#fff;border-radius:8px;padding:6px 10px;cursor:pointer;}
+  .cal-header .ttl{font-weight:800;font-size:16px;min-width:110px;text-align:center;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;align-items:start;}
+  .cal-dow{text-align:center;font-size:12px;color:var(--sub);font-weight:700;padding:4px 0;}
+  .cal-cell{min-height:70px;border:1px solid var(--border);border-radius:10px;padding:6px;background:#fff;cursor:pointer;transition:box-shadow .1s;}
+  .cal-cell:hover{box-shadow:0 0 0 2px var(--primary) inset;}
+  .cal-cell.outside{background:#fafafa;color:#c3c7ce;}
+  .cal-cell.today{background:var(--today);}
+  .cal-cell .dnum{font-size:12.5px;font-weight:800;margin-bottom:5px;}
+  .day-block{border:1px solid var(--border);border-radius:7px;overflow:hidden;margin-bottom:6px;background:#fff;}
+  .day-block:last-child{margin-bottom:0;}
+  .day-block .db-head{color:#fff;font-size:10.5px;font-weight:700;padding:3px 7px;display:flex;align-items:center;justify-content:space-between;gap:6px;white-space:nowrap;}
+  .day-block .db-head .db-pname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .day-block .db-body{padding:5px 8px;background:#fff;}
+  .day-block .db-body ul{margin:0;padding-left:15px;}
+  .day-block .db-body li{font-size:11.5px;line-height:1.55;color:var(--text);}
+  .day-block .db-body .db-noPhase{font-size:11px;color:var(--sub);font-style:italic;}
+  .db-badges{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;}
+  .db-badges span{font-size:10px;padding:1.5px 6px;border-radius:6px;background:#f1f2f8;color:var(--sub);font-weight:700;white-space:nowrap;}
+  table.datatable{width:100%;border-collapse:collapse;font-size:12.5px;}
+  table.datatable th,table.datatable td{border:1px solid var(--border);padding:5px 6px;text-align:center;}
+  table.datatable th{background:#f1f2f8;font-weight:700;position:sticky;top:0;}
+  table.datatable td input, table.datatable td textarea{width:100%;border:1px solid transparent;background:transparent;text-align:center;font-size:12.5px;border-radius:4px;padding:3px;font-family:inherit;}
+  table.datatable td input:focus, table.datatable td textarea:focus{border-color:var(--primary);background:#fff;outline:none;}
+  table.datatable td input:disabled{color:#9ca3af;}
+  table.datatable td.phase input{text-align:left;}
+  table.datatable td.memo textarea{text-align:left;resize:vertical;min-height:26px;}
+  table.datatable tr.today-row td{background:#fff8e1;}
+  .delta-up{color:var(--ok);font-weight:700;}
+  .delta-down{color:var(--danger);font-weight:700;}
+  .toolbar{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+  .btn{padding:7px 13px;border-radius:8px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:12.5px;font-weight:600;}
+  .btn.primary{background:var(--primary);color:#fff;border-color:var(--primary);}
+  .btn.primary:hover{background:var(--primary-dark);}
+  .btn.danger{color:var(--danger);border-color:#f3c5c5;}
+  .btn.shift{padding:4px 7px;font-size:11px;}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;}
+  .modal{background:#fff;border-radius:14px;max-width:680px;width:100%;max-height:88vh;overflow:auto;padding:20px;}
+  .modal h3{margin:0 0 12px;font-size:16px;}
+  .field{margin-bottom:10px;}
+  .field label{display:block;font-size:12px;color:var(--sub);margin-bottom:4px;font-weight:600;}
+  .field input, .field select, .field textarea{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;}
+  .field textarea{min-height:50px;resize:vertical;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .row4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+  .row5{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;}
+  .day-entry{border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px;}
+  .day-entry h4{margin:0 0 8px;font-size:14px;display:flex;align-items:center;gap:6px;}
+  .day-entry h4 .dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+  .opt-block{border:1px solid #eee;border-left:4px solid var(--gold);border-radius:8px;padding:8px 10px;margin-top:8px;background:#fafafa;}
+  .opt-block .opt-title{font-size:12px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:6px;}
+  .opt-select{padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12.5px;font-weight:600;background:#fff;}
+  .opt-manage-card{border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;}
+  .opt-manage-card .opt-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .opt-manage-card .opt-head input[type=text]{flex:1;}
+  .revdate-list{display:flex;flex-direction:column;gap:5px;margin-top:4px;}
+  .revdate-row{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--sub);background:#f7f8fb;border:1px solid var(--border);border-radius:7px;padding:5px 8px;}
+  .revdate-row input.rd-day{width:52px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12.5px;text-align:center;}
+  .revdate-row input.rd-qty{width:58px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12.5px;text-align:center;}
+  .revdate-row .btn.danger{padding:3px 8px;margin-left:auto;}
+  .guide{font-size:12.5px;line-height:1.7;color:#374151;}
+  .guide b{color:var(--primary);}
+  .empty{text-align:center;color:var(--sub);padding:40px 0;font-size:13px;}
+  .badge-small{display:inline-block;font-size:10px;padding:1px 6px;border-radius:6px;background:#faf3dc;color:#8a6d10;font-weight:700;margin-left:6px;}
+  details.guidebox summary{cursor:pointer;font-weight:700;color:var(--primary);font-size:13px;margin-bottom:6px;}
+  .close-x{position:absolute;top:14px;right:16px;cursor:pointer;font-size:18px;color:var(--sub);background:none;border:none;}
+  .modal{position:relative;}
+  canvas#chartCanvas, canvas#compareChartViews, canvas#compareChartSales{max-height:340px;}
+  @media (max-width:700px){ .row2{grid-template-columns:1fr;} .row5{grid-template-columns:repeat(3,1fr);} .row4{grid-template-columns:repeat(2,1fr);} }
+</style>
+</head>
+<body>
+
+<header class="app">
+  <div class="brand">
+    <svg viewBox="0 0 80 62" xmlns="http://www.w3.org/2000/svg">
+      <polyline points="6,54 30,10 54,54" fill="none" stroke="#ffffff" stroke-width="8" stroke-linejoin="miter" stroke-linecap="butt"/>
+      <polyline points="26,54 50,10 74,54" fill="none" stroke="#ffffff" stroke-width="8" stroke-linejoin="miter" stroke-linecap="butt"/>
+      <rect x="35.5" y="15.5" width="9" height="9" fill="#c9a227" transform="rotate(45 40 20)"/>
+    </svg>
+    <div class="brand-text">
+      <div class="wordmark">MORIVA 모리바<small>BETTER LIFE, BETTER MOVE</small></div>
+      <h1 style="margin-top:4px;">쿠팡 상품런칭 캘린더</h1>
+    </div>
+  </div>
+  <div class="top-actions">
+    <button onclick="exportJSON()">전체 백업(JSON)</button>
+    <button onclick="document.getElementById('importFile').click()">가져오기</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)">
+    <input type="file" id="xlsxImportFile" accept=".xlsx,.xls" style="display:none" onchange="handleXLSXImportFile(event)">
+  </div>
+</header>
+
+<div class="wrap">
+
+  <details class="guidebox card">
+    <summary>📌 런칭 전략 가이드 (요약)</summary>
+    <div class="guide">
+      <b>상위노출 작업 흐름</b>: 상품등록 → 판매시작 → 인덱싱 → 신규버프(대기) → 리뷰작업 → 상위노출<br>
+      <b>28일 조회수</b>: 매일 아침 9시 갱신됩니다. 조회수 20~50 구간에서 첫 자연판매건이 나오는 편입니다.<br>
+      <b>2차 발주 기준</b>: 자연판매량이 10개 이상으로 5일 정도 지속되면 2차 추가발주를 진행하세요.<br>
+      <b>리뷰작업 규모</b>: 기본 목표 60개 기준(시장 크기에 따라 40~100개 유동적), 초기 4일간 4-7-11-16-22개로 점진적으로 늘리는(가속도 +3→+4→+5→+6) 방식을 권장합니다.<br>
+      <b>날짜는 절대적이지 않습니다.</b> 상품 반응에 따라 유동적으로 다음 단계를 진행하면 됩니다. 일별 기록표의 <b>🔀 일정조정</b> 버튼을 누르면, 해당 날짜 <u>이전 기록은 그대로 두고 이후 일정 전체가 자동으로 밀리거나 당겨집니다.</u><br>
+      <b>옵션별 판매 입력</b>: 한 제품에 색상/사이즈 등 여러 옵션이 있다면, "리뷰스케줄 설정" 탭에서 옵션을 추가하고, 일별 기록표·캘린더에서 옵션별로 조회수 외 판매 지표를 따로 입력할 수 있습니다.
+    </div>
+  </details>
+
+  <div class="tabsbar" id="tabsbar"></div>
+
+  <div id="summaryArea"></div>
+
+  <div class="viewtabs" id="viewtabs"></div>
+
+  <div id="viewArea"></div>
+
+</div>
+
+<div id="modalRoot"></div>
+
+<script>
+/* ---------------- Utilities ---------------- */
+function uid(){ return 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+function pad2(n){ return n<10 ? '0'+n : ''+n; }
+function formatDate(d){ return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+function parseDate(s){ const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); }
+function addDays(d, n){ const nd = new Date(d); nd.setDate(nd.getDate()+n); return nd; }
+function diffDays(a,b){ const MS=86400000; const da=new Date(a.getFullYear(),a.getMonth(),a.getDate()); const db=new Date(b.getFullYear(),b.getMonth(),b.getDate()); return Math.round((da-db)/MS); }
+function sameDate(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+function escAttr(s){ return (s||'').toString().replace(/"/g,'&quot;'); }
+function escHtml(s){ return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+const DOW = ['일','월','화','수','목','금','토'];
+const PALETTE = ['#1b2a4e','#c9a227','#f97316','#059669','#dc2626','#0891b2','#7c3aed','#db2777','#0f766e','#9333ea'];
+
+const PHASE_TEMPLATE = {
+  0:'상품등록 · 그로스 상품 발송',
+  1:'입고(재고) 잡힘 · 판매 시작',
+  2:'인덱싱 · 28일 조회수 기록 시작',
+  3:'판매자 샵 진열(맨하단 노출)',
+  4:'대기',
+  5:'대기',
+  6:'판매자 샵 내 상품 랭킹 상승',
+  7:'최신순 정렬에 상품 노출',
+  8:'리뷰작업 시작',
+  9:'리뷰작업 · 타겟키워드 순위체크',
+  10:'리뷰작업 · 타겟키워드 순위체크',
+  11:'리뷰작업 · 타겟키워드 순위체크',
+  12:'리뷰작업 · 타겟키워드 순위체크',
+  13:'리뷰작업 · 타겟키워드 순위체크'
+};
+const DEFAULT_REVIEW_SCHEDULE = [4,7,11,16,22];
+const DEFAULT_REVIEW_START = 8;
+const DEFAULT_MAX_DAY = 20;
+
+/* ---------------- State ---------------- */
+const STORAGE_KEY = 'coupang_launch_planner_v2';
+let state = loadState();
+if(!state.products) state.products = [];
+state.products.forEach(migrateProduct);
+if(!state.selectedId) state.selectedId = 'ALL';
+if(!state.view) state.view = 'calendar';
+
+let calCursor = new Date(); // current month being viewed in calendar
+calCursor.setDate(1);
+let activeOptionView = {}; // productId -> optionId | 'ALL' (not persisted, resets each load)
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+    // fall back to legacy v1 data if present, so existing users don't lose data
+    const legacy = localStorage.getItem('coupang_launch_planner_v1');
+    if(legacy) return JSON.parse(legacy);
+  }catch(e){ console.warn('state load failed', e); }
+  return {};
+}
+function saveState(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+/* ---------------- Options & Days ---------------- */
+function blankOptDay(){ return {reviewPlan:0, reviewActual:0, reviewWritten:0, naturalSales:0}; }
+function defaultReviewDates(startDay){
+  return DEFAULT_REVIEW_SCHEDULE.map((qty, idx)=>({ dayIndex: Number(startDay)+idx, qty }));
+}
+function newOption(name, color){
+  return { id: uid(), name: name || '옵션', color: color || PALETTE[Math.floor(Math.random()*PALETTE.length)], reviewStartDayIndex: DEFAULT_REVIEW_START, reviewDates: [] };
+}
+function getOption(product, optionId){ return product.options.find(o=>o.id===optionId); }
+function optionLabel(p, o){ return p.options.length<=1 ? p.name : (p.name+' · '+o.name); }
+function isPrimaryOption(product, optionId){ return product.primaryOptionId===optionId; }
+
+function ensureDay(product, dayIndex){
+  if(!product.days[dayIndex]){
+    product.days[dayIndex] = { phase: PHASE_TEMPLATE[dayIndex] || '', views28:null, memo:'', opt:{} };
+  }
+  const day = product.days[dayIndex];
+  if(!day.opt) day.opt = {};
+  product.options.forEach(o=>{ if(!day.opt[o.id]) day.opt[o.id] = blankOptDay(); });
+  if(dayIndex > product.maxDayIndex) product.maxDayIndex = dayIndex;
+  return day;
+}
+
+/* Recomputes reviewPlan across every day for this option, from its list of
+   individual "review progress dates" (option.reviewDates = [{dayIndex, qty}, ...]).
+   Dates don't need to be consecutive - any day can be added, removed, or have its
+   quantity changed, and the calendar/schedule reflects it immediately. */
+function applyOptionSchedule(product, option){
+  Object.keys(product.days).forEach(k=>{
+    const day = product.days[k];
+    if(day.opt[option.id]) day.opt[option.id].reviewPlan = 0;
+  });
+  (option.reviewDates||[]).forEach(rd=>{
+    const di = Number(rd.dayIndex);
+    if(isNaN(di) || di<0) return;
+    ensureDay(product, di);
+    product.days[di].opt[option.id].reviewPlan = (Number(product.days[di].opt[option.id].reviewPlan)||0) + (Number(rd.qty)||0);
+  });
+}
+
+function addOption(product, name, color){
+  const opt = newOption(name, color || PALETTE[product.options.length % PALETTE.length]);
+  product.options.push(opt);
+  Object.keys(product.days).forEach(k=>{ ensureDay(product, Number(k)); });
+  // Only the primary option ever gets review dates applied; new options start with
+  // no review dates since review work is only ever done on the one primary option.
+  if(product.primaryOptionId===opt.id) applyOptionSchedule(product, opt);
+  return opt;
+}
+function removeOption(product, optionId){
+  if(product.options.length<=1) return false;
+  product.options = product.options.filter(o=>o.id!==optionId);
+  Object.values(product.days).forEach(day=>{ if(day.opt) delete day.opt[optionId]; });
+  if(product.primaryOptionId===optionId) product.primaryOptionId = product.options[0].id;
+  return true;
+}
+function setPrimaryOption(pid, optionId){
+  const p = getProduct(pid);
+  const opt = getOption(p, optionId);
+  if(!opt) return;
+  p.primaryOptionId = optionId;
+  // if this option has never had review dates configured, seed it with the default so it's ready to use
+  if(!opt.reviewDates || opt.reviewDates.length===0){
+    opt.reviewDates = defaultReviewDates(opt.reviewStartDayIndex);
+    applyOptionSchedule(p, opt);
+  }
+  saveState();
+  renderAll();
+}
+
+function createProduct(name, launchDateStr, color, optionName, image){
+  const p = { id: uid(), name, color, image: image||null, launchDate: launchDateStr, options: [], primaryOptionId: null, maxDayIndex: DEFAULT_MAX_DAY, days: {} };
+  const opt = newOption(optionName || '기본옵션', color);
+  opt.reviewDates = defaultReviewDates(opt.reviewStartDayIndex);
+  p.options = [opt];
+  p.primaryOptionId = opt.id;
+  for(let i=0;i<=DEFAULT_MAX_DAY;i++) ensureDay(p, i);
+  applyOptionSchedule(p, opt);
+  return p;
+}
+
+/* Migrate any older saved product shapes into the current options-based structure */
+function migrateProduct(p){
+  if(p.options && Array.isArray(p.options)){
+    if(p.image===undefined) p.image = null;
+    if(!p.primaryOptionId || !p.options.some(o=>o.id===p.primaryOptionId)) p.primaryOptionId = p.options[0] ? p.options[0].id : null;
+    Object.keys(p.days||{}).forEach(k=>{
+      const day = p.days[k];
+      if(!day.opt) day.opt = {};
+      p.options.forEach(o=>{ if(!day.opt[o.id]) day.opt[o.id] = blankOptDay(); });
+    });
+    // Convert any option still using the old fixed 5-slot reviewSchedule/reviewStartDayIndex
+    // pair into the flexible reviewDates list (one-time, per option).
+    p.options.forEach(o=>{
+      if(!o.reviewDates){
+        if(o.reviewSchedule && o.reviewSchedule.some(v=>Number(v)>0)){
+          o.reviewDates = o.reviewSchedule.map((qty,idx)=>({dayIndex: Number(o.reviewStartDayIndex||DEFAULT_REVIEW_START)+idx, qty:Number(qty)||0})).filter(rd=>rd.qty>0);
+        } else {
+          o.reviewDates = [];
+        }
+      }
+      delete o.reviewSchedule;
+    });
+    // Fix-up: only the primary option should ever carry a review-plan schedule. An earlier
+    // version accidentally seeded the default 4-7-11-16-22 schedule onto every option, which
+    // made the calendar's "리뷰계획" badge double/triple-count (summed across options). Clear
+    // any leftover plan data on non-primary options here so totals are correct going forward.
+    p.options.forEach(o=>{
+      if(o.id === p.primaryOptionId) return;
+      const hasLeftoverPlan = (o.reviewDates||[]).length>0 ||
+        Object.values(p.days).some(day => day.opt[o.id] && Number(day.opt[o.id].reviewPlan) > 0);
+      if(hasLeftoverPlan){
+        o.reviewDates = [];
+        Object.values(p.days).forEach(day=>{ if(day.opt[o.id]) day.opt[o.id].reviewPlan = 0; });
+      }
+    });
+    return p;
+  }
+  // legacy flat-field format -> convert to a single option
+  const opt = newOption(p.option || '기본옵션', p.color);
+  opt.reviewStartDayIndex = p.reviewStartDayIndex!==undefined ? Number(p.reviewStartDayIndex) : DEFAULT_REVIEW_START;
+  const legacySched = p.reviewSchedule ? p.reviewSchedule.map(v=>Number(v)||0) : [...DEFAULT_REVIEW_SCHEDULE];
+  opt.reviewDates = legacySched.map((qty,idx)=>({dayIndex: opt.reviewStartDayIndex+idx, qty})).filter(rd=>rd.qty>0);
+  const newDays = {};
+  Object.keys(p.days||{}).forEach(k=>{
+    const old = p.days[k];
+    newDays[k] = {
+      phase: old.phase || '',
+      views28: old.views28===undefined? null : old.views28,
+      memo: old.memo || '',
+      opt: { [opt.id]: {
+        reviewPlan: Number(old.reviewPlan)||0,
+        reviewActual: Number(old.reviewActual)||0,
+        reviewWritten: Number(old.reviewWritten)||0,
+        naturalSales: Number(old.naturalSales)||0
+      }}
+    };
+  });
+  p.options = [opt];
+  p.primaryOptionId = opt.id;
+  p.days = newDays;
+  if(p.image===undefined) p.image = null;
+  delete p.option; delete p.reviewStartDayIndex; delete p.reviewSchedule; delete p.totalReviewTarget;
+  return p;
+}
+
+/* Resize/compress an uploaded image file to a small base64 dataURL (keeps localStorage light) */
+function readImageAsDataURL(file, maxDim, callback){
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const img = new Image();
+    img.onload = function(){
+      let w = img.width, h = img.height;
+      if(w > h){ if(w>maxDim){ h = Math.round(h*maxDim/w); w = maxDim; } }
+      else { if(h>maxDim){ w = Math.round(w*maxDim/h); h = maxDim; } }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      callback(canvas.toDataURL('image/jpeg', 0.82));
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function getProduct(id){ return state.products.find(p=>p.id===id); }
+
+function dayIndexForDate(product, dateStr){
+  return diffDays(parseDate(dateStr), parseDate(product.launchDate));
+}
+function dateForDay(product, dayIndex){
+  return addDays(parseDate(product.launchDate), dayIndex);
+}
+function getDelta(product, dayIndex){
+  const cur = product.days[dayIndex] ? product.days[dayIndex].views28 : null;
+  const prevObj = product.days[dayIndex-1];
+  const prev = prevObj ? prevObj.views28 : null;
+  if(cur===null || cur===undefined || cur==='' || prev===null || prev===undefined || prev==='') return null;
+  return Number(cur) - Number(prev);
+}
+function dayAgg(day, field){
+  return Object.values(day.opt||{}).reduce((s,o)=> s + (Number(o[field])||0), 0);
+}
+function getTotalSales(day){
+  return dayAgg(day,'reviewActual') + dayAgg(day,'naturalSales');
+}
+
+/* ---------------- Cascade schedule shift ---------------- */
+/* Keeps everything before fromDayIndex untouched. delta>0 inserts blank/wait days
+   (pushes the rest of the plan later); delta<0 removes days (pulls the rest earlier). */
+function shiftScheduleFrom(product, fromDayIndex, delta){
+  if(!delta) return;
+  const originalMax = product.maxDayIndex;
+  if(delta>0){
+    for(let i=originalMax; i>=fromDayIndex; i--){
+      if(!product.days[i+delta]) product.days[i+delta] = {};
+      product.days[i+delta] = product.days[i];
+    }
+    for(let i=fromDayIndex; i<fromDayIndex+delta; i++){
+      const blank = { phase:'대기 (일정 조정)', views28:null, memo:'', opt:{} };
+      product.options.forEach(o=>{ blank.opt[o.id] = blankOptDay(); });
+      product.days[i] = blank;
+    }
+    product.maxDayIndex = originalMax + delta;
+    product.options.forEach(o=>{
+      if(o.reviewStartDayIndex >= fromDayIndex) o.reviewStartDayIndex += delta;
+      (o.reviewDates||[]).forEach(rd=>{ if(rd.dayIndex >= fromDayIndex) rd.dayIndex += delta; });
+    });
+  } else {
+    const n = Math.min(-delta, originalMax - fromDayIndex + 1);
+    if(n<=0) return;
+    for(let i=fromDayIndex; i<=originalMax-n; i++){ product.days[i] = product.days[i+n]; }
+    for(let i=originalMax-n+1; i<=originalMax; i++){ delete product.days[i]; }
+    product.maxDayIndex = originalMax - n;
+    product.options.forEach(o=>{
+      if(o.reviewStartDayIndex >= fromDayIndex) o.reviewStartDayIndex = Math.max(0, o.reviewStartDayIndex - n);
+      (o.reviewDates||[]).forEach(rd=>{ if(rd.dayIndex >= fromDayIndex) rd.dayIndex = Math.max(fromDayIndex, rd.dayIndex - n); });
+    });
+  }
+}
+function promptShift(pid, dayIndex){
+  const p = getProduct(pid);
+  const input = prompt('D+'+dayIndex+' 날짜부터 이후 전체 일정을 며칠 밀거나 당길까요?\n\n예) 2  → 2일 지연 삽입 (이후 모든 일정이 2일씩 밀림)\n예) -1 → 1일 당김 (이후 일정이 1일씩 앞당겨짐, 해당 일수만큼 삭제됨)\n\n이 날짜 이전 기록은 그대로 유지됩니다.', '0');
+  if(input===null) return;
+  const delta = parseInt(input,10);
+  if(!delta || isNaN(delta)) return;
+  if(delta<0 && (-delta) > (p.maxDayIndex - dayIndex + 1)){ alert('당길 수 있는 일수를 초과했습니다.'); return; }
+  shiftScheduleFrom(p, dayIndex, delta);
+  saveState();
+  closeModal();
+  renderAll();
+}
+
+/* ---------------- Rendering: Tabs ---------------- */
+function renderTabs(){
+  const bar = document.getElementById('tabsbar');
+  let html = '';
+  html += `<div class="ptab ${state.selectedId==='ALL'?'active':''}" onclick="selectProduct('ALL')">📅 전체보기</div>`;
+  const customCount = (state.selectedId==='CUSTOM' && state.customSelection) ? state.customSelection.length : 0;
+  html += `<div class="ptab custombtn ${state.selectedId==='CUSTOM'?'active':''}" onclick="openCustomSelectModal()">🔎 선택보기${customCount?` (${customCount})`:''}</div>`;
+  state.products.forEach(p=>{
+    const thumb = p.image ? `<img class="thumb" src="${p.image}">` : `<span class="dot" style="background:${p.color}"></span>`;
+    const optCount = p.options.length>1 ? `<span class="option-tag">옵션 ${p.options.length}</span>` : '';
+    html += `<div class="ptab ${state.selectedId===p.id?'active':''}" onclick="selectProduct('${p.id}')">
+      ${thumb}${escHtml(p.name)}${optCount}
+      <span class="tab-x" onclick="event.stopPropagation(); deleteProduct('${p.id}')" title="이 제품 삭제">✕</span>
+    </div>`;
+  });
+  html += `<div class="ptab addbtn" onclick="openProductModal()">+ 제품 추가</div>`;
+  bar.innerHTML = html;
+}
+
+function selectProduct(id){
+  state.selectedId = id;
+  state.view = 'calendar';
+  saveState();
+  renderAll();
+}
+
+/* Returns the array of products that should currently be shown together
+   (ALL = every product, CUSTOM = the user-picked subset, single id = just that one product) */
+function getVisibleProducts(){
+  if(state.selectedId==='ALL') return state.products;
+  if(state.selectedId==='CUSTOM') return state.products.filter(p=> (state.customSelection||[]).includes(p.id));
+  return [getProduct(state.selectedId)].filter(Boolean);
+}
+function isMultiMode(){ return state.selectedId==='ALL' || state.selectedId==='CUSTOM'; }
+
+/* ---------------- Custom "선택보기" picker ---------------- */
+function openCustomSelectModal(){
+  const current = new Set(state.selectedId==='CUSTOM' && state.customSelection ? state.customSelection : state.products.map(p=>p.id));
+  const picks = state.products.map(p=>{
+    const checked = current.has(p.id) ? 'checked' : '';
+    const thumb = p.image ? `<img class="prod-thumb-sm" src="${p.image}">` : `<span class="dot" style="background:${p.color};width:12px;height:12px;border-radius:50%;display:inline-block;"></span>`;
+    return `<label class="compare-pick"><input type="checkbox" value="${p.id}" ${checked}>${thumb}${escHtml(p.name)}</label>`;
+  }).join('');
+  const body = `<h3>같이 볼 제품 선택</h3>
+    <div style="font-size:12px;color:var(--sub);margin-bottom:10px;">체크한 제품들의 일정만 모아서 캘린더/요약표에서 함께 봅니다.</div>
+    <div class="compare-picklist" id="customPickList">${picks || '<div class="empty">등록된 제품이 없습니다.</div>'}</div>
+    <div class="modal-actions"><button class="btn" onclick="closeModal()">취소</button><button class="btn primary" onclick="applyCustomSelection()">선택보기 적용</button></div>`;
+  showModal(body);
+}
+function applyCustomSelection(){
+  const checked = [...document.querySelectorAll('#customPickList input:checked')].map(i=>i.value);
+  if(checked.length===0){ alert('최소 1개 이상 선택하세요.'); return; }
+  state.customSelection = checked;
+  state.selectedId = 'CUSTOM';
+  state.view = 'calendar';
+  saveState();
+  closeModal();
+  renderAll();
+}
+
+/* ---------------- Rendering: Summary ---------------- */
+function renderSummary(){
+  const area = document.getElementById('summaryArea');
+  if(isMultiMode()){
+    const visible = getVisibleProducts();
+    if(visible.length===0){ area.innerHTML = state.selectedId==='CUSTOM' ? `<div class="card"><div class="empty">선택된 제품이 없습니다. 위 "🔎 선택보기"에서 제품을 골라주세요.</div></div>` : ''; return; }
+    let html = '<div class="summary-row">';
+    visible.forEach(p=>{
+      const todayIdx = diffDays(new Date(), parseDate(p.launchDate));
+      const phaseLabel = (todayIdx>=0 && todayIdx<=p.maxDayIndex) ? (p.days[todayIdx].phase || '-') : (todayIdx<0 ? `D-${-todayIdx} 런칭예정` : '기간 종료');
+      const thumbHtml = p.image ? `<img class="prod-thumb-sm" src="${p.image}">` : `<span class="dot" style="background:${p.color};width:14px;height:14px;border-radius:50%;display:inline-block;"></span>`;
+      html += `<div class="stat" style="border-top:3px solid ${p.color}">
+        <div class="label" style="display:flex;align-items:center;gap:6px;">${thumbHtml} ${escHtml(p.name)}${p.options.length>1?`<span class="option-tag">옵션 ${p.options.length}</span>`:''}</div>
+        <div class="value" style="font-size:14px">${todayIdx>=0? 'D+'+todayIdx : 'D'+todayIdx}</div>
+        <div style="font-size:11px;color:var(--sub);margin-top:3px">${escHtml(phaseLabel)}</div>
+      </div>`;
+    });
+    html += '</div>';
+    area.innerHTML = html;
+    return;
+  }
+  const p = getProduct(state.selectedId);
+  if(!p){ area.innerHTML=''; return; }
+  const todayIdx = diffDays(new Date(), parseDate(p.launchDate));
+  const inRange = todayIdx>=0 && todayIdx<=p.maxDayIndex;
+  const todayPhase = inRange ? (p.days[todayIdx].phase||'-') : (todayIdx<0 ? '런칭 예정' : '트래킹 기간 종료');
+  let lastViews = null, cumPurchase=0, cumWritten=0, cumNatural=0, reviewTargetSum = p.options.reduce((s,o)=>s+(o.reviewDates||[]).reduce((a,rd)=>a+Number(rd.qty||0),0),0);
+  for(let i=0;i<=p.maxDayIndex;i++){
+    const d = p.days[i];
+    if(d.views28!==null && d.views28!==undefined && d.views28!=='') lastViews = d.views28;
+    cumPurchase += dayAgg(d,'reviewActual');
+    cumWritten += dayAgg(d,'reviewWritten');
+    cumNatural += dayAgg(d,'naturalSales');
+  }
+  const thumbHtml = p.image ? `<img class="prod-thumb" src="${p.image}">` : `<span class="dot" style="background:${p.color};width:36px;height:36px;border-radius:10px;display:inline-block;"></span>`;
+  const optChips = p.options.map(o=>`<span class="option-tag" style="background:${o.color}22;color:${o.color};">${escHtml(o.name)}</span>`).join('');
+  const html = `<div class="card" style="display:flex;align-items:center;gap:12px;margin-bottom:12px;padding:12px 16px;">
+    ${thumbHtml}
+    <div><div style="font-weight:800;font-size:15px;">${escHtml(p.name)} ${optChips}</div>
+    <div style="font-size:12px;color:var(--sub);">런칭일 ${p.launchDate}</div></div>
+  </div>
+  <div class="summary-row">
+    <div class="stat"><div class="label">오늘 기준</div><div class="value">${todayIdx>=0? 'D+'+todayIdx : 'D'+todayIdx}</div><div style="font-size:11px;color:var(--sub);margin-top:3px">${escHtml(todayPhase)}</div></div>
+    <div class="stat"><div class="label">최근 28일 조회수</div><div class="value">${lastViews!==null? Number(lastViews).toLocaleString():'-'}</div></div>
+    <div class="stat"><div class="label">누적 리뷰 판매 (전체옵션)</div><div class="value">${cumPurchase.toLocaleString()} <span class="badge-small">계획 ${reviewTargetSum}</span></div></div>
+    <div class="stat"><div class="label">누적 리뷰 작성 (전체옵션)</div><div class="value">${cumWritten.toLocaleString()}</div></div>
+    <div class="stat"><div class="label">누적 자연판매량 (전체옵션)</div><div class="value">${cumNatural.toLocaleString()}</div></div>
+  </div>`;
+  area.innerHTML = html;
+}
+
+/* ---------------- Rendering: View tabs ---------------- */
+function renderViewTabs(){
+  const vt = document.getElementById('viewtabs');
+  let tabs;
+  if(isMultiMode()){
+    tabs = [['calendar','📅 통합 캘린더'],['table','📋 제품별 요약표'],['compare','⚖️ 비교분석']];
+  } else {
+    tabs = [['calendar','📅 캘린더'],['table','📋 일별 기록표'],['chart','📈 차트'],['settings','⚙️ 옵션 / 리뷰스케줄 설정']];
+  }
+  if(!tabs.find(t=>t[0]===state.view)) state.view = 'calendar';
+  vt.innerHTML = tabs.map(t=>`<button class="${state.view===t[0]?'active':''}" onclick="setView('${t[0]}')">${t[1]}</button>`).join('');
+}
+function setView(v){ state.view = v; saveState(); renderAll(); }
+
+/* ---------------- Rendering: Main view dispatch ---------------- */
+function renderView(){
+  const area = document.getElementById('viewArea');
+  if(state.products.length===0){
+    area.innerHTML = `<div class="card"><div class="empty">아직 등록된 제품이 없습니다. 상단의 <b>+ 제품 추가</b> 버튼으로 첫 런칭 계획을 만들어보세요.</div></div>`;
+    return;
+  }
+  if(state.view==='calendar') return renderCalendarView(area);
+  if(state.view==='table') return isMultiMode() ? renderAllTableView(area) : renderProductTableView(area);
+  if(state.view==='chart') return renderChartView(area);
+  if(state.view==='settings') return renderSettingsView(area);
+  if(state.view==='compare') return renderCompareView(area);
+}
+
+/* ---------------- Option selector control (shared by table/chart views) ---------------- */
+function optionSelectHtml(p){
+  const cur = activeOptionView[p.id] || defaultOptionView(p);
+  // A single-option product has nothing to aggregate, so skip the redundant "전체 합계" choice
+  // and just let the one option be edited directly.
+  let opts = p.options.length>1 ? `<option value="ALL" ${cur==='ALL'?'selected':''}>전체 합계</option>` : '';
+  p.options.forEach(o=>{ opts += `<option value="${o.id}" ${cur===o.id?'selected':''}>${escHtml(o.name)}</option>`; });
+  return `<select class="opt-select" onchange="setActiveOption('${p.id}', this.value)">${opts}</select>`;
+}
+function defaultOptionView(p){
+  return p.options.length===1 ? p.options[0].id : 'ALL';
+}
+function setActiveOption(pid, val){
+  activeOptionView[pid] = val;
+  renderView();
+}
+
+/* ---------------- Calendar View ---------------- */
+function getMonthMatrix(year, month){
+  const first = new Date(year, month, 1);
+  const startOffset = first.getDay();
+  const gridStart = addDays(first, -startOffset);
+  const weeks = [];
+  let cur = gridStart;
+  for(let w=0; w<6; w++){
+    const week = [];
+    for(let d=0; d<7; d++){ week.push(new Date(cur)); cur = addDays(cur,1); }
+    weeks.push(week);
+  }
+  return weeks;
+}
+
+function renderCalendarView(area){
+  const year = calCursor.getFullYear(), month = calCursor.getMonth();
+  const weeks = getMonthMatrix(year, month);
+  const productsToShow = getVisibleProducts();
+  const today = new Date();
+
+  let html = `<div class="card">
+    <div class="cal-header">
+      <div class="nav"><button onclick="navMonth(-1)">◀</button></div>
+      <div class="ttl">${year}년 ${month+1}월</div>
+      <div class="nav"><button onclick="navMonth(1)">▶</button><button onclick="goToday()">오늘</button></div>
+    </div>
+    <div class="cal-grid">`;
+  DOW.forEach(d=> html += `<div class="cal-dow">${d}</div>`);
+
+  weeks.forEach(week=>{
+    week.forEach(date=>{
+      const isOutside = date.getMonth()!==month;
+      const isToday = sameDate(date, today);
+      const dateStr = formatDate(date);
+      let entries = [];
+      productsToShow.forEach(p=>{
+        const di = dayIndexForDate(p, dateStr);
+        if(di>=0 && di<=p.maxDayIndex){ entries.push({p, di, d:p.days[di]}); }
+      });
+      let cellClass = 'cal-cell' + (isOutside?' outside':'') + (isToday?' today':'');
+      let blocksHtml = entries.map(e=>{
+        const badges = [];
+        const plan = dayAgg(e.d,'reviewPlan'), act = dayAgg(e.d,'reviewActual'), writ = dayAgg(e.d,'reviewWritten'), nat = dayAgg(e.d,'naturalSales');
+        if(plan>0) badges.push(`리뷰계획 ${plan}`);
+        if(act>0) badges.push(`리뷰판매 ${act}`);
+        if(writ>0) badges.push(`리뷰작성 ${writ}`);
+        if(nat>0) badges.push(`자연판매 ${nat}`);
+        const tasks = (e.d.phase||'').split(/[·|]/).map(s=>s.trim()).filter(Boolean);
+        const tasksHtml = tasks.length
+          ? `<ul>${tasks.map(t=>`<li>${escHtml(t)}</li>`).join('')}</ul>`
+          : `<div class="db-noPhase">등록된 작업 없음</div>`;
+        const badgesHtml = badges.length ? `<div class="db-badges">${badges.map(b=>`<span>${escHtml(b)}</span>`).join('')}</div>` : '';
+        const headLabel = isMultiMode()
+          ? `<span class="db-pname">${escHtml(e.p.name)}</span><span>D+${e.di}</span>`
+          : `<span>D+${e.di}</span>`;
+        return `<div class="day-block">
+          <div class="db-head" style="background:${e.p.color}">${headLabel}</div>
+          <div class="db-body">${tasksHtml}${badgesHtml}</div>
+        </div>`;
+      }).join('');
+      html += `<div class="${cellClass}" onclick='openDayModal("${dateStr}")'>
+        <div class="dnum">${date.getDate()}</div>
+        ${blocksHtml}
+      </div>`;
+    });
+  });
+  html += `</div></div>`;
+  area.innerHTML = html;
+}
+
+function navMonth(delta){
+  calCursor.setMonth(calCursor.getMonth()+delta);
+  renderView();
+}
+function goToday(){
+  calCursor = new Date(); calCursor.setDate(1);
+  renderView();
+}
+
+/* ---------------- Day Modal ---------------- */
+function openDayModal(dateStr){
+  const productsToShow = getVisibleProducts();
+  let entries = [];
+  productsToShow.forEach(p=>{
+    const di = dayIndexForDate(p, dateStr);
+    if(di>=0 && di<=p.maxDayIndex){ entries.push({p, di}); }
+    else if(!isMultiMode()){
+      if(di>p.maxDayIndex && di<=p.maxDayIndex+60){ entries.push({p, di, needsExtend:true}); }
+    }
+  });
+  if(entries.length===0){
+    showModal(`<h3>${dateStr}</h3><div class="empty">이 날짜에는 표시할 제품 일정이 없습니다.<br>(제품의 런칭일 이전이거나 트래킹 범위를 벗어났습니다)</div><div class="modal-actions"><button class="btn" onclick="closeModal()">닫기</button></div>`);
+    return;
+  }
+  let body = `<h3>${dateStr} 기록</h3>`;
+  entries.forEach(e=>{
+    const p = e.p, di = e.di;
+    if(e.needsExtend) ensureDay(p, di);
+    const d = p.days[di];
+    const delta = getDelta(p, di);
+    const thumb = p.image ? `<img class="prod-thumb-sm" src="${p.image}">` : '';
+    let optBlocks = p.options.map(o=>{
+      const od = d.opt[o.id] || blankOptDay();
+      const isPrimary = isPrimaryOption(p, o.id);
+      const reviewFields = isPrimary ? `
+          <div class="field"><label>리뷰 계획</label><input type="number" id="f_plan_${p.id}_${o.id}" value="${od.reviewPlan||0}"></div>
+          <div class="field"><label>리뷰 판매</label><input type="number" id="f_act_${p.id}_${o.id}" value="${od.reviewActual||0}"></div>
+          <div class="field"><label>리뷰 작성</label><input type="number" id="f_writ_${p.id}_${o.id}" value="${od.reviewWritten||0}"></div>` : '';
+      return `<div class="opt-block">
+        <div class="opt-title"><span class="dot" style="background:${o.color};width:9px;height:9px;border-radius:50%;display:inline-block;"></span>${escHtml(o.name)}${isPrimary?' <span class="badge-small">주력·리뷰진행</span>':''}</div>
+        <div class="${isPrimary?'row4':'row2'}">
+          ${reviewFields}
+          <div class="field"><label>자연판매</label><input type="number" id="f_nat_${p.id}_${o.id}" value="${od.naturalSales||0}"></div>
+        </div>
+      </div>`;
+    }).join('');
+    body += `<div class="day-entry" id="entry_${p.id}">
+      <h4>${thumb}<span class="dot" style="background:${p.color}"></span>${escHtml(p.name)} <span class="badge-small">D+${di}</span></h4>
+      <div class="field"><label>단계 / 메모 헤더</label><input id="f_phase_${p.id}" value="${escAttr(d.phase)}" placeholder="예: 리뷰작업, 인덱싱 등"></div>
+      <div class="row2">
+        <div class="field"><label>28일 조회수 (제품 공통)</label><input type="number" id="f_views_${p.id}" value="${d.views28===null||d.views28===undefined?'':d.views28}" placeholder="예: 68"></div>
+        <div class="field"><label>증감폭 (자동계산)</label><input value="${delta===null?'-':delta}" disabled></div>
+      </div>
+      ${optBlocks}
+      <div class="field" style="margin-top:8px;"><label>메모</label><textarea id="f_memo_${p.id}">${escHtml(d.memo)}</textarea></div>
+      <div style="text-align:right;font-size:12px;color:var(--sub)">전체 옵션 합산 총판매량(자동): <b>${getTotalSales(d)}</b></div>
+      <div style="text-align:right;margin-top:6px;"><button type="button" class="btn shift" onclick="promptShift('${p.id}', ${di})">🔀 이 날짜부터 일정 밀기/당기기</button></div>
+    </div>`;
+  });
+  body += `<div class="modal-actions"><button class="btn" onclick="closeModal()">취소</button><button class="btn primary" onclick='saveDayModal("${dateStr}")'>저장</button></div>`;
+  showModal(body);
+}
+
+function saveDayModal(dateStr){
+  const productsToShow = getVisibleProducts();
+  productsToShow.forEach(p=>{
+    const di = dayIndexForDate(p, dateStr);
+    const el = document.getElementById('f_phase_'+p.id);
+    if(!el) return;
+    ensureDay(p, di);
+    const d = p.days[di];
+    d.phase = document.getElementById('f_phase_'+p.id).value;
+    const v = document.getElementById('f_views_'+p.id).value;
+    d.views28 = v===''? null : Number(v);
+    d.memo = document.getElementById('f_memo_'+p.id).value;
+    p.options.forEach(o=>{
+      const od = d.opt[o.id] || (d.opt[o.id]=blankOptDay());
+      const natEl = document.getElementById(`f_nat_${p.id}_${o.id}`);
+      if(natEl) od.naturalSales = Number(natEl.value)||0;
+      const pe = document.getElementById(`f_plan_${p.id}_${o.id}`);
+      if(pe){
+        od.reviewPlan = Number(pe.value)||0;
+        od.reviewActual = Number(document.getElementById(`f_act_${p.id}_${o.id}`).value)||0;
+        od.reviewWritten = Number(document.getElementById(`f_writ_${p.id}_${o.id}`).value)||0;
+      }
+    });
+  });
+  saveState();
+  closeModal();
+  renderAll();
+}
+
+/* ---------------- Product Table View (single product) ---------------- */
+function renderProductTableView(area){
+  const p = getProduct(state.selectedId);
+  if(!activeOptionView[p.id] || (activeOptionView[p.id]==='ALL' && p.options.length===1)) activeOptionView[p.id] = defaultOptionView(p);
+  const viewOpt = activeOptionView[p.id];
+  const isAgg = viewOpt==='ALL';
+  const today = new Date();
+  let rows = '';
+  for(let i=0;i<=p.maxDayIndex;i++){
+    const d = ensureDay(p, i);
+    const delta = getDelta(p,i);
+    const dateStr = formatDate(dateForDay(p,i));
+    const isToday = sameDate(dateForDay(p,i), today);
+    const deltaClass = delta===null? '' : (delta>=0?'delta-up':'delta-down');
+    const isPrimaryView = !isAgg && viewOpt===p.primaryOptionId;
+    let planV, actV, writV, natV, totalV, dis, disReview;
+    if(isAgg){
+      planV = dayAgg(d,'reviewPlan'); actV = dayAgg(d,'reviewActual'); writV = dayAgg(d,'reviewWritten'); natV = dayAgg(d,'naturalSales'); totalV = getTotalSales(d); dis='disabled'; disReview='disabled';
+    } else {
+      const od = d.opt[viewOpt] || blankOptDay();
+      planV = od.reviewPlan||0; actV = od.reviewActual||0; writV = od.reviewWritten||0; natV = od.naturalSales||0;
+      totalV = (Number(od.reviewActual)||0)+(Number(od.naturalSales)||0); dis=''; disReview = isPrimaryView ? '' : 'disabled';
+    }
+    rows += `<tr class="${isToday?'today-row':''}">
+      <td>D+${i}</td>
+      <td>${dateStr}</td>
+      <td class="phase"><input value="${escAttr(d.phase)}" oninput="updateDayField('${p.id}',${i},'phase',this.value)"></td>
+      <td><input type="number" style="width:44px" ${disReview} value="${planV}" oninput="updateOptDay('${p.id}','${viewOpt}',${i},'reviewPlan',this.value)"></td>
+      <td><input type="number" style="width:44px" ${disReview} value="${actV}" oninput="updateOptDay('${p.id}','${viewOpt}',${i},'reviewActual',this.value)"></td>
+      <td><input type="number" style="width:44px" ${disReview} value="${writV}" oninput="updateOptDay('${p.id}','${viewOpt}',${i},'reviewWritten',this.value)"></td>
+      <td><input type="number" style="width:60px" value="${d.views28===null||d.views28===undefined?'':d.views28}" oninput="updateDayField('${p.id}',${i},'views28',this.value)"></td>
+      <td class="${deltaClass}" id="delta_${p.id}_${i}">${delta===null?'-':(delta>0?'+':'')+delta}</td>
+      <td><input type="number" style="width:56px" ${dis} value="${natV}" oninput="updateOptDay('${p.id}','${viewOpt}',${i},'naturalSales',this.value)"></td>
+      <td id="total_${p.id}_${i}"><b>${totalV}</b></td>
+      <td class="memo"><textarea oninput="updateDayField('${p.id}',${i},'memo',this.value)">${escHtml(d.memo)}</textarea></td>
+      <td><button type="button" class="btn shift" onclick="promptShift('${p.id}',${i})">🔀</button></td>
+    </tr>`;
+  }
+  const thumbHtml = p.image ? `<img class="prod-thumb" src="${p.image}">` : '';
+  const viewOptName = isAgg ? '전체 합계' : (getOption(p, viewOpt)||{}).name;
+  const nonPrimaryNote = (!isAgg && viewOpt!==p.primaryOptionId) ? `<div style="font-size:11.5px;color:var(--sub);margin-bottom:6px;">"${escHtml(viewOptName)}"은 주력 옵션이 아니라 리뷰계획/판매/작성은 읽기전용(0)이며, 자연판매량만 입력할 수 있습니다.</div>` : '';
+  area.innerHTML = `<div class="card">
+    <div class="toolbar" style="align-items:center;">
+      ${thumbHtml}
+      <div style="font-weight:800;">${escHtml(p.name)}</div>
+      <span>표시 옵션:</span> ${optionSelectHtml(p)}
+      <span style="flex:1"></span>
+      <button class="btn" onclick="addRows('${p.id}',5)">+5일 추가</button>
+      <button class="btn" onclick="exportXLSX('${p.id}')">엑셀로 내보내기</button>
+      <button class="btn" onclick="triggerXLSXImport('${p.id}')">엑셀 가져오기</button>
+      <button class="btn" onclick="exportCSV('${p.id}')">CSV로 내보내기</button>
+      <button class="btn danger" onclick="deleteProduct('${p.id}')">이 제품 삭제</button>
+    </div>
+    <div style="font-size:11px;color:var(--sub);margin-bottom:6px;">엑셀로 내보낸 뒤 값을 수정하고, 같은 파일을 "엑셀 가져오기"로 다시 불러오면 이 표에 반영됩니다. (열 구조를 바꾸지 않아야 정확히 인식됩니다)</div>
+    ${isAgg?'<div style="font-size:11.5px;color:var(--sub);margin-bottom:6px;">"전체 합계" 표시 중에는 값이 읽기전용입니다. 옵션별로 직접 입력하려면 위 드롭다운에서 옵션을 선택하세요.</div>':nonPrimaryNote}
+    <div style="overflow:auto;max-height:640px;">
+    <table class="datatable">
+      <thead><tr>
+        <th>일차</th><th>날짜</th><th>단계</th><th>리뷰계획</th><th>리뷰판매</th><th>리뷰작성</th><th>28일조회수</th><th>증감폭</th><th>자연판매량</th><th>총판매량</th><th>메모</th><th>일정조정</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </div>
+  </div>`;
+}
+
+function updateDayField(pid, dayIndex, field, value){
+  const p = getProduct(pid);
+  const d = ensureDay(p, dayIndex);
+  if(field==='views28'){ d.views28 = value===''? null : Number(value); }
+  else { d[field] = value; }
+  saveState();
+  if(field==='views28'){
+    [dayIndex, dayIndex+1].forEach(idx=>{
+      const dEl = document.getElementById(`delta_${pid}_${idx}`);
+      if(dEl){ const delta=getDelta(p,idx); dEl.textContent = delta===null?'-':(delta>0?'+':'')+delta; dEl.className = delta===null?'':(delta>=0?'delta-up':'delta-down'); }
+    });
+  }
+  renderSummary();
+}
+
+function updateOptDay(pid, optionId, dayIndex, field, value){
+  if(optionId==='ALL') return; // aggregate view is read-only
+  const p = getProduct(pid);
+  if(field!=='naturalSales' && optionId!==p.primaryOptionId) return; // review fields only editable on the primary option
+  const d = ensureDay(p, dayIndex);
+  const od = d.opt[optionId] || (d.opt[optionId]=blankOptDay());
+  od[field] = Number(value)||0;
+  saveState();
+  const tEl = document.getElementById(`total_${pid}_${dayIndex}`);
+  if(tEl) tEl.innerHTML = '<b>'+((Number(od.reviewActual)||0)+(Number(od.naturalSales)||0))+'</b>';
+  renderSummary();
+}
+
+function addRows(pid, n){
+  const p = getProduct(pid);
+  const newMax = p.maxDayIndex + n;
+  for(let i=p.maxDayIndex+1;i<=newMax;i++) ensureDay(p,i);
+  p.maxDayIndex = newMax;
+  saveState();
+  renderAll();
+}
+
+/* ---------------- All-products summary table ---------------- */
+function renderAllTableView(area){
+  let html = '';
+  const visible = getVisibleProducts();
+  if(visible.length===0){
+    area.innerHTML = `<div class="card"><div class="empty">선택된 제품이 없습니다.</div></div>`;
+    return;
+  }
+  visible.forEach(p=>{
+    let cumPurchase=0, cumWritten=0, cumNatural=0, lastViews=null;
+    for(let i=0;i<=p.maxDayIndex;i++){
+      const d = p.days[i];
+      cumPurchase += dayAgg(d,'reviewActual');
+      cumWritten += dayAgg(d,'reviewWritten');
+      cumNatural += dayAgg(d,'naturalSales');
+      if(d.views28!==null && d.views28!==undefined && d.views28!=='') lastViews = d.views28;
+    }
+    const targetSum = p.options.reduce((s,o)=>s+(o.reviewDates||[]).reduce((a,rd)=>a+Number(rd.qty||0),0),0);
+    const thumbHtml = p.image ? `<img class="prod-thumb-sm" src="${p.image}">` : `<span class="dot" style="background:${p.color};width:12px;height:12px;border-radius:50%;display:inline-block;"></span>`;
+    const optChips = p.options.map(o=>`<span class="option-tag" style="background:${o.color}22;color:${o.color};">${escHtml(o.name)}</span>`).join('');
+    html += `<div class="card">
+      <h3 style="margin-top:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        ${thumbHtml}
+        ${escHtml(p.name)} <span class="badge-small">런칭일 ${p.launchDate}</span> ${optChips}
+      </h3>
+      <div class="summary-row" style="margin-bottom:0;">
+        <div class="stat"><div class="label">최근 28일 조회수</div><div class="value">${lastViews!==null?Number(lastViews).toLocaleString():'-'}</div></div>
+        <div class="stat"><div class="label">누적 리뷰 판매</div><div class="value">${cumPurchase} <span class="badge-small">계획 ${targetSum}</span></div></div>
+        <div class="stat"><div class="label">누적 리뷰 작성</div><div class="value">${cumWritten}</div></div>
+        <div class="stat"><div class="label">누적 자연판매량</div><div class="value">${cumNatural}</div></div>
+        <div class="stat"><div class="label">누적 총판매량</div><div class="value">${cumPurchase+cumNatural}</div></div>
+      </div>
+      <div style="text-align:right;margin-top:8px;"><button class="btn" onclick="selectProduct('${p.id}'); setView('table')">상세 기록표 보기 →</button></div>
+    </div>`;
+  });
+  area.innerHTML = html;
+}
+
+/* ---------------- Compare View (multi-product / multi-option analysis) ---------------- */
+let compareSelected = null; // Set of "productId::optionId" keys
+let compareChartViews = null, compareChartSales = null;
+function allOptionEntries(){
+  const list = [];
+  state.products.forEach(p=> p.options.forEach(o=> list.push({p, o, key:p.id+'::'+o.id})));
+  return list;
+}
+function renderCompareView(area){
+  const all = allOptionEntries();
+  if(!compareSelected){ compareSelected = new Set(all.map(e=>e.key)); }
+  compareSelected = new Set([...compareSelected].filter(k=>all.some(e=>e.key===k)));
+
+  const picks = all.map(e=>{
+    const checked = compareSelected.has(e.key) ? 'checked' : '';
+    const thumb = e.p.image ? `<img class="prod-thumb-sm" src="${e.p.image}">` : `<span class="dot" style="background:${e.o.color};width:12px;height:12px;border-radius:50%;display:inline-block;"></span>`;
+    return `<label class="compare-pick"><input type="checkbox" ${checked} onchange="toggleCompare('${e.key}', this.checked)">${thumb}${escHtml(optionLabel(e.p,e.o))}</label>`;
+  }).join('');
+
+  const selectedEntries = all.filter(e=>compareSelected.has(e.key));
+  const selectedProductIds = [...new Set(selectedEntries.map(e=>e.p.id))];
+  const selectedProducts = selectedProductIds.map(id=>getProduct(id));
+  const maxDay = Math.max(0, ...selectedEntries.map(e=>e.p.maxDayIndex), 0);
+  const labels = []; for(let i=0;i<=maxDay;i++) labels.push('D+'+i);
+
+  let rows = '';
+  selectedEntries.forEach(e=>{
+    const p = e.p, o = e.o;
+    let cumPurchase=0, cumWritten=0, cumNatural=0, lastViews=null;
+    for(let i=0;i<=p.maxDayIndex;i++){
+      const d = p.days[i];
+      const od = d.opt[o.id] || blankOptDay();
+      cumPurchase += Number(od.reviewActual)||0;
+      cumWritten += Number(od.reviewWritten)||0;
+      cumNatural += Number(od.naturalSales)||0;
+      if(d.views28!==null && d.views28!==undefined && d.views28!=='') lastViews = d.views28;
+    }
+    const targetSum = (o.reviewDates||[]).reduce((a,rd)=>a+Number(rd.qty||0),0);
+    const thumb = p.image ? `<img class="prod-thumb-sm" src="${p.image}">` : `<span class="dot" style="background:${o.color};width:12px;height:12px;border-radius:50%;display:inline-block;"></span>`;
+    rows += `<tr>
+      <td class="name-cell">${thumb}<b>${escHtml(optionLabel(p,o))}</b></td>
+      <td>${p.launchDate}</td>
+      <td>${lastViews!==null?Number(lastViews).toLocaleString():'-'}</td>
+      <td>${cumPurchase} <span class="badge-small">계획 ${targetSum}</span></td>
+      <td>${cumWritten}</td>
+      <td>${cumNatural}</td>
+      <td><b>${cumPurchase+cumNatural}</b></td>
+    </tr>`;
+  });
+  if(selectedEntries.length===0){ rows = `<tr><td colspan="7" class="empty">비교할 제품/옵션을 위에서 선택하세요.</td></tr>`; }
+
+  area.innerHTML = `<div class="card">
+    <div style="font-weight:700;font-size:13px;margin-bottom:8px;">비교할 제품(옵션) 선택</div>
+    <div class="compare-picklist">${picks}</div>
+  </div>
+  <div class="card"><canvas id="compareChartViews" height="90"></canvas></div>
+  <div class="card"><canvas id="compareChartSales" height="90"></canvas></div>
+  <div class="card">
+    <table class="comparetable">
+      <thead><tr><th style="text-align:left;">제품 / 옵션</th><th>런칭일</th><th>최근 28일 조회수</th><th>누적 리뷰판매(계획)</th><th>누적 리뷰작성</th><th>누적 자연판매</th><th>누적 총판매</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+
+  if(compareChartViews) compareChartViews.destroy();
+  if(compareChartSales) compareChartSales.destroy();
+  if(selectedEntries.length>0){
+    compareChartViews = new Chart(document.getElementById('compareChartViews'), {
+      type:'line',
+      data:{ labels, datasets: selectedProducts.map(p=>({
+        label: p.name + ' (조회수)',
+        data: Array.from({length:maxDay+1}, (_,i)=> (p.days[i] && p.days[i].views28!==null && p.days[i].views28!==undefined && p.days[i].views28!=='') ? Number(p.days[i].views28) : null),
+        borderColor: p.color, backgroundColor: p.color, tension:.25, spanGaps:true
+      })) },
+      options:{ responsive:true, plugins:{ title:{display:true,text:'제품별 28일 조회수 비교 (D+일차 기준, 조회수는 제품 단위)'} } }
+    });
+    compareChartSales = new Chart(document.getElementById('compareChartSales'), {
+      type:'bar',
+      data:{ labels, datasets: selectedEntries.map(e=>({
+        label: optionLabel(e.p,e.o),
+        data: Array.from({length:maxDay+1}, (_,i)=>{
+          const d = e.p.days[i]; if(!d) return 0;
+          const od = d.opt[e.o.id] || blankOptDay();
+          return (Number(od.reviewActual)||0)+(Number(od.naturalSales)||0);
+        }),
+        backgroundColor: e.o.color
+      })) },
+      options:{ responsive:true, plugins:{ title:{display:true,text:'제품/옵션별 총판매량 비교 (D+일차 기준)'} } }
+    });
+  }
+}
+function toggleCompare(key, checked){
+  if(!compareSelected) compareSelected = new Set(allOptionEntries().map(e=>e.key));
+  if(checked) compareSelected.add(key); else compareSelected.delete(key);
+  renderCompareView(document.getElementById('viewArea'));
+}
+
+/* ---------------- Chart View ---------------- */
+let chartInstance = null;
+function renderChartView(area){
+  const p = getProduct(state.selectedId);
+  if(!activeOptionView[p.id] || (activeOptionView[p.id]==='ALL' && p.options.length===1)) activeOptionView[p.id] = defaultOptionView(p);
+  const viewOpt = activeOptionView[p.id];
+  area.innerHTML = `<div class="card">
+    <div class="toolbar" style="align-items:center;"><span>표시 옵션:</span> ${optionSelectHtml(p)}</div>
+    <canvas id="chartCanvas"></canvas>
+  </div>`;
+  const labels=[], views=[], reviewSales=[], reviewWrittenArr=[], naturalSales=[];
+  for(let i=0;i<=p.maxDayIndex;i++){
+    const d = p.days[i];
+    labels.push('D+'+i);
+    views.push(d.views28===null||d.views28===undefined||d.views28===''? null : Number(d.views28));
+    if(viewOpt==='ALL'){
+      reviewSales.push(dayAgg(d,'reviewActual'));
+      reviewWrittenArr.push(dayAgg(d,'reviewWritten'));
+      naturalSales.push(dayAgg(d,'naturalSales'));
+    } else {
+      const od = d.opt[viewOpt] || blankOptDay();
+      reviewSales.push(Number(od.reviewActual)||0);
+      reviewWrittenArr.push(Number(od.reviewWritten)||0);
+      naturalSales.push(Number(od.naturalSales)||0);
+    }
+  }
+  const ctx = document.getElementById('chartCanvas');
+  if(chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(ctx, {
+    data:{
+      labels,
+      datasets:[
+        { type:'line', label:'28일 조회수', data:views, borderColor:p.color, backgroundColor:p.color, yAxisID:'y1', tension:.25, spanGaps:true },
+        { type:'bar', label:'리뷰 판매', data:reviewSales, backgroundColor:'#c9a227', yAxisID:'y2', stack:'s' },
+        { type:'bar', label:'자연판매량', data:naturalSales, backgroundColor:'#8fae87', yAxisID:'y2', stack:'s' },
+        { type:'line', label:'리뷰 작성', data:reviewWrittenArr, borderColor:'#9333ea', backgroundColor:'#9333ea', borderDash:[5,3], yAxisID:'y2', tension:.2 }
+      ]
+    },
+    options:{
+      responsive:true,
+      interaction:{ mode:'index', intersect:false },
+      scales:{
+        y1:{ type:'linear', position:'left', title:{display:true,text:'28일 조회수'} },
+        y2:{ type:'linear', position:'right', title:{display:true,text:'판매량'}, grid:{drawOnChartArea:false} }
+      }
+    }
+  });
+}
+
+/* ---------------- Settings View (options & review schedule) ---------------- */
+function renderSettingsView(area){
+  const p = getProduct(state.selectedId);
+  const previewHtml = p.image
+    ? `<div class="img-upload-preview"><img src="${p.image}"><button class="btn" type="button" onclick="removeSettingsImage('${p.id}')">이미지 제거</button></div>`
+    : `<div class="img-upload-preview" id="set_img_preview"></div>`;
+
+  let optionCards = p.options.map(o=>{
+    const isPrimary = isPrimaryOption(p, o.id);
+    const dates = o.reviewDates || [];
+    const sum = dates.reduce((a,rd)=>a+Number(rd.qty||0),0);
+    const rowsHtml = dates.map(rd=>reviewDateRowHtml(rd.dayIndex, rd.qty)).join('');
+    const reviewSection = isPrimary
+      ? `<div class="field"><label>리뷰작업 시작일 (D+n, "기본값 적용" 기준일)</label><input type="number" id="ostart_${o.id}" value="${o.reviewStartDayIndex}" style="max-width:120px;"></div>
+        <div class="field">
+          <label>리뷰 진행일 목록 (합계 ${sum}개) — 원하는 날짜를 자유롭게 추가/삭제하세요</label>
+          <div class="revdate-list" id="revdates_${o.id}">${rowsHtml}</div>
+          <div class="toolbar" style="margin-top:6px;margin-bottom:0;">
+            <button class="btn" type="button" onclick="addReviewDateRow('${o.id}')">+ 리뷰 진행일 추가</button>
+            <button class="btn" type="button" onclick="applyDefaultScheduleForOption('${p.id}','${o.id}')">기본값(4-7-11-16-22) 적용</button>
+          </div>
+        </div>`
+      : `<div style="font-size:11.5px;color:var(--sub);background:#f5f6fa;border-radius:6px;padding:8px 10px;">이 옵션은 주력 옵션이 아니라 리뷰작업이 적용되지 않습니다. 자연판매량만 기록됩니다.</div>`;
+    return `<div class="opt-manage-card" style="${isPrimary?'border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset;':''}">
+      <div class="opt-head">
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:700;white-space:nowrap;">
+          <input type="radio" name="primaryOpt" value="${o.id}" ${isPrimary?'checked':''} onchange="setPrimaryOption('${p.id}','${o.id}')" style="width:auto;">
+          주력
+        </label>
+        <input type="color" value="${o.color}" id="oname_color_${o.id}" style="width:36px;padding:2px;">
+        <input type="text" id="oname_${o.id}" value="${escAttr(o.name)}" placeholder="옵션명 (예: 블랙/L)">
+        ${p.options.length>1?`<button class="btn danger" type="button" onclick="handleRemoveOption('${p.id}','${o.id}')">옵션 삭제</button>`:''}
+      </div>
+      ${reviewSection}
+    </div>`;
+  }).join('');
+
+  area.innerHTML = `<div class="card">
+    <h3 style="margin-top:0">제품 정보 — ${escHtml(p.name)}</h3>
+    <div class="row2">
+      <div class="field"><label>제품명</label><input id="set_name" value="${escAttr(p.name)}"></div>
+      <div class="field"><label>런칭일 (0일차 = 상품등록일)</label><input type="date" id="set_launch" value="${p.launchDate}"></div>
+    </div>
+    <div class="field"><label>대표 색상 (탭/캘린더 구분용)</label><input type="color" id="set_color" value="${p.color}" style="width:70px;"></div>
+    <div class="field"><label>제품 이미지</label>
+      <input type="file" accept="image/*" id="set_image_file" onchange="handleSettingsImage('${p.id}', this.files[0])">
+      ${previewHtml}
+    </div>
+    <div class="toolbar"><button class="btn primary" onclick="saveSettings('${p.id}')">제품 정보 저장</button></div>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">옵션 관리 (${p.options.length}개 옵션)</h3>
+    <div style="font-size:12px;color:var(--sub);margin-bottom:10px;">리뷰작업은 <b>주력 옵션 1개</b>에만 적용됩니다. 라디오 버튼으로 주력 옵션을 선택하세요. 나머지 옵션은 자연판매량만 기록합니다.</div>
+    ${optionCards}
+    <div class="toolbar">
+      <button class="btn" onclick="handleAddOption('${p.id}')">+ 옵션 추가</button>
+      <button class="btn primary" onclick="saveOptionSettings('${p.id}')">옵션 설정 저장</button>
+    </div>
+  </div>
+  <div class="card">
+    <button class="btn danger" onclick="deleteProduct('${p.id}')">이 제품 전체 삭제</button>
+  </div>`;
+}
+function handleSettingsImage(pid, file){
+  if(!file) return;
+  readImageAsDataURL(file, 500, (dataUrl)=>{
+    const p = getProduct(pid);
+    p.image = dataUrl;
+    saveState();
+    renderAll();
+  });
+}
+function removeSettingsImage(pid){
+  const p = getProduct(pid);
+  p.image = null;
+  saveState();
+  renderAll();
+}
+function saveSettings(pid){
+  const p = getProduct(pid);
+  p.name = document.getElementById('set_name').value || p.name;
+  p.launchDate = document.getElementById('set_launch').value || p.launchDate;
+  p.color = document.getElementById('set_color').value || p.color;
+  saveState();
+  renderAll();
+}
+/* Renders one editable "리뷰 진행일" row: a D+n day input + quantity input + remove button */
+function reviewDateRowHtml(dayIndex, qty){
+  return `<div class="revdate-row">
+    <span>D+</span><input type="number" class="rd-day" value="${dayIndex}">
+    <span>일차 ·</span><input type="number" class="rd-qty" value="${qty}" placeholder="수량">
+    <span>개</span>
+    <button type="button" class="btn danger" onclick="this.closest('.revdate-row').remove()">✕</button>
+  </div>`;
+}
+function addReviewDateRow(optionId){
+  const list = document.getElementById('revdates_'+optionId);
+  if(!list) return;
+  const existingDays = [...list.querySelectorAll('.rd-day')].map(el=>Number(el.value)||0);
+  const nextDay = existingDays.length ? Math.max(...existingDays)+1 : DEFAULT_REVIEW_START;
+  list.insertAdjacentHTML('beforeend', reviewDateRowHtml(nextDay, 0));
+}
+function applyDefaultScheduleForOption(pid, optionId){
+  const list = document.getElementById('revdates_'+optionId);
+  const startEl = document.getElementById('ostart_'+optionId);
+  const startDay = startEl ? (Number(startEl.value)||DEFAULT_REVIEW_START) : DEFAULT_REVIEW_START;
+  if(list){
+    list.innerHTML = defaultReviewDates(startDay).map(rd=>reviewDateRowHtml(rd.dayIndex, rd.qty)).join('');
+  }
+}
+function saveOptionSettings(pid){
+  const p = getProduct(pid);
+  p.options.forEach(o=>{
+    const nameEl = document.getElementById('oname_'+o.id);
+    if(!nameEl) return;
+    o.name = nameEl.value || o.name;
+    o.color = document.getElementById('oname_color_'+o.id).value || o.color;
+    const startEl = document.getElementById('ostart_'+o.id);
+    if(startEl) o.reviewStartDayIndex = Number(startEl.value)||0;
+    const list = document.getElementById('revdates_'+o.id);
+    if(list){
+      const days = [...list.querySelectorAll('.rd-day')].map(el=>Number(el.value));
+      const qtys = [...list.querySelectorAll('.rd-qty')].map(el=>Number(el.value)||0);
+      o.reviewDates = days.map((d,i)=>({dayIndex:d, qty:qtys[i]})).filter(rd=>!isNaN(rd.dayIndex) && rd.qty>0);
+      applyOptionSchedule(p, o);
+    }
+  });
+  saveState();
+  renderAll();
+}
+function handleAddOption(pid){
+  const p = getProduct(pid);
+  const name = prompt('새 옵션명을 입력하세요 (예: 화이트/M)', '옵션'+(p.options.length+1));
+  if(name===null) return;
+  addOption(p, name.trim() || ('옵션'+(p.options.length+1)));
+  saveState();
+  renderAll();
+}
+function handleRemoveOption(pid, optionId){
+  const p = getProduct(pid);
+  if(p.options.length<=1){ alert('최소 1개의 옵션은 있어야 합니다.'); return; }
+  if(!confirm('이 옵션의 모든 기록을 삭제할까요?')) return;
+  removeOption(p, optionId);
+  if(activeOptionView[pid]===optionId) activeOptionView[pid]='ALL';
+  saveState();
+  renderAll();
+}
+
+/* ---------------- Product Modal (add) ---------------- */
+let newProductImage = null;
+function openProductModal(){
+  newProductImage = null;
+  const nextColor = PALETTE[state.products.length % PALETTE.length];
+  const todayStr = formatDate(new Date());
+  const body = `<h3>새 제품 런칭 계획 추가</h3>
+    <div class="row2">
+      <div class="field"><label>제품명</label><input id="np_name" placeholder="예: 텀블러"></div>
+      <div class="field"><label>첫 옵션명 (선택, 예: 블랙/L)</label><input id="np_option" placeholder="비워두면 '기본옵션'"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>런칭일 (0일차 = 상품등록일)</label><input type="date" id="np_launch" value="${todayStr}"></div>
+      <div class="field"><label>대표 색상</label><input type="color" id="np_color" value="${nextColor}"></div>
+    </div>
+    <div class="field"><label>제품 이미지 (선택)</label>
+      <input type="file" accept="image/*" id="np_image_file" onchange="handleNewProductImage(this.files[0])">
+      <div class="img-upload-preview" id="np_img_preview"></div>
+    </div>
+    <div style="font-size:11.5px;color:var(--sub);">옵션(색상/사이즈 등)이 여러 개라면 추가 후 "옵션 / 리뷰스케줄 설정" 탭에서 옵션을 더 추가할 수 있습니다.</div>
+    <div class="modal-actions"><button class="btn" onclick="closeModal()">취소</button><button class="btn primary" onclick="createProductFromModal()">추가</button></div>`;
+  showModal(body);
+}
+function handleNewProductImage(file){
+  if(!file) return;
+  readImageAsDataURL(file, 500, (dataUrl)=>{
+    newProductImage = dataUrl;
+    const wrap = document.getElementById('np_img_preview');
+    if(wrap) wrap.innerHTML = `<img src="${dataUrl}">`;
+  });
+}
+function createProductFromModal(){
+  const name = document.getElementById('np_name').value.trim() || ('상품'+(state.products.length+1));
+  const option = document.getElementById('np_option').value.trim();
+  const launch = document.getElementById('np_launch').value || formatDate(new Date());
+  const color = document.getElementById('np_color').value;
+  const p = createProduct(name, launch, color, option, newProductImage);
+  state.products.push(p);
+  state.selectedId = p.id;
+  state.view = 'calendar';
+  saveState();
+  closeModal();
+  renderAll();
+}
+function deleteProduct(pid){
+  const p = getProduct(pid);
+  const label = p ? `"${p.name}"` : '이 제품';
+  if(!confirm(`${label}의 모든 옵션·런칭 계획과 기록을 삭제할까요? 되돌릴 수 없습니다.`)) return;
+  state.products = state.products.filter(x=>x.id!==pid);
+  if(state.customSelection) state.customSelection = state.customSelection.filter(id=>id!==pid);
+  if(state.selectedId===pid){ state.selectedId = 'ALL'; state.view = 'calendar'; }
+  if(state.selectedId==='CUSTOM' && (!state.customSelection || state.customSelection.length===0)){ state.selectedId = 'ALL'; state.view = 'calendar'; }
+  delete activeOptionView[pid];
+  saveState();
+  renderAll();
+}
+
+/* ---------------- Modal helpers ---------------- */
+function showModal(innerHtml){
+  document.getElementById('modalRoot').innerHTML = `<div class="modal-bg" onclick="if(event.target===this) closeModal()">
+    <div class="modal"><button class="close-x" onclick="closeModal()">✕</button>${innerHtml}</div>
+  </div>`;
+}
+function closeModal(){ document.getElementById('modalRoot').innerHTML=''; }
+
+/* ---------------- Export / Import ---------------- */
+function downloadBlob(content, filename, type){
+  const blob = new Blob([content], {type});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function exportJSON(){
+  downloadBlob(JSON.stringify(state, null, 2), 'coupang_launch_planner_backup.json', 'application/json');
+}
+function importJSON(evt){
+  const file = evt.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const data = JSON.parse(e.target.result);
+      if(!data.products) throw new Error('invalid format');
+      if(!confirm('현재 데이터를 덮어씁니다. 계속할까요?')) return;
+      state = data;
+      state.products.forEach(migrateProduct);
+      if(!state.selectedId) state.selectedId='ALL';
+      if(!state.view) state.view='calendar';
+      compareSelected = null;
+      activeOptionView = {};
+      saveState();
+      renderAll();
+    }catch(err){ alert('파일을 읽을 수 없습니다: '+err.message); }
+  };
+  reader.readAsText(file);
+  evt.target.value = '';
+}
+/* Shared row-builder used by both the CSV and Excel exporters, so the two formats
+   always stay in the exact same column layout (and the Excel file can be re-imported). */
+const EXPORT_HEADER = ['일차','날짜','단계','옵션','리뷰계획','리뷰판매','리뷰작성','28일조회수','증감폭','자연판매량','옵션총판매량','메모'];
+function buildProductExportRows(p){
+  let rows = [EXPORT_HEADER];
+  for(let i=0;i<=p.maxDayIndex;i++){
+    const d = p.days[i];
+    const delta = getDelta(p,i);
+    p.options.forEach(o=>{
+      const od = d.opt[o.id] || blankOptDay();
+      rows.push(['D+'+i, formatDate(dateForDay(p,i)), d.phase, o.name, od.reviewPlan||0, od.reviewActual||0, od.reviewWritten||0, (d.views28===null||d.views28===undefined?'':d.views28), (delta===null?'':delta), od.naturalSales||0, (Number(od.reviewActual)||0)+(Number(od.naturalSales)||0), (d.memo||'').replace(/\n/g,' ')]);
+    });
+  }
+  return rows;
+}
+function exportCSV(pid){
+  const p = getProduct(pid);
+  const rows = buildProductExportRows(p);
+  const csv = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  downloadBlob('﻿'+csv, `${p.name}_런칭기록.csv`, 'text/csv;charset=utf-8');
+}
+function exportXLSX(pid){
+  const p = getProduct(pid);
+  if(typeof XLSX === 'undefined'){ alert('엑셀 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인해주세요.'); return; }
+  const rows = buildProductExportRows(p);
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:6},{wch:11},{wch:26},{wch:12},{wch:8},{wch:8},{wch:8},{wch:10},{wch:8},{wch:10},{wch:12},{wch:24}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '일별기록');
+  XLSX.writeFile(wb, `${p.name}_런칭기록.xlsx`);
+}
+
+/* ---------------- Excel import (same column layout as the exporter above) ---------------- */
+let xlsxImportTargetPid = null;
+function triggerXLSXImport(pid){
+  if(typeof XLSX === 'undefined'){ alert('엑셀 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인해주세요.'); return; }
+  xlsxImportTargetPid = pid;
+  document.getElementById('xlsxImportFile').click();
+}
+function parseDayIndexCell(raw){
+  if(raw===null || raw===undefined || raw==='') return null;
+  if(typeof raw === 'number') return Math.round(raw);
+  const m = String(raw).trim().match(/D\s*\+?\s*(-?\d+)/i);
+  if(m) return parseInt(m[1],10);
+  const n = Number(raw);
+  return isNaN(n) ? null : n;
+}
+function handleXLSXImportFile(evt){
+  const file = evt.target.files[0];
+  const pid = xlsxImportTargetPid;
+  if(!file || !pid){ evt.target.value=''; return; }
+  const p = getProduct(pid);
+  if(!p){ evt.target.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
+      if(!rows.length){ alert('빈 파일입니다.'); return; }
+      const header = rows[0].map(h=>String(h).trim());
+      const col = name => header.indexOf(name);
+      const cDay=col('일차'), cPhase=col('단계'), cOption=col('옵션'), cPlan=col('리뷰계획'),
+            cAct=col('리뷰판매'), cWrit=col('리뷰작성'), cViews=col('28일조회수'), cNatural=col('자연판매량'), cMemo=col('메모');
+      if(cDay===-1){ alert('올바른 형식의 엑셀 파일이 아닙니다. ("일차" 열을 찾을 수 없습니다 — 이 앱에서 내보낸 엑셀 양식을 그대로 사용해주세요.)'); return; }
+      let applied = 0, skipped = 0;
+      for(let r=1; r<rows.length; r++){
+        const row = rows[r];
+        if(!row || row.length===0) continue;
+        const dayIndex = parseDayIndexCell(row[cDay]);
+        if(dayIndex===null || isNaN(dayIndex) || dayIndex<0){ skipped++; continue; }
+        const day = ensureDay(p, dayIndex);
+        if(cPhase!==-1 && row[cPhase]!=='') day.phase = String(row[cPhase]);
+        if(cViews!==-1 && row[cViews]!=='' ) day.views28 = Number(row[cViews]);
+        if(cMemo!==-1) day.memo = row[cMemo]===undefined? day.memo : String(row[cMemo]);
+        let opt = null;
+        if(cOption!==-1 && row[cOption]!==''){
+          const name = String(row[cOption]).trim();
+          opt = p.options.find(o=>o.name===name) || p.options.find(o=>o.name.toLowerCase()===name.toLowerCase());
+        }
+        if(!opt){ opt = p.options.length===1 ? p.options[0] : getOption(p, p.primaryOptionId); }
+        if(!opt){ skipped++; continue; }
+        const od = day.opt[opt.id] || (day.opt[opt.id]=blankOptDay());
+        if(cPlan!==-1 && row[cPlan]!=='') od.reviewPlan = Number(row[cPlan])||0;
+        if(cAct!==-1 && row[cAct]!=='') od.reviewActual = Number(row[cAct])||0;
+        if(cWrit!==-1 && row[cWrit]!=='') od.reviewWritten = Number(row[cWrit])||0;
+        if(cNatural!==-1 && row[cNatural]!=='') od.naturalSales = Number(row[cNatural])||0;
+        applied++;
+      }
+      saveState();
+      renderAll();
+      alert(`엑셀 가져오기 완료: ${applied}개 행 반영` + (skipped? ` (형식이 맞지 않아 ${skipped}개 행은 건너뜀)` : ''));
+    }catch(err){
+      alert('엑셀 파일을 읽는 중 오류가 발생했습니다: '+err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  evt.target.value = '';
+}
+
+/* ---------------- Master render ---------------- */
+function renderAll(){
+  renderTabs();
+  renderSummary();
+  renderViewTabs();
+  renderView();
+}
+
+renderAll();
+</script>
+<script src="./moriva-sync.js"></script>
+</body>
+</html>
