@@ -19,7 +19,10 @@
   var fileSha = null;
   var timer = null;
 
-  function isInternal(k) { return k === CFG_KEY || k === STAMP_KEY; }
+  // 동기화 제외 대상: 내부 키 + API 키/토큰류(보안상 각 브라우저에만 보관)
+  function isInternal(k) {
+    return k === CFG_KEY || k === STAMP_KEY || /key|token|github_config/i.test(k);
+  }
 
   function b64enc(s) { return btoa(unescape(encodeURIComponent(s))); }
   function b64dec(s) { return decodeURIComponent(escape(atob(s))); }
