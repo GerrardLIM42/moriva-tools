@@ -465,44 +465,32 @@ input.ef[type=number]{-moz-appearance:textfield;}
 }
 
 
-/* ---------- 소싱 매니페스트 연동 섹션 ---------- */
+/* ---------- 소싱 매니페스트 연동 섹션 (1688 소싱처와 동일한 행 형태) ---------- */
 .mf-empty{text-align:left;}
 .mf-empty b{display:block; font-size:13.5px; color:var(--navy); margin-bottom:6px;}
 .mf-empty p{margin:0 0 12px; font-size:12.5px; color:var(--sub); line-height:1.65;}
-.mf-item{border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:12px; background:#fff;}
-.mf-head{display:flex; align-items:center; gap:13px;}
-.mf-thumb{width:62px; height:62px; border-radius:9px; object-fit:cover; background:var(--cream-2);
-  border:1px solid var(--line); flex:none;}
-.mf-title{flex:1; min-width:0;}
-.mf-title b{display:block; font-size:14.5px; font-weight:800; color:var(--navy); margin-bottom:6px;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-.mf-price{font-size:12px; font-weight:700; color:var(--sub);}
-.mf-price span{font-size:18px; font-weight:800; color:var(--navy); margin-left:5px;}
-.mf-opts{margin-top:11px; border-top:1px dashed var(--line); padding-top:9px;
-  display:flex; flex-wrap:wrap; gap:6px;}
-.mf-opt{display:flex; align-items:center; gap:7px; background:var(--cream-2);
-  border-radius:100px; padding:4px 11px; font-size:12px;}
-.mf-opt span{color:var(--sub); max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-.mf-opt b{font-weight:800; color:var(--navy);}
-.mf-memo{margin-top:10px; font-size:12.5px; color:var(--ink); line-height:1.6;
-  background:var(--cream-2); border-radius:8px; padding:9px 11px; white-space:pre-wrap;}
-.mf-linkrow{margin-top:11px; display:flex; align-items:center; gap:10px;}
-.mf-url{flex:1; min-width:0; font-size:12px; color:var(--sub); font-family:ui-monospace,Menlo,Consolas,monospace;
-  background:var(--cream-2); border-radius:8px; padding:8px 11px;
+
+.src-row.from-manifest{background:#FCFAF4; border-color:#E8DFC6; position:relative;}
+.mf-static{font-size:12.5px; font-weight:700; color:var(--navy);
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-.mf-url.empty{color:var(--sub); font-family:inherit;}
-.mf-link{flex:none; font-size:12px; font-weight:700; color:#fff; background:var(--navy);
-  border-radius:8px; padding:9px 13px; text-decoration:none; white-space:nowrap;}
-.mf-link:hover{background:var(--navy-2);}
-.mf-go{background:var(--gold-soft); color:var(--navy); border:1px solid var(--gold);
-  border-radius:9px; padding:10px 14px; font-size:12.5px; font-weight:800; cursor:pointer; font-family:inherit;}
+.mf-static-price{font-size:15px; font-weight:800; color:var(--navy);}
+.mf-static-sm{font-size:11.5px; color:var(--ink); line-height:1.5;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.mf-static-url{font-size:11px; color:var(--sub); flex:1; min-width:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.mf-badge{width:20px; height:20px; border-radius:50%; background:var(--gold); color:#fff;
+  font-size:10px; font-weight:800; display:inline-flex; align-items:center; justify-content:center;
+  justify-self:center; flex:none;}
+.mf-badge.inrow{background:var(--gold-soft); color:var(--navy); border:1px solid var(--gold);}
+.mf-note{font-size:12px; color:var(--sub); line-height:1.6; background:var(--cream-2);
+  border-radius:9px; padding:10px 12px; margin-bottom:12px;}
+.mf-note b{color:var(--navy);}
+.mf-go{margin-top:10px; background:var(--gold-soft); color:var(--navy); border:1px solid var(--gold);
+  border-radius:9px; padding:9px 15px; font-size:12.5px; font-weight:800; cursor:pointer; font-family:inherit;}
 .mf-go:hover{background:var(--gold); color:#fff;}
-@media (max-width:760px){
-  .mf-head{gap:10px;}
-  .mf-thumb{width:52px; height:52px;}
-  .mf-linkrow{flex-wrap:wrap;}
-  .mf-url{width:100%; flex:none;}
-  .mf-link{width:100%; text-align:center;}
+@media (max-width:900px){
+  .src-row.from-manifest .mf-badge{grid-column:2; justify-self:end;}
+  .mf-static-sm, .mf-static-url{white-space:normal;}
 }
 </style>
 </head>
@@ -605,6 +593,17 @@ function manifestMatchesFor(productName){
   });
 }
 
+function normalize1688Link(url){
+  // 같은 상품인지 판단하는 열쇠. 1688 주소는 쿼리·형식이 달라도 offer 번호가 같으면 같은 상품이다.
+  var t = String(url == null ? '' : url).trim();
+  if(!t) return '';
+  var m = t.match(/offer\/(\d+)/);
+  if(m) return 'offer:' + m[1];
+  m = t.match(/[?&]id=(\d+)/);
+  if(m) return 'offer:' + m[1];
+  return t.replace(/^https?:\/\//,'').replace(/^www\./,'').replace(/[?#].*$/,'').replace(/\/+$/,'').toLowerCase();
+}
+
 function shortLink(url){
   // 1688 주소는 길어서 앞부분만 보여주고 나머지는 …로 줄인다
   var t = String(url || '').replace(/^https?:\/\//, '').replace(/^www\./, '');
@@ -621,39 +620,66 @@ function fmtWonSafe(v){
 
 function renderManifestSection(p){
   var matches = manifestMatchesFor(p.name);
+
+  // 이미 "1688 소싱처"에 등록된 링크는 같은 상품이므로 중복해서 보여주지 않는다.
+  var existing = {};
+  (p.sourcing_1688 || []).forEach(function(sc){
+    var k = normalize1688Link(sc.url);
+    if(k) existing[k] = true;
+  });
+  var fresh = [], dupCount = 0;
+  matches.forEach(function(m){
+    var k = normalize1688Link(m.link);
+    if(k && existing[k]) dupCount++; else fresh.push(m);
+  });
+
   var html = '<div class="section-title"><span class="num">M</span>소싱 매니페스트 연동</div>';
 
   if(!matches.length){
-    html += '<div class="card"><div class="mf-empty">'+
+    return html + '<div class="card"><div class="mf-empty">'+
       '<b>매니페스트에 같은 이름의 상품이 없습니다.</b>'+
       '<p>소싱 매니페스트에서 상품명을 <b>'+esc(p.name)+'</b> 와 같게 저장하면, 그곳에 입력한 사입 단가·이미지·메모·1688 링크가 여기에 자동으로 나타납니다.</p>'+
       '<button type="button" class="mf-go" data-action="open-manifest">소싱 매니페스트 열기 ↗</button>'+
       '</div></div>';
-    return html;
   }
 
   html += '<div class="card">';
-  matches.forEach(function(m){
-    var opts = (m.options || []).filter(function(o){ return o && (o.cny || o.name); });
-    html += '<div class="mf-item">'+
-      '<div class="mf-head">'+
-        (m.image ? '<img class="mf-thumb" src="'+esc(m.image)+'" alt="'+esc(m.name)+'" onerror="this.style.visibility=\'hidden\';">' : '<div class="mf-thumb"></div>')+
-        '<div class="mf-title">'+
-          '<b>'+esc(m.name)+'</b>'+
-          '<div class="mf-price">사입 단가 <span>'+fmtYuanSafe(m.cny)+'</span></div>'+
+
+  if(!fresh.length){
+    html += '<div class="mf-note">매니페스트에 등록한 '+matches.length+'건이 모두 위 <b>1688 소싱처</b>에 이미 있습니다. (링크 기준 중복 정리됨)</div>';
+  } else {
+    html += '<div class="src1688-list">';
+    fresh.forEach(function(m){
+      var opts = (m.options || []).filter(function(o){ return o && (o.cny || o.name); });
+      var sub = [];
+      if(m.folder) sub.push(m.folder);
+      if(m.status) sub.push(m.status);
+      html += '<div class="src-row from-manifest">'+
+        '<div class="src-thumb-wrap">'+
+          (m.image
+            ? '<img class="src-thumb" src="'+esc(m.image)+'" alt="'+esc(m.name)+'" onerror="this.style.visibility=\'hidden\';">'
+            : '<div class="src-thumb"></div>')+
         '</div>'+
-      '</div>'+
-      (opts.length > 1 ? '<div class="mf-opts">'+ opts.map(function(o){
-        return '<div class="mf-opt"><span>'+esc(o.name || '옵션')+'</span><b>'+fmtYuanSafe(o.cny)+'</b></div>';
-      }).join('') +'</div>' : '')+
-      (m.memo ? '<div class="mf-memo">'+esc(m.memo)+'</div>' : '')+
-      '<div class="mf-linkrow">'+
-        (m.link
-          ? '<span class="mf-url" title="'+esc(m.link)+'">'+esc(shortLink(m.link))+'</span><a class="mf-link" href="'+esc(m.link)+'" target="_blank" rel="noopener">바로 열기 ↗</a>'
-          : '<span class="mf-url empty">1688 링크 없음</span>')+
-      '</div>'+
-    '</div>';
-  });
+        '<div class="src-1688-field"><div class="mf-static-price">'+fmtYuanSafe(m.cny)+'</div><div class="u-sub">단가</div></div>'+
+        '<div class="src-1688-field"><div class="mf-static">'+esc(m.name)+'</div><div class="u-sub">'+esc(sub.join(' · ') || '매니페스트')+'</div></div>'+
+        '<div class="src-1688-field opts-field"><div class="mf-static-sm">'+
+          (opts.length > 1
+            ? opts.map(function(o){ return esc(o.name || '옵션')+' '+fmtYuanSafe(o.cny); }).join(' / ')
+            : esc(m.memo || '—'))+
+        '</div>'+ (opts.length > 1 && m.memo ? '<div class="u-sub">'+esc(m.memo)+'</div>' : '') +'</div>'+
+        '<div class="src-1688-field url-field">'+
+          '<span class="mf-static-url" title="'+esc(m.link || '')+'">'+esc(m.link ? shortLink(m.link) : '링크 없음')+'</span>'+
+          (m.link ? '<a class="go" href="'+esc(m.link)+'" target="_blank" rel="noopener">열기 ↗</a>' : '<span class="go go-disabled">열기 ↗</span>')+
+        '</div>'+
+        '<span class="mf-badge" title="소싱 매니페스트에서 가져온 항목">M</span>'+
+      '</div>';
+    });
+    html += '</div>';
+    if(dupCount > 0){
+      html += '<div class="mf-note">같은 1688 링크 '+dupCount+'건은 위 <b>1688 소싱처</b>에 이미 있어 여기서는 제외했습니다.</div>';
+    }
+  }
+
   html += '<button type="button" class="mf-go" data-action="open-manifest">소싱 매니페스트에서 편집 ↗</button>';
   html += '<div class="save-hint" style="margin-top:10px;">※ 이 정보는 소싱 매니페스트에 입력한 내용입니다. 매니페스트에서 수정하면 이 화면에도 자동으로 반영됩니다.</div>';
   html += '</div>';
@@ -1442,6 +1468,12 @@ function renderProduct(p){
   html += '<div class="section-title"><span class="num">3</span>1688 소싱처</div>';
   var cheapest = cheapest1688(p);
   var repSrc = getRepSrc(p, note);
+  // 매니페스트에 같은 1688 링크가 있으면 해당 행에 표시해 연결 관계를 알 수 있게 한다
+  var mfByLink = {};
+  manifestMatchesFor(p.name).forEach(function(m){
+    var k = normalize1688Link(m.link);
+    if(k) mfByLink[k] = m;
+  });
 
   html += '<div class="card"><div class="src1688-list">'+
     ((p.sourcing_1688||[]).map(function(s, idx){
@@ -1460,6 +1492,7 @@ function renderProduct(p){
         '<div class="src-1688-field url-field">'+ef('sourcing_1688.'+idx+'.url', s.url, {type:'text', cls:'ef-1688-url', placeholder:'https://detail.1688.com/...'})+
           (s.url ? '<a class="go" href="'+esc(s.url)+'" target="_blank" rel="noopener">열기 ↗</a>' : '<span class="go go-disabled">열기 ↗</span>')+
         '</div>'+
+        (mfByLink[normalize1688Link(s.url)] ? '<span class="mf-badge inrow" title="소싱 매니페스트에도 등록된 상품입니다">M</span>' : '')+
         '<button type="button" class="row-remove-btn" data-action="remove-1688" data-idx="'+idx+'" title="이 소싱처 삭제">✕</button>'+
       '</div>';
     }).join('') || '<div style="color:var(--sub); font-size:13px;">등록된 1688 소싱처가 없습니다.</div>') +
