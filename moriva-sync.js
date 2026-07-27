@@ -57,9 +57,17 @@
   var fileSha = null;
   var timer = null;
 
-  // 동기화 제외: 내부 키 + API 키/토큰류(보안상 각 브라우저에만 보관)
+  /* 동기화에서 빼는 항목
+     1) 내부 설정값
+     2) API 키·토큰류 — 보안상 각 브라우저에만 보관한다
+     3) 소싱 후보(sourcing-items)와 그 요약 — 이 도구는 자체 서버(Cloudflare Worker)로
+        이미 기기 간 동기화를 하고 있다. 여기서 또 백업하면 오래된 사본이 최신 데이터를
+        덮어쓸 수 있어 일부러 제외한다. */
+  var SKIP_KEYS = ["sourcing-items", "moriva_manifest_summary_v1"];
   function isInternal(k) {
-    return k === CFG_KEY || k === STAMP_KEY || /key|token|github_config/i.test(k);
+    if (k === CFG_KEY || k === STAMP_KEY) return true;
+    if (SKIP_KEYS.indexOf(k) !== -1) return true;
+    return /key|token|github_config/i.test(k);
   }
 
   function status(text, kind) {

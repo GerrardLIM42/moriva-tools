@@ -112,6 +112,10 @@
   .fld label{display:block;font-size:11.5px;font-weight:800;color:#8B95A1;margin-bottom:5px;}
   .fld input{width:100%;padding:9px 10px;border:1px solid #DCD5C3;border-radius:8px;font-size:14px;font-family:inherit;}
   #syncMsg{font-size:11.5px;color:#8B95A1;margin:4px 0 12px;line-height:1.55;}
+  .sync-scope{background:#F6F3EC;border-radius:10px;padding:11px 13px;margin-bottom:15px;display:grid;gap:8px;}
+  .sync-scope div{font-size:11.5px;line-height:1.6;}
+  .sync-scope b{display:block;color:#1B2A3D;margin-bottom:2px;}
+  .sync-scope span{color:#8B95A1;}
   .acts{display:flex;gap:8px;}
   .acts button{flex:1;padding:11px;border-radius:9px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;}
   .acts .off{background:#fff;border:1px solid #DCD5C3;color:#8B95A1;}
@@ -155,7 +159,11 @@
 <div class="ov" id="syncOv">
   <div class="modal">
     <h2>☁ 브라우저 간 동기화</h2>
-    <p class="lead">모든 도구의 데이터를 내 비공개 GitHub 저장소에 자동 백업합니다. 다른 브라우저·기기에서 같은 설정을 입력하면 동일한 데이터가 보여요. 토큰은 이 브라우저에만 저장되고 API 키는 백업 대상에서 제외됩니다.</p>
+    <p class="lead">도구 데이터를 내 비공개 GitHub 저장소에 자동 백업합니다. 다른 브라우저·기기에서 같은 설정을 입력하면 동일한 데이터가 보여요.</p>
+    <div class="sync-scope">
+      <div><b>동기화됨</b><span>소싱 대시보드(상태·메모·숨김·직접 수정한 값), 소싱 가격비교, 상품런칭 캘린더, 화면 설정</span></div>
+      <div><b>제외됨</b><span>AI API 키·토큰(보안), 소싱 후보(자체 서버로 이미 동기화 중), 스튜디오 작업 중 이미지(용량)</span></div>
+    </div>
     <div class="fld"><label>Personal Access Token</label><input type="password" id="ghTok" placeholder="github_pat_... 또는 ghp_..."></div>
     <div class="fld"><label>GitHub 사용자명</label><input type="text" id="ghOwner" placeholder="GerrardLIM42"></div>
     <div class="fld"><label>데이터 저장소 (비공개 권장)</label><input type="text" id="ghRepo" placeholder="moriva-data"></div>
@@ -194,7 +202,7 @@ nav.innerHTML = html;
    ASSET_VERSION: 도구 파일을 수정할 때마다 이 값을 올린다.
    모바일 브라우저는 HTML을 오래 캐시해 수정 사항이 바로 반영되지 않는데,
    주소에 버전을 붙이면 새 주소로 인식해 항상 최신 파일을 받아온다. */
-var ASSET_VERSION = "20260727k";
+var ASSET_VERSION = "20260727l";
 var frame = document.getElementById("frame");
 function route() {
   var id = (location.hash || "#home").slice(1);
