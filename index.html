@@ -102,6 +102,8 @@
     width:28px;height:28px;border-radius:8px;background:#F1EEE6;
     display:grid;place-items:center;font-size:15px;flex-shrink:0;
   }
+  /* 전체 보기 화면(도구 미선택)에서는 아이콘 자리를 비운다 */
+  body:not(.in-tool) .topbar .tool-ico{display:none;}
   .topbar h1{margin:0;font-size:15px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .topbar .spacer{flex:1;}
   .topbar a.newwin{
@@ -165,9 +167,9 @@
 <main>
   <div class="topbar">
     <button class="burger" id="burger" aria-label="메뉴 열기">☰</button>
-    <button class="backbtn" id="backBtn" aria-label="도구 모음으로">←</button>
-    <span class="tool-ico" id="topIco">🏠</span>
-    <h1 id="topTitle">도구 모음</h1>
+    <button class="backbtn" id="backBtn" aria-label="전체 보기로">←</button>
+    <span class="tool-ico" id="topIco"></span>
+    <h1 id="topTitle"></h1>
     <span class="spacer"></span>
     <a class="newwin" id="newWin" href="#" target="_blank" rel="noopener">새 창으로 열기 ↗</a>
   </div>
@@ -197,9 +199,9 @@
 
 /* ── 사이드바 렌더링 ── */
 var nav = document.getElementById("nav");
-// 맨 위: 도구 모음 + 그룹에 넣지 않고 따로 올린 도구(상품런칭 캘린더 등)
+// 맨 위: 그룹에 넣지 않고 따로 올린 도구(상품런칭 캘린더 등)
+// 전체 보기로 돌아가는 건 상단 로고를 누르면 되므로 별도 '도구 모음' 항목은 두지 않는다.
 var html = '<div class="nav-group nav-top">' +
-  '<a href="#home" data-id="home"><span class="ico">🏠</span><span class="nm">도구 모음</span></a>' +
   (window.MORIVA_PINNED || []).map(function (t) {
     return '<a href="#' + t.id + '" data-id="' + t.id + '">' +
       '<span class="ico">' + t.icon + '</span><span class="nm">' + t.name + "</span>" +
@@ -220,7 +222,7 @@ nav.innerHTML = html;
    ASSET_VERSION: 도구 파일을 수정할 때마다 이 값을 올린다.
    모바일 브라우저는 HTML을 오래 캐시해 수정 사항이 바로 반영되지 않는데,
    주소에 버전을 붙이면 새 주소로 인식해 항상 최신 파일을 받아온다. */
-var ASSET_VERSION = "20260727q";
+var ASSET_VERSION = "20260727r";
 var frame = document.getElementById("frame");
 function route() {
   var id = (location.hash || "#home").slice(1);
@@ -231,12 +233,13 @@ function route() {
     frame.setAttribute("data-file", file);
     frame.src = abs;
   }
-  document.getElementById("topIco").textContent = tool ? tool.icon : "🏠";
-  document.getElementById("topTitle").textContent = tool ? tool.name : "도구 모음";
+  // 전체 보기 화면에서는 상단에 도구 이름을 표시하지 않는다(로고가 그 역할을 한다)
+  document.getElementById("topIco").textContent = tool ? tool.icon : "";
+  document.getElementById("topTitle").textContent = tool ? tool.name : "";
   document.getElementById("newWin").href = abs;
-  document.title = tool ? "MORIVA · " + tool.name : "MORIVA 도구 모음";
+  document.title = tool ? "MORIVA · " + tool.name : "MORIVA";
   nav.querySelectorAll("a").forEach(function (a) {
-    a.classList.toggle("active", a.getAttribute("data-id") === (tool ? id : "home"));
+    a.classList.toggle("active", a.getAttribute("data-id") === id);
   });
   // 도구를 보고 있을 때만 모바일 뒤로가기 버튼을 띄운다
   document.body.classList.toggle("in-tool", Boolean(tool));
