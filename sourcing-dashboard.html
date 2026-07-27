@@ -1773,13 +1773,9 @@ mainContentEl.addEventListener('click', function(e){
   renderSidebar();
 });
 
-render();
-})();
-</script>
-<script src="./moriva-sync.js">
 /* 매니페스트 열기 버튼 */
 document.addEventListener('click', function(e){
-  var btn = e.target.closest ? e.target.closest('[data-action="open-manifest"]') : null;
+  var btn = (e.target && e.target.closest) ? e.target.closest('[data-action="open-manifest"]') : null;
   if(!btn) return;
   if(window.top !== window.self){
     window.parent.postMessage({ type:'moriva-go', id:'sourcing-manifest' }, '*');
@@ -1788,13 +1784,23 @@ document.addEventListener('click', function(e){
   }
 });
 
-/* 다른 탭/프레임(매니페스트)에서 저장하면 현재 화면을 다시 그려 최신 정보를 반영 */
+/* 다른 탭에서 매니페스트를 저장하면 화면을 다시 그려 최신 정보를 반영 */
 window.addEventListener('storage', function(e){
-  if(e.key === MANIFEST_SUMMARY_KEY && typeof render === 'function'){
+  if(e.key === MANIFEST_SUMMARY_KEY){
     try{ render(); }catch(err){}
   }
 });
 
+/* 같은 탭 안의 다른 프레임(매니페스트)이 저장했을 때도 갱신 */
+window.addEventListener('message', function(e){
+  if(e.data && e.data.type === 'moriva-manifest-updated'){
+    try{ render(); }catch(err){}
+  }
+});
+
+render();
+})();
 </script>
+<script src="./moriva-sync.js"></script>
 </body>
 </html>

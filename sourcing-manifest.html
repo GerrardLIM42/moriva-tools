@@ -1497,6 +1497,12 @@
         };
       });
       localStorage.setItem(DASHBOARD_LINK_KEY, JSON.stringify({ savedAt: Date.now(), items: list }));
+      // 같은 창에 열려 있는 대시보드 프레임이 바로 갱신되도록 알린다
+      try{
+        if(window.parent && window.parent !== window){
+          window.parent.postMessage({ type:'moriva-manifest-updated' }, '*');
+        }
+      }catch(e){}
     }catch(e){ console.error('summary export failed', e); }
   }
   function parseStoredPayload(raw){

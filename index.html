@@ -184,7 +184,7 @@ nav.innerHTML = html;
    ASSET_VERSION: 도구 파일을 수정할 때마다 이 값을 올린다.
    모바일 브라우저는 HTML을 오래 캐시해 수정 사항이 바로 반영되지 않는데,
    주소에 버전을 붙이면 새 주소로 인식해 항상 최신 파일을 받아온다. */
-var ASSET_VERSION = "20260727b";
+var ASSET_VERSION = "20260727c";
 var frame = document.getElementById("frame");
 function route() {
   var id = (location.hash || "#home").slice(1);
@@ -210,6 +210,10 @@ route();
 /* 홈 카드에서 프레임 내부 이동 요청 */
 window.addEventListener("message", function (e) {
   if (e.data && e.data.type === "moriva-go" && e.data.id) location.hash = "#" + e.data.id;
+  // 매니페스트가 저장을 알리면 현재 도구 프레임에도 전달해 즉시 반영되게 한다
+  if (e.data && e.data.type === "moriva-manifest-updated") {
+    try { frame.contentWindow.postMessage(e.data, "*"); } catch (err) {}
+  }
 });
 
 /* 모바일 드로어 */
