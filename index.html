@@ -87,6 +87,12 @@
     padding:0 16px; background:#fff; border-bottom:1px solid #E3E6EA;
   }
   .burger{display:none;background:none;border:0;font-size:19px;cursor:pointer;color:#1B2A3D;padding:4px 6px;}
+  /* 모바일에서는 사이드바가 숨겨지므로 도구 모음으로 돌아가는 버튼을 상단에 둔다 */
+  .backbtn{
+    display:none;background:#F4F6F7;border:1px solid #E3E6EA;border-radius:8px;
+    font-size:16px;line-height:1;cursor:pointer;color:#1B2A3D;padding:7px 10px;flex-shrink:0;
+  }
+  .backbtn:hover{border-color:var(--gold);}
   .topbar .tool-ico{
     width:28px;height:28px;border-radius:8px;background:#F1EEE6;
     display:grid;place-items:center;font-size:15px;flex-shrink:0;
@@ -126,6 +132,10 @@
     body.nav-open aside{transform:translateX(0);}
     body.nav-open .scrim{display:block;}
     .burger{display:block;}
+    /* 도구를 보고 있을 때만 뒤로가기 표시 (도구 모음 화면에서는 숨김) */
+    body.in-tool .backbtn{display:block;}
+    .topbar{gap:8px;padding:0 12px;}
+    .topbar a.newwin{display:none;}
   }
 </style>
 </head>
@@ -148,6 +158,7 @@
 <main>
   <div class="topbar">
     <button class="burger" id="burger" aria-label="메뉴 열기">☰</button>
+    <button class="backbtn" id="backBtn" aria-label="도구 모음으로">←</button>
     <span class="tool-ico" id="topIco">🏠</span>
     <h1 id="topTitle">도구 모음</h1>
     <span class="spacer"></span>
@@ -202,7 +213,7 @@ nav.innerHTML = html;
    ASSET_VERSION: 도구 파일을 수정할 때마다 이 값을 올린다.
    모바일 브라우저는 HTML을 오래 캐시해 수정 사항이 바로 반영되지 않는데,
    주소에 버전을 붙이면 새 주소로 인식해 항상 최신 파일을 받아온다. */
-var ASSET_VERSION = "20260727l";
+var ASSET_VERSION = "20260727m";
 var frame = document.getElementById("frame");
 function route() {
   var id = (location.hash || "#home").slice(1);
@@ -220,6 +231,8 @@ function route() {
   nav.querySelectorAll("a").forEach(function (a) {
     a.classList.toggle("active", a.getAttribute("data-id") === (tool ? id : "home"));
   });
+  // 도구를 보고 있을 때만 모바일 뒤로가기 버튼을 띄운다
+  document.body.classList.toggle("in-tool", Boolean(tool));
   document.body.classList.remove("nav-open");
 }
 window.addEventListener("hashchange", route);
@@ -240,6 +253,11 @@ window.addEventListener("message", function (e) {
   if (e.data && e.data.type === "moriva-manifest-updated") {
     try { frame.contentWindow.postMessage(e.data, "*"); } catch (err) {}
   }
+});
+
+/* 모바일 뒤로가기 → 도구 모음 */
+document.getElementById("backBtn").addEventListener("click", function () {
+  location.hash = "#home";
 });
 
 /* 모바일 드로어 */
