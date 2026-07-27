@@ -380,6 +380,16 @@ body { background:#f4f6f7; }
 .back-home { display:inline-flex; align-items:center; gap:6px; margin:0 0 4px; color:#6c7686; text-decoration:none; font-size:12px; font-weight:700; }
 .back-home:hover { color:#071a35; }
 
+
+/* 좁은 화면 보정: 헤더 우측 버튼들이 한 줄에 안 들어가 가로로 넘치던 문제 */
+@media (max-width:600px){
+  .site-header{ height:auto; padding-top:10px; padding-bottom:10px;
+    padding-left:14px; padding-right:14px; align-items:center; }
+  .header-actions{ flex-wrap:wrap; justify-content:flex-end; gap:8px; row-gap:6px; min-width:0; }
+  .save-state{ display:none; }
+  .brand-product{ display:none; }
+}
+
 </style>
 </head>
 <body>
