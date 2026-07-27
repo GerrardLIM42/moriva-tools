@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MORIVA 도구 모음</title>
+<style>
+  :root{
+    --navy:#071A35; --gold:#C9961A; --paper:#F4F6F7; --card:#FFFFFF;
+    --line:#E3E6EA; --mist:#8B95A1;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:"Pretendard Variable",Pretendard,"Noto Sans KR",-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif;
+    background:var(--paper); color:#1B2A3D;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:28px 22px 60px;}
+
+  .hero{
+    display:flex;align-items:center;gap:18px;padding:22px 24px;border-radius:18px;
+    background:linear-gradient(135deg,var(--navy),#12375B);color:#fff;margin-bottom:26px;
+  }
+  .hero-mark{
+    width:76px;height:76px;border-radius:14px;background:#fff;flex-shrink:0;
+    display:grid;place-items:center;overflow:hidden;padding:7px;
+  }
+  .hero-mark img{width:100%;height:100%;object-fit:contain;}
+  .hero-copy span{
+    display:inline-flex;align-items:center;gap:9px;color:var(--gold);
+    font-size:10.5px;font-weight:800;letter-spacing:.16em;margin-bottom:5px;
+  }
+  .hero-copy span::before{content:"";width:24px;height:1px;background:currentColor;}
+  .hero-copy h1{font-size:20px;letter-spacing:-.01em;margin-bottom:5px;}
+  .hero-copy p{color:rgba(255,255,255,.62);font-size:12.5px;line-height:1.65;}
+
+  .glabel{
+    font-size:11px;font-weight:800;color:var(--mist);letter-spacing:.11em;
+    margin:24px 0 11px;padding-bottom:7px;border-bottom:1px solid var(--line);
+  }
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(238px,1fr));gap:13px;}
+  a.card{
+    display:flex;flex-direction:column;gap:9px;background:var(--card);
+    border:1px solid var(--line);border-radius:14px;padding:17px 16px;
+    text-decoration:none;color:#1B2A3D;
+    transition:transform .12s,box-shadow .12s,border-color .12s;
+  }
+  a.card:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(7,26,53,.09);border-color:var(--gold);}
+  .ctop{display:flex;align-items:center;gap:10px;}
+  .cico{
+    width:38px;height:38px;border-radius:10px;background:#F1EEE6;flex-shrink:0;
+    display:grid;place-items:center;font-size:19px;
+  }
+  .cname{font-size:14.5px;font-weight:800;}
+  .cnew{
+    display:inline-block;font-size:9px;font-weight:800;color:#fff;background:#B8453A;
+    border-radius:20px;padding:2px 7px;margin-left:5px;vertical-align:middle;letter-spacing:.04em;
+  }
+  .cdesc{font-size:12px;color:var(--mist);line-height:1.6;}
+
+  footer{margin-top:40px;text-align:center;color:var(--mist);font-size:11.5px;line-height:1.75;}
+  @media (max-width:560px){
+    .wrap{padding:20px 14px 48px;}
+    .hero{flex-direction:column;align-items:flex-start;gap:14px;}
+    .grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <div class="hero-mark"><img src="./moriva-brand-guide.png" alt="MORIVA 모리바"></div>
+    <div class="hero-copy">
+      <span>MORIVA SELLER TOOLKIT</span>
+      <h1>쿠팡 판매 업무를 한곳에서</h1>
+      <p>소싱부터 상품 등록까지 필요한 도구를 모았습니다. 왼쪽 메뉴에서 언제든 바로 이동할 수 있어요.</p>
+    </div>
+  </div>
+  <div id="host"></div>
+  <footer>MORIVA · Better Life, Better Move<br>모든 데이터는 이 브라우저에 저장되며, 동기화를 켜면 내 비공개 저장소에만 백업됩니다.</footer>
+</div>
+
+<script src="./moriva-tools-list.js"></script>
+<script>
+"use strict";
+// 주소창으로 직접 열었으면 사이드바가 있는 셸로 이동해 화면 구성을 통일한다.
+if (window.top === window.self && location.search.indexOf("solo=1") === -1) {
+  location.replace("./index.html#home");
+}
+var host = document.getElementById("host");
+host.innerHTML = window.MORIVA_TOOLS.map(function (g) {
+  return '<div class="glabel">' + g.group + "</div><div class=\"grid\">" +
+    g.items.map(function (t) {
+      return '<a class="card" href="./index.html#' + t.id + '" data-id="' + t.id + '">' +
+        '<div class="ctop"><div class="cico">' + t.icon + '</div>' +
+        '<div class="cname">' + t.name + (t.badge ? '<span class="cnew">' + t.badge + "</span>" : "") + "</div></div>" +
+        '<div class="cdesc">' + t.desc + "</div></a>";
+    }).join("") + "</div>";
+}).join("");
+
+// 셸(index.html) 안에서 열렸으면 부모에게 이동을 요청해 사이드바를 유지한다.
+host.querySelectorAll("a.card").forEach(function (a) {
+  a.addEventListener("click", function (e) {
+    if (window.top !== window.self) {
+      e.preventDefault();
+      window.parent.postMessage({ type: "moriva-go", id: a.getAttribute("data-id") }, "*");
+    }
+  });
+});
+</script>
+</body>
+</html>
