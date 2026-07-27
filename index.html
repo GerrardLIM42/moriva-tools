@@ -180,13 +180,17 @@ window.MORIVA_TOOLS.forEach(function (g) {
 });
 nav.innerHTML = html;
 
-/* ── 라우팅 ── */
+/* ── 라우팅 ──
+   ASSET_VERSION: 도구 파일을 수정할 때마다 이 값을 올린다.
+   모바일 브라우저는 HTML을 오래 캐시해 수정 사항이 바로 반영되지 않는데,
+   주소에 버전을 붙이면 새 주소로 인식해 항상 최신 파일을 받아온다. */
+var ASSET_VERSION = "20260727a";
 var frame = document.getElementById("frame");
 function route() {
   var id = (location.hash || "#home").slice(1);
   var tool = window.MORIVA_FIND_TOOL(id);
   var file = (id === "home" || !tool) ? "home.html" : id + ".html";
-  var abs = new URL("./" + file + "?solo=1", location.href).href;
+  var abs = new URL("./" + file + "?solo=1&v=" + ASSET_VERSION, location.href).href;
   if (frame.getAttribute("data-file") !== file) {
     frame.setAttribute("data-file", file);
     frame.src = abs;
