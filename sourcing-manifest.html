@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>MORIVA 소싱 매니페스트 — 1688 → 쿠팡그로스</title>
+<title>MORIVA 소싱 후보 — 1688 → 쿠팡그로스</title>
 <link rel="icon" type="image/png" href="./favicon.png">
 <link rel="apple-touch-icon" href="./favicon.png"><rect width='100' height='80' rx='14' fill='rgb(27,42,61)'/><polyline points='12,66 30,14 50,52 70,14 88,66' fill='none' stroke='white' stroke-width='13' stroke-linecap='square' stroke-linejoin='miter'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -701,8 +701,8 @@
 
   <header class="masthead">
     <div class="masthead-text">
-      <div class="eyebrow">Import Sourcing Manifest</div>
-      <h1>소싱 매니페스트</h1>
+      <div class="eyebrow">Sourcing Candidates</div>
+      <h1>소싱 후보</h1>
       <p>MORIVA 소싱 검토용 트래커 · 1688 사입 → 쿠팡 로켓그로스 · 카테고리 자동 수수료 · 묶음상품 · 폴더 비교 · 선택 비교</p>
       <div class="sync-row">
         <div class="sync-status" id="sync-status">동기화 상태 확인 중…</div>
@@ -3761,7 +3761,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `소싱매니페스트_${new Date().toISOString().slice(0,10)}.csv`;
+    a.download = `소싱후보_${new Date().toISOString().slice(0,10)}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -3777,7 +3777,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `소싱매니페스트_백업_${new Date().toISOString().slice(0,10)}.json`;
+    a.download = `소싱후보_백업_${new Date().toISOString().slice(0,10)}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

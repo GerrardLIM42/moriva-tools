@@ -4,9 +4,9 @@ window.MORIVA_TOOLS = [
   {
     group: "소싱 · 분석",
     items: [
-      { id: "sourcing-dashboard",    icon: "📊", name: "소싱 대시보드",      desc: "소싱 현황을 한눈에 보는 통합 대시보드.", badge: "NEW" },
       { id: "launch-calendar",       icon: "🗓️", name: "상품런칭 캘린더",    desc: "상품 런칭 일정을 캘린더로 관리합니다.", badge: "NEW" },
-      { id: "sourcing-manifest",     icon: "🗂️", name: "소싱 매니페스트",    desc: "1688 사입 후보를 링크·이미지와 함께 등록해 비교 검토합니다." },
+      { id: "sourcing-dashboard",    icon: "📊", name: "소싱 대시보드",      desc: "소싱 현황을 한눈에 보는 통합 대시보드.", badge: "NEW" },
+      { id: "sourcing-manifest",     icon: "🗂️", name: "소싱 후보",          desc: "1688 사입 후보를 링크·이미지와 함께 등록해 비교 검토합니다." },
       { id: "sourcing-price-compare",icon: "💱", name: "소싱 가격비교",      desc: "판매자별 옵션 가격을 비교해 최저가를 자동으로 찾아줍니다." }
     ]
   },

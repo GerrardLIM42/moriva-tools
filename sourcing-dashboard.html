@@ -465,7 +465,7 @@ input.ef[type=number]{-moz-appearance:textfield;}
 }
 
 
-/* ---------- 소싱 매니페스트 연동 섹션 (1688 소싱처와 동일한 행 형태) ---------- */
+/* ---------- 소싱 후보 연동 섹션 (1688 소싱처와 동일한 행 형태) ---------- */
 .mf-empty{text-align:left;}
 .mf-empty b{display:block; font-size:13.5px; color:var(--navy); margin-bottom:6px;}
 .mf-empty p{margin:0 0 12px; font-size:12.5px; color:var(--sub); line-height:1.65;}
@@ -559,12 +559,12 @@ customProducts.forEach(function(cp){ cp._isCustom = true; products.push(cp); });
 
 products.forEach(function(p, i){ p._id = i; });
 
-/* ── 소싱 매니페스트 연동 ──
-   매니페스트가 저장해 둔 요약(moriva_manifest_summary_v1)을 읽어,
+/* ── 소싱 후보 연동 ──
+   소싱 후보가 저장해 둔 요약(moriva_manifest_summary_v1)을 읽어,
    상품명이 같은 항목을 이 대시보드 상세 화면에 그대로 보여준다.
-   매니페스트에서 상품을 추가/수정하면 여기서도 자동으로 갱신된다. */
+   소싱 후보에서 상품을 추가/수정하면 여기서도 자동으로 갱신된다. */
 var MANIFEST_SUMMARY_KEY = 'moriva_manifest_summary_v1';
-var MANIFEST_ITEMS_KEY = 'sourcing-items';   // 소싱 매니페스트 원본 데이터
+var MANIFEST_ITEMS_KEY = 'sourcing-items';   // 소싱 후보 원본 데이터
 
 function normalizeProductName(v){
   return String(v == null ? '' : v)
@@ -575,8 +575,8 @@ function normalizeProductName(v){
 }
 
 function loadManifestSummary(){
-  // 1) 소싱 매니페스트의 원본 데이터를 그대로 읽는다.
-  //    (매니페스트를 한 번도 열지 않은 상태에서도 바로 보이도록 원본을 우선한다)
+  // 1) 소싱 후보의 원본 데이터를 그대로 읽는다.
+  //    (소싱 후보를 한 번도 열지 않은 상태에서도 바로 보이도록 원본을 우선한다)
   try{
     var rawItems = localStorage.getItem(MANIFEST_ITEMS_KEY);
     if(rawItems){
@@ -603,7 +603,7 @@ function loadManifestSummary(){
       }
     }
   }catch(e){}
-  // 2) 원본을 읽지 못하면 매니페스트가 저장해 둔 요약을 사용한다.
+  // 2) 원본을 읽지 못하면 소싱 후보가 저장해 둔 요약을 사용한다.
   try{
     var raw = localStorage.getItem(MANIFEST_SUMMARY_KEY);
     if(!raw) return [];
@@ -623,7 +623,7 @@ function nameLooksSame(a, b){
 function manifestMatchesFor(productName){
   if(!normalizeProductName(productName)) return [];
   return loadManifestSummary().filter(function(m){
-    // 매니페스트는 상품명에 규격(예: "30*30*60 3개")을 적고
+    // 소싱 후보는 상품명에 규격(예: "30*30*60 3개")을 적고
     // 폴더에 상품군(예: "분리수거함")을 적는 경우가 많아 둘 다 확인한다.
     // 폴더가 "러닝벨트 / 벨크로 러닝벨트"처럼 슬래시로 나뉜 경우 각 조각도 비교한다.
     if(nameLooksSame(productName, m.name)) return true;
@@ -1055,7 +1055,7 @@ function bestScenario(p){
   return best;
 }
 function cheapest1688(p){
-  // 소싱처 정보는 소싱 매니페스트가 기준이다. 요약표의 "1688 최저단가"도 같은 값을 쓴다.
+  // 소싱처 정보는 소싱 후보가 기준이다. 요약표의 "1688 최저단가"도 같은 값을 쓴다.
   var best = null;
   manifestMatchesFor(p.name).forEach(function(m){
     var v = Number(m.cny);
@@ -1064,7 +1064,7 @@ function cheapest1688(p){
     }
   });
   if(best) return best;
-  // 매니페스트에 아직 없으면 예전에 직접 입력해둔 값을 참고한다
+  // 소싱 후보에 아직 없으면 예전에 직접 입력해둔 값을 참고한다
   (p.sourcing_1688||[]).forEach(function(sc){
     if(typeof sc.unit_price === 'number' && (!best || sc.unit_price < best.unit_price)) best = sc;
   });
@@ -1445,8 +1445,8 @@ function renderProduct(p){
   '<div class="save-hint" style="margin-top:10px;">※ 판매가·중국원가·매입가·그로스비용·쿠팡수수료를 직접 입력하면 부가세·순수익·수익률이 자동으로 재계산됩니다. (부가세 = (판매가－매입가－그로스비용－수수료)×10%)</div>'+
   '</div>';
 
-  // 3. 1688 소싱처 — 소싱 매니페스트에 등록한 내용을 그대로 사용한다(읽기 전용).
-  //    매니페스트에서 수정하면 이 화면도 자동으로 갱신된다.
+  // 3. 1688 소싱처 — 소싱 후보에 등록한 내용을 그대로 사용한다(읽기 전용).
+  //    소싱 후보에서 수정하면 이 화면도 자동으로 갱신된다.
   html += '<div class="section-title"><span class="num">3</span>1688 소싱처</div>';
   var mfItems = manifestMatchesFor(p.name);
   var repSrc = getRepSrc(p, note);
@@ -1454,9 +1454,9 @@ function renderProduct(p){
   html += '<div class="card">';
   if(!mfItems.length){
     html += '<div class="mf-empty">'+
-      '<b>소싱 매니페스트에 등록된 소싱처가 없습니다.</b>'+
-      '<p>소싱 매니페스트에서 상품명을 <b>'+esc(p.name)+'</b> 와 같게 저장하면, 그곳에 입력한 이미지·사입 단가·연간 판매량·1688 링크가 여기에 자동으로 나타납니다.</p>'+
-      '<button type="button" class="mf-go" data-action="open-manifest">소싱 매니페스트 열기 ↗</button>'+
+      '<b>소싱 후보에 등록된 소싱처가 없습니다.</b>'+
+      '<p>소싱 후보에서 상품명을 <b>'+esc(p.name)+'</b> 와 같게 저장하면, 그곳에 입력한 이미지·사입 단가·연간 판매량·1688 링크가 여기에 자동으로 나타납니다.</p>'+
+      '<button type="button" class="mf-go" data-action="open-manifest">소싱 후보 열기 ↗</button>'+
       '</div>';
   } else {
     // 같은 1688 링크가 여러 건이면 한 번만 보여준다
@@ -1496,13 +1496,13 @@ function renderProduct(p){
           '<span class="mf-static-url" title="'+esc(m.link || '')+'">'+esc(m.link ? shortLink(m.link) : '링크 없음')+'</span>'+
           (m.link ? '<a class="go" href="'+esc(m.link)+'" target="_blank" rel="noopener">열기 ↗</a>' : '<span class="go go-disabled">열기 ↗</span>')+
         '</div>'+
-        '<span class="mf-badge" title="소싱 매니페스트에서 가져온 항목">M</span>'+
+        '<span class="mf-badge" title="소싱 후보에서 가져온 항목">M</span>'+
       '</div>';
     });
     html += '</div>';
-    html += '<button type="button" class="mf-go" data-action="open-manifest">소싱 매니페스트에서 편집 ↗</button>';
+    html += '<button type="button" class="mf-go" data-action="open-manifest">소싱 후보에서 편집 ↗</button>';
   }
-  html += '<div class="save-hint" style="margin-top:10px;">※ 소싱처 정보는 <b>소싱 매니페스트</b>에서 관리합니다. 이미지·사입 단가·연간 판매량·1688 링크를 그곳에서 수정하면 이 화면에 자동으로 반영됩니다.</div>';
+  html += '<div class="save-hint" style="margin-top:10px;">※ 소싱처 정보는 <b>소싱 후보</b>에서 관리합니다. 이미지·사입 단가·연간 판매량·1688 링크를 그곳에서 수정하면 이 화면에 자동으로 반영됩니다.</div>';
   html += '</div>';
 
   // pointer to the interactive category fee table (replaces the old static screenshot)
@@ -1801,7 +1801,7 @@ mainContentEl.addEventListener('click', function(e){
   renderSidebar();
 });
 
-/* 매니페스트 열기 버튼 */
+/* 소싱 후보 열기 버튼 */
 document.addEventListener('click', function(e){
   var btn = (e.target && e.target.closest) ? e.target.closest('[data-action="open-manifest"]') : null;
   if(!btn) return;
@@ -1812,14 +1812,14 @@ document.addEventListener('click', function(e){
   }
 });
 
-/* 다른 탭에서 매니페스트를 저장하면 화면을 다시 그려 최신 정보를 반영 */
+/* 다른 탭에서 소싱 후보를 저장하면 화면을 다시 그려 최신 정보를 반영 */
 window.addEventListener('storage', function(e){
   if(e.key === MANIFEST_SUMMARY_KEY){
     try{ render(); }catch(err){}
   }
 });
 
-/* 같은 탭 안의 다른 프레임(매니페스트)이 저장했을 때도 갱신 */
+/* 같은 탭 안의 다른 프레임(소싱 후보)이 저장했을 때도 갱신 */
 window.addEventListener('message', function(e){
   if(e.data && e.data.type === 'moriva-manifest-updated'){
     try{ render(); }catch(err){}
