@@ -438,6 +438,32 @@ input.ef[type=number]{-moz-appearance:textfield;}
 .ef-fee-cat{flex:1; font-weight:700; font-size:13.5px;}
 .ef-fee{width:76px; text-align:right; font-size:12.5px; font-weight:600;}
 #gotoFeeTableBtn{border:none; cursor:pointer; font-family:inherit;}
+
+/* ── 모바일 레이아웃 보정 (겹침/잘림 수정) ──
+   1) .app의 그리드 자식은 기본 min-width:auto 때문에 내용의 최소 폭까지
+      줄어들지 않아, 좁은 화면에서 728px 같은 폭으로 부풀어 문서 전체가
+      가로로 넘치고 요소가 겹쳐 보였다 → min-width:0 으로 해제.
+   2) 기존 @media 블록이 .sidebar 기본 규칙보다 위에 있어 position/height가
+      덮이지 않았다 → 아래에서 다시 지정(사이드바가 화면 전체를 차지하지 않도록 높이도 제한).
+   3) 비교표는 .table-wrap이 overflow:hidden이라 오른쪽 절반이 아예 보이지
+      않았다 → 가로 스크롤 허용. */
+@media (max-width:900px){
+  .app{grid-template-columns:1fr;}
+  .app > *{min-width:0;}
+  .sidebar{
+    position:relative; height:auto; max-height:62vh; overflow:hidden;
+    padding:18px 14px 14px;
+  }
+  .product-list{max-height:32vh;}
+  .table-wrap{overflow-x:auto; -webkit-overflow-scrolling:touch;}
+  .table-wrap table{min-width:660px;}
+}
+@media (max-width:560px){
+  .sidebar{max-height:56vh;}
+  .product-list{max-height:26vh;}
+  .main{padding:18px 14px 56px;}
+}
+
 </style>
 </head>
 <body>
