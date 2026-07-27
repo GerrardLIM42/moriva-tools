@@ -464,6 +464,48 @@ input.ef[type=number]{-moz-appearance:textfield;}
   .main{padding:18px 14px 56px;}
 }
 
+
+/* ---------- 소싱 매니페스트 연동 섹션 ---------- */
+.mf-empty{text-align:left;}
+.mf-empty b{display:block; font-size:13.5px; color:var(--navy); margin-bottom:6px;}
+.mf-empty p{margin:0 0 12px; font-size:12.5px; color:var(--sub); line-height:1.65;}
+.mf-item{border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:12px; background:#fff;}
+.mf-head{display:flex; align-items:center; gap:12px; margin-bottom:12px;}
+.mf-thumb{width:52px; height:52px; border-radius:9px; object-fit:cover; background:var(--cream-2); border:1px solid var(--line); flex:none;}
+.mf-title{flex:1; min-width:0;}
+.mf-title b{display:block; font-size:14px; font-weight:800; color:var(--navy); margin-bottom:5px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.mf-tags{display:flex; flex-wrap:wrap; gap:5px;}
+.mf-tag{font-size:10.5px; font-weight:700; color:var(--sub); background:var(--cream-2);
+  border-radius:100px; padding:2px 8px;}
+.mf-link{flex:none; font-size:12px; font-weight:700; color:#fff; background:var(--navy);
+  border-radius:8px; padding:8px 12px; text-decoration:none; white-space:nowrap;}
+.mf-link:hover{background:var(--navy-2);}
+.mf-link.disabled{background:var(--cream-2); color:var(--sub);}
+.mf-stats{display:grid; grid-template-columns:repeat(3,1fr); gap:10px;}
+.mf-stat{background:var(--cream-2); border-radius:9px; padding:9px 11px;}
+.mf-stat span{display:block; font-size:10.5px; font-weight:700; color:var(--sub); margin-bottom:3px;}
+.mf-stat b{font-size:15px; font-weight:800; color:var(--navy);}
+.mf-stat b.good{color:var(--green);}
+.mf-stat b.bad{color:var(--red);}
+.mf-opts{margin-top:10px; border-top:1px dashed var(--line); padding-top:9px; display:flex; flex-direction:column; gap:5px;}
+.mf-opt{display:grid; grid-template-columns:1fr auto auto auto; gap:9px; align-items:center; font-size:12px;}
+.mf-opt span{color:var(--sub); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.mf-opt b{font-weight:800; color:var(--navy);}
+.mf-opt i{font-style:normal; color:var(--ink);}
+.mf-opt u{text-decoration:none; font-weight:700; color:var(--green);}
+.mf-memo{margin-top:9px; font-size:12px; color:var(--sub); line-height:1.6;
+  background:var(--cream-2); border-radius:8px; padding:8px 10px; white-space:pre-wrap;}
+.mf-go{background:var(--gold-soft); color:var(--navy); border:1px solid var(--gold);
+  border-radius:9px; padding:10px 14px; font-size:12.5px; font-weight:800; cursor:pointer; font-family:inherit;}
+.mf-go:hover{background:var(--gold); color:#fff;}
+@media (max-width:760px){
+  .mf-stats{grid-template-columns:1fr;}
+  .mf-head{flex-wrap:wrap;}
+  .mf-link{width:100%; text-align:center;}
+  .mf-opt{grid-template-columns:1fr auto; row-gap:3px;}
+}
+
 </style>
 </head>
 <body>
@@ -530,6 +572,99 @@ var customProducts = loadCustomProducts();
 customProducts.forEach(function(cp){ cp._isCustom = true; products.push(cp); });
 
 products.forEach(function(p, i){ p._id = i; });
+
+/* ── 소싱 매니페스트 연동 ──
+   매니페스트가 저장해 둔 요약(moriva_manifest_summary_v1)을 읽어,
+   상품명이 같은 항목을 이 대시보드 상세 화면에 그대로 보여준다.
+   매니페스트에서 상품을 추가/수정하면 여기서도 자동으로 갱신된다. */
+var MANIFEST_SUMMARY_KEY = 'moriva_manifest_summary_v1';
+
+function normalizeProductName(v){
+  return String(v == null ? '' : v)
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, ' ')   // (예시) 같은 괄호 설명 제거
+    .replace(/[\s\-_/·,]/g, '')   // 공백·기호 무시
+    .trim();
+}
+
+function loadManifestSummary(){
+  try{
+    var raw = localStorage.getItem(MANIFEST_SUMMARY_KEY);
+    if(!raw) return [];
+    var parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : (parsed.items || []);
+  }catch(e){ return []; }
+}
+
+function manifestMatchesFor(productName){
+  var key = normalizeProductName(productName);
+  if(!key) return [];
+  return loadManifestSummary().filter(function(m){
+    var mk = normalizeProductName(m.name);
+    if(!mk) return false;
+    // 완전히 같거나, 한쪽이 다른 쪽을 포함하면 같은 상품으로 본다
+    return mk === key || mk.indexOf(key) !== -1 || key.indexOf(mk) !== -1;
+  });
+}
+
+function fmtYuanSafe(v){
+  if(v == null || v === '' || isNaN(v)) return '-';
+  return '¥' + (Math.round(Number(v)*100)/100).toLocaleString('ko-KR');
+}
+function fmtWonSafe(v){
+  if(v == null || v === '' || isNaN(v)) return '-';
+  return Math.round(Number(v)).toLocaleString('ko-KR') + '원';
+}
+
+function renderManifestSection(p){
+  var matches = manifestMatchesFor(p.name);
+  var html = '<div class="section-title"><span class="num">M</span>소싱 매니페스트 연동</div>';
+
+  if(!matches.length){
+    html += '<div class="card"><div class="mf-empty">'+
+      '<b>매니페스트에 같은 이름의 상품이 없습니다.</b>'+
+      '<p>소싱 매니페스트에서 상품명을 <b>'+esc(p.name)+'</b> 와 같게 저장하면, 그곳에 입력한 1688 링크·단가·판매가·마진율이 여기에 자동으로 나타납니다.</p>'+
+      '<button type="button" class="mf-go" data-action="open-manifest">소싱 매니페스트 열기 ↗</button>'+
+      '</div></div>';
+    return html;
+  }
+
+  html += '<div class="card">';
+  matches.forEach(function(m){
+    var opts = (m.options || []).filter(function(o){ return o && (o.cny || o.sell || o.name); });
+    html += '<div class="mf-item">'+
+      '<div class="mf-head">'+
+        (m.image ? '<img class="mf-thumb" src="'+esc(m.image)+'" alt="'+esc(m.name)+'" onerror="this.style.visibility=\'hidden\';">' : '<div class="mf-thumb"></div>')+
+        '<div class="mf-title">'+
+          '<b>'+esc(m.name)+'</b>'+
+          '<div class="mf-tags">'+
+            (m.folder ? '<span class="mf-tag">'+esc(m.folder)+'</span>' : '')+
+            (m.category ? '<span class="mf-tag">'+esc(m.category)+'</span>' : '')+
+            (m.status ? '<span class="mf-tag">'+esc(m.status)+'</span>' : '')+
+            (m.isBundle ? '<span class="mf-tag">묶음 '+esc(m.bundleQty)+'개</span>' : '')+
+          '</div>'+
+        '</div>'+
+        (m.link ? '<a class="mf-link" href="'+esc(m.link)+'" target="_blank" rel="noopener">1688 열기 ↗</a>' : '<span class="mf-link disabled">링크 없음</span>')+
+      '</div>'+
+      '<div class="mf-stats">'+
+        '<div class="mf-stat"><span>사입 단가</span><b>'+fmtYuanSafe(m.cny)+'</b></div>'+
+        '<div class="mf-stat"><span>판매가</span><b>'+fmtWonSafe(m.sell)+'</b></div>'+
+        '<div class="mf-stat"><span>마진율</span><b class="'+(m.marginPct != null && m.marginPct >= 20 ? 'good' : m.marginPct != null && m.marginPct < 10 ? 'bad' : '')+'">'+
+          (m.marginPct == null ? '-' : m.marginPct + '%')+'</b></div>'+
+      '</div>'+
+      (opts.length > 1 ? '<div class="mf-opts">'+ opts.map(function(o){
+        return '<div class="mf-opt"><span>'+esc(o.name || '옵션')+'</span>'+
+          '<b>'+fmtYuanSafe(o.cny)+'</b><i>'+fmtWonSafe(o.sell)+'</i>'+
+          '<u>'+(o.marginPct == null ? '-' : o.marginPct+'%')+'</u></div>';
+      }).join('') +'</div>' : '')+
+      (m.memo ? '<div class="mf-memo">'+esc(m.memo)+'</div>' : '')+
+    '</div>';
+  });
+  html += '<button type="button" class="mf-go" data-action="open-manifest">소싱 매니페스트에서 편집 ↗</button>';
+  html += '<div class="save-hint" style="margin-top:10px;">※ 이 정보는 소싱 매니페스트에 입력한 내용입니다. 매니페스트에서 수정하면 이 화면에도 자동으로 반영됩니다.</div>';
+  html += '</div>';
+  return html;
+}
 
 function blankProduct(){
   return {
@@ -1339,6 +1474,9 @@ function renderProduct(p){
   '<div class="save-hint" style="margin-top:10px;">※ 단가·판매량·옵션·링크를 모두 직접 입력/수정할 수 있어요. 썸네일의 연필 아이콘으로는 실제 상품 이미지를 등록할 수 있습니다.</div>'+
   '</div>';
 
+  // 소싱 매니페스트에서 같은 이름으로 등록한 상품 정보
+  html += renderManifestSection(p);
+
   // pointer to the interactive category fee table (replaces the old static screenshot)
   html += '<div class="section-title"><span class="num">4</span>이 상품의 카테고리 수수료</div>';
   html += '<div class="card">'+
@@ -1638,6 +1776,25 @@ mainContentEl.addEventListener('click', function(e){
 render();
 })();
 </script>
-<script src="./moriva-sync.js"></script>
+<script src="./moriva-sync.js">
+/* 매니페스트 열기 버튼 */
+document.addEventListener('click', function(e){
+  var btn = e.target.closest ? e.target.closest('[data-action="open-manifest"]') : null;
+  if(!btn) return;
+  if(window.top !== window.self){
+    window.parent.postMessage({ type:'moriva-go', id:'sourcing-manifest' }, '*');
+  } else {
+    window.open('./index.html#sourcing-manifest', '_blank');
+  }
+});
+
+/* 다른 탭/프레임(매니페스트)에서 저장하면 현재 화면을 다시 그려 최신 정보를 반영 */
+window.addEventListener('storage', function(e){
+  if(e.key === MANIFEST_SUMMARY_KEY && typeof render === 'function'){
+    try{ render(); }catch(err){}
+  }
+});
+
+</script>
 </body>
 </html>

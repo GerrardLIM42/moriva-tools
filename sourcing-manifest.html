@@ -1456,6 +1456,49 @@
   function buildPayload(){
     return { items, folderKeywords, hiddenFolders: Array.from(hiddenFolderKeys) };
   }
+
+  /* ── 소싱 대시보드 연동용 요약 내보내기 ──
+     대시보드가 마진 계산 로직을 다시 구현하지 않아도 되도록,
+     이곳에서 계산이 끝난 값만 뽑아 별도 키에 저장한다.
+     대시보드는 상품명이 같은 항목을 찾아 링크·단가·판매가·마진율을 보여준다. */
+  const DASHBOARD_LINK_KEY = 'moriva_manifest_summary_v1';
+  function exportSummaryForDashboard(){
+    try{
+      const list = (items || []).map(function(it){
+        let marginPct = null, sell = it.sell, cny = it.cny;
+        try{
+          const rep = repOption(it);
+          const c = calc({ ...it, cny: rep.cny, sell: rep.sell });
+          marginPct = (typeof c.marginPct === 'number' && isFinite(c.marginPct)) ? Math.round(c.marginPct*10)/10 : null;
+          sell = rep.sell; cny = rep.cny;
+        }catch(e){}
+        return {
+          id: it.id,
+          name: (it.name || '').trim(),
+          link: it.link || '',
+          image: it.image || '',
+          folder: it.folder || '',
+          category: it.category || '',
+          status: it.status || '',
+          memo: it.memo || '',
+          cny: cny,
+          sell: sell,
+          marginPct: marginPct,
+          isBundle: !!it.isBundle,
+          bundleQty: it.bundleQty || 1,
+          options: (it.options || []).map(function(o){
+            let oPct = null;
+            try{
+              const oc = calc({ ...it, cny: o.cny, sell: o.sell });
+              oPct = (typeof oc.marginPct === 'number' && isFinite(oc.marginPct)) ? Math.round(oc.marginPct*10)/10 : null;
+            }catch(e){}
+            return { name: o.name || '', cny: o.cny, sell: o.sell, image: o.image || '', marginPct: oPct };
+          })
+        };
+      });
+      localStorage.setItem(DASHBOARD_LINK_KEY, JSON.stringify({ savedAt: Date.now(), items: list }));
+    }catch(e){ console.error('summary export failed', e); }
+  }
   function parseStoredPayload(raw){
     if(Array.isArray(raw)) return { items: raw, folderKeywords: {}, hiddenFolders: [] };
     if(raw && typeof raw === 'object'){
@@ -1615,6 +1658,7 @@
   }
 
   async function saveItems(){
+    exportSummaryForDashboard();
     if(hasClaudeStorage){
       try{
         const res = await window.storage.set(STORE_KEY, JSON.stringify(buildPayload()), false);
@@ -3868,6 +3912,7 @@
     renderStatusFilterOptions();
     fetchLiveRate();
     items = await loadItems();
+    exportSummaryForDashboard();   // 대시보드 연동용 요약을 처음 열 때도 만들어 둔다
     renderAll();
     if(items.length > 0){
       showToast(`이전에 저장된 ${items.length}개 항목을 불러왔습니다.`);
