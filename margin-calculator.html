@@ -41,6 +41,7 @@
 </head>
 <body>
   <div id="root"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script type="text/babel">
     const { useState, useMemo, useEffect, useRef } = React;
 
@@ -214,7 +215,456 @@
     }
 
     // ── MAIN APP ──────────────────────────────────────────────────────────────
+    
+    /* ══════════════════════════════════════════════════════════════
+       통관 정밀 계산 (Margin Calculator v10 로직 이식)
+
+       원본 공식
+         묶음별 중국원가(CNY) = 본품단가×수량 + 옵션합 + 중국내륙비 + 기타작업비
+         개당원가(원)         = 중국원가/수량 × 환율
+         세금 안분            = 신고금액(USD) 비율   (혼적 모드)
+         물류비 안분          = CBM 비율             (혼적 모드)
+         일반 모드            = 둘 다 수량 비율
+         최종 개당원가        = 개당원가 + (세금분 + 물류분 + 공통수수료분) ÷ 수량
+       ══════════════════════════════════════════════════════════════ */
+
+    // 인보이스 항목 자동분류 키워드 (원본 앱과 동일)
+    const COST_DEFS = [
+      { key:"duty",     name:"관세",                 kind:"TAX",
+        keys:["관세","수입관세","DUTY","CUSTOMSDUTY","CUSTOMS DUTY","IMPORTDUTY","IMPORT DUTY","TAX"] },
+      { key:"vat",      name:"부가세",               kind:"TAX",
+        keys:["부가세","부가가치세","수입부가세","VAT","V.A.T","VALUEADDEDTAX","VALUE ADDED TAX"] },
+      { key:"clear",    name:"통관수수료",           kind:"LOG",
+        keys:["CUSTOMS","CUSTOMS CLEARANCE","CLEARANCE","BROKERAGE","통관수수료","통관료","관세사수수료"] },
+      { key:"origin",   name:"원산지 발급비용",      kind:"LOG",
+        keys:["CERTIFICATE","CERTIFICATE OF ORIGIN","C/O","CERT OF ORIGIN","ORIGIN","원산지증명","원산지증명서","원산지발급","원산지발급비용"] },
+      { key:"doc",      name:"서류발급비용",         kind:"LOG",
+        keys:["DOCUMENT","DOCUMENT FEE","DOCUMENTATION","DOCFEE","서류발급비","서류발급비용"] },
+      { key:"dofee",    name:"D/O CHARGE",           kind:"LOG",
+        keys:["D/O","DOFEE","DELIVERY ORDER","O/OCHARGE","D/O CHARGE","D/OFEE"] },
+      { key:"truck",    name:"내륙 운송비",          kind:"LOG",
+        keys:["TRUCK","TRUCKING","INLAND","LOCAL TRANSPORT","DELIVERY","트럭","내륙운송","운송료","운송비","운송","배송비","셔틀비","셔틀","지방합차","합차","혼적","PICKUP","DRAYAGE"] },
+      { key:"ocean",    name:"해상운임·기타",        kind:"LOG",
+        keys:["OCEAN","O/F","SEA FREIGHT","OCEAN FREIGHT","해상운임","해운임","해운비","중국해운비","FREIGHT","AIRFREIGHT","항공운임","TERMINAL","THC","터미널","C.F.S","CFS","작업료","하역료","HANDLING","H/C","취급수수료","OTHER","OTHERS","기타비용","MISC","STORAGE","보관료","창고료","WAREHOUSE","WHARFAGE","입항료","부두사용료","BAF","CAF","LSS","PSS","PCS","SEAL","봉인비","BOOKING","부킹비","EDI","전송료","B/L","OBL","발행수수료","AWB","AMS","PALLET","팔레트","FORKLIFT","지게차","LOADING","상차","UNLOADING","하차","REPACKING","재포장","LABELING","라벨링","SORTING","분류작업","QUARANTINE","검역","FUMIGATION","훈증","INSPECTION","검사비","X-RAY","검색료","CLEANING","세척비","보험료","DEMURRAGE","DETENTION","지체료","체화료","CIC","CRC","BUNKER","SULPHUR"] },
+    ];
+    // 인보이스 헤더/푸터 등 금액이 아닌 행을 걸러내는 단어
+    const IGNORE_WORDS = ["NO.","DATE","REF","VSL","VOY","TEL","FAX","REMARK","계좌","은행","BANK","ACCOUNT",
+      "TOTAL","합계","CARTON","PACKAGE","POD","POL","ETA","ETD","CUSTOMER","INVOICE","QTY","Q'TY","VESSEL",
+      "WEIGHT","MEASUREMENT","CBM","KGS","대표이사","대표","SIGNATURE","SIGN","AUTHORIZED"];
+
+    const norm = (v) => String(v == null ? "" : v).toUpperCase().replace(/\s|\.|_|-/g, "");
+    function classifyCost(label) {
+      const t = norm(label);
+      if (!t) return null;
+      if (IGNORE_WORDS.some(w => t === norm(w))) return null;
+      for (const d of COST_DEFS) {
+        if (d.keys.some(k => t.includes(norm(k)))) return d.key;
+      }
+      return null;
+    }
+
+    const mkBundle = (id) => ({
+      id, name: "", qty: "", unitCny: "", optCny: "", inlandCny: "",
+      cbm: "", usd: ""
+    });
+
+    /* 통관 정밀 계산 탭 본체 */
+    function CustomsTab({ xrCny, xrUsd, onApply }) {
+      const [bundles, setBundles]   = React.useState(() => [mkBundle(1)]);
+      const [costs, setCosts]       = React.useState(() =>
+        COST_DEFS.reduce((a, d) => (a[d.key] = "", a), {}));
+      const [agencyPct, setAgencyPct] = React.useState("");
+      const [lclMode, setLclMode]   = React.useState(false);
+      const [lclTotalCbm, setLclTotalCbm] = React.useState("");
+      const [lclTotalUsd, setLclTotalUsd] = React.useState("");
+      const [msg, setMsg]           = React.useState("");
+      const [costLog, setCostLog]   = React.useState([]);
+
+      const rate = nv(xrCny) || 0;
+
+      const setCost = (k, v) => setCosts(p => ({ ...p, [k]: v }));
+      const updB = (i, k, v) => setBundles(p => p.map((b, j) => j === i ? { ...b, [k]: v } : b));
+      const addB = () => setBundles(p => [...p, mkBundle(Date.now())]);
+      const delB = (i) => setBundles(p => p.length > 1 ? p.filter((_, j) => j !== i) : p);
+
+      /* ── 엑셀: 출고리스트 읽기 ── */
+      const readShipping = async (file) => {
+        setMsg("");
+        try {
+          if (!window.XLSX) { setMsg("엑셀 모듈을 불러오지 못했습니다. 새로고침 후 다시 시도해주세요."); return; }
+          const buf = await file.arrayBuffer();
+          const wb = XLSX.read(buf, { type: "array" });
+          const findHeader = (rows, needs) => {
+            for (let r = 0; r < Math.min(rows.length, 40); r++) {
+              const row = rows[r] || [];
+              const map = {};
+              row.forEach((c, i) => {
+                const t = String(c == null ? "" : c).replace(/\s/g, "");
+                needs.forEach(n => { if (t.includes(n) && map[n] === undefined) map[n] = i; });
+              });
+              if (needs.every(n => map[n] !== undefined)) return { rowIdx: r, colMap: map };
+            }
+            return null;
+          };
+          // '출고' 또는 SHIPPING 시트 우선, 없으면 헤더로 탐색
+          let sheetName = wb.SheetNames.find(n => n && (n.includes("출고") || n.toUpperCase().includes("SHIPPING")));
+          let rows = null, head = null;
+          const NEED = ["한글품명", "수량", "체적"];
+          const trySheet = (n) => {
+            const ws = wb.Sheets[n]; if (!ws) return null;
+            const rr = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, blankrows: true });
+            const hh = findHeader(rr, NEED);
+            return hh ? { rows: rr, head: hh, ws } : null;
+          };
+          let picked = sheetName ? trySheet(sheetName) : null;
+          if (!picked) for (const n of wb.SheetNames) { picked = trySheet(n); if (picked) { sheetName = n; break; } }
+          if (!picked) { setMsg("'출고리스트' 역할을 하는 시트를 찾지 못했습니다. (한글품명·수량·체적 열이 필요합니다)"); return; }
+          rows = picked.rows; head = picked.head;
+          const merges = (picked.ws["!merges"]) || [];
+          const cm = head.colMap;
+          // 선택 열(있으면 사용)
+          const extra = {};
+          (rows[head.rowIdx] || []).forEach((c, i) => {
+            const t = String(c == null ? "" : c).replace(/\s/g, "");
+            if (t.includes("신고총금액")) extra.usd = i;
+            if (t.includes("옵션")) extra.opt = i;
+          });
+          const out = [];
+          let r = head.rowIdx + 1;
+          while (r < rows.length) {
+            const row = rows[r] || [];
+            const nameCell = row[cm["한글품명"]];
+            if (!nameCell || String(nameCell).toUpperCase().includes("TOTAL")) { r++; continue; }
+            // 병합셀이면 마지막 행까지 묶어서 합산
+            let endR = r;
+            const mg = merges.find(m => m && m.s && m.e && m.s.r <= r && m.e.r >= r
+              && m.s.c <= cm["한글품명"] && m.e.c >= cm["한글품명"]);
+            if (mg) endR = mg.e.r;
+            let qty = 0, cbm = 0, usd = 0;
+            for (let k = r; k <= endR; k++) {
+              const rw = rows[k] || [];
+              qty += nv(rw[cm["수량"]]);
+              cbm += nv(rw[cm["체적"]]);
+              if (extra.usd !== undefined) usd += nv(rw[extra.usd]);
+            }
+            out.push({ id: Date.now() + r, name: String(nameCell).trim(), qty: String(qty || ""),
+              unitCny: "", optCny: "", inlandCny: "",
+              cbm: cbm ? String(Math.round(cbm * 1000) / 1000) : "",
+              usd: usd ? String(Math.round(usd * 100) / 100) : "" });
+            r = endR + 1;
+          }
+          if (!out.length) { setMsg("출고리스트에서 상품 행을 찾지 못했습니다."); return; }
+          setBundles(out);
+          setMsg(`'${sheetName}' 시트에서 ${out.length}개 상품을 읽었습니다. 중국 단가(CNY)는 직접 입력해주세요.`);
+        } catch (e) {
+          setMsg("엑셀 파일을 읽는 중 오류가 발생했습니다: " + (e && e.message ? e.message : ""));
+        }
+      };
+
+      /* ── 엑셀: 인보이스 읽기 → 8개 항목 자동분류 ── */
+      const readInvoice = async (file) => {
+        setMsg(""); setCostLog([]);
+        try {
+          if (!window.XLSX) { setMsg("엑셀 모듈을 불러오지 못했습니다."); return; }
+          const buf = await file.arrayBuffer();
+          const wb = XLSX.read(buf, { type: "array" });
+          const acc = {}, log = [];
+          COST_DEFS.forEach(d => acc[d.key] = 0);
+          for (const sn of wb.SheetNames) {
+            const ws = wb.Sheets[sn]; if (!ws) continue;
+            const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, blankrows: false });
+            rows.forEach(row => {
+              if (!row) return;
+              // 행 안에서 라벨(문자)과 금액(숫자)을 찾는다
+              let label = "", amount = 0;
+              row.forEach(c => {
+                if (c == null) return;
+                if (typeof c === "number") { if (Math.abs(c) > Math.abs(amount)) amount = c; }
+                else {
+                  const t = String(c).trim();
+                  const numeric = Number(t.replace(/[,\s₩$]/g, ""));
+                  if (t && isNaN(numeric)) { if (t.length > label.length) label = t; }
+                  else if (!isNaN(numeric) && Math.abs(numeric) > Math.abs(amount)) amount = numeric;
+                }
+              });
+              if (!label || !amount) return;
+              const key = classifyCost(label);
+              if (key) { acc[key] += amount; log.push({ label, amount, key }); }
+            });
+          }
+          const any = Object.values(acc).some(v => v > 0);
+          if (!any) { setMsg("인보이스에서 인식할 수 있는 비용 항목을 찾지 못했습니다. 아래 칸에 직접 입력해주세요."); return; }
+          setCosts(p => {
+            const n = { ...p };
+            COST_DEFS.forEach(d => { if (acc[d.key] > 0) n[d.key] = String(Math.round(acc[d.key])); });
+            return n;
+          });
+          setCostLog(log);
+          setMsg(`인보이스에서 ${log.length}개 행을 인식했습니다. 아래 금액을 확인하고 필요하면 수정해주세요.`);
+        } catch (e) {
+          setMsg("인보이스를 읽는 중 오류가 발생했습니다: " + (e && e.message ? e.message : ""));
+        }
+      };
+
+      /* ── 계산 ── */
+      const R = React.useMemo(() => {
+        const bs = bundles.map(b => {
+          const qty = nv(b.qty);
+          const cnyTotal = nv(b.unitCny) * qty + nv(b.optCny) + nv(b.inlandCny);
+          return { ...b, qty, cnyTotal, totalKrw: cnyTotal * rate,
+            unitKrw: qty > 0 ? (cnyTotal / qty) * rate : cnyTotal * rate };
+        });
+        const totalQty  = bs.reduce((s, b) => s + b.qty, 0);
+        const totalCny  = bs.reduce((s, b) => s + b.cnyTotal, 0);
+        const totalKrw  = bs.reduce((s, b) => s + b.totalKrw, 0);
+        const sumCbm    = bs.reduce((s, b) => s + nv(b.cbm), 0);
+        const sumUsd    = bs.reduce((s, b) => s + nv(b.usd), 0);
+
+        // 인보이스 합계
+        let tax = 0, log = 0;
+        COST_DEFS.forEach(d => {
+          const v = nv(costs[d.key]);
+          if (d.kind === "TAX") tax += v; else log += v;
+        });
+        // 혼적: 전체 화물에서 내 몫만 추출
+        let myTax = tax, myLog = log;
+        if (lclMode) {
+          const tU = nv(lclTotalUsd), tC = nv(lclTotalCbm);
+          if (tU > 0) myTax = tax * (sumUsd / tU);
+          if (tC > 0) myLog = log * (sumCbm / tC);
+        }
+        // 묶음별 안분 (혼적이면 세금=신고금액 비율, 물류=CBM 비율 / 아니면 수량 비율)
+        const taxR = Math.round(myTax), logR = Math.round(myLog);
+        let accT = 0, accL = 0;
+        const withShare = bs.map((b, i) => {
+          let t, l;
+          if (lclMode) {
+            t = sumUsd > 0 ? taxR * (nv(b.usd) / sumUsd) : (totalQty > 0 ? taxR * (b.qty / totalQty) : taxR / bs.length);
+            l = sumCbm > 0 ? logR * (nv(b.cbm) / sumCbm) : (totalQty > 0 ? logR * (b.qty / totalQty) : logR / bs.length);
+          } else {
+            t = totalQty > 0 ? taxR * (b.qty / totalQty) : taxR / bs.length;
+            l = totalQty > 0 ? logR * (b.qty / totalQty) : logR / bs.length;
+          }
+          let ti = Math.round(t), li = Math.round(l);
+          if (i === bs.length - 1) { ti = taxR - accT; li = logR - accL; }
+          else { accT += ti; accL += li; }
+          return { ...b, taxShare: ti, logShare: li };
+        });
+        // 공통 수수료(구매대행 등) — 중국원가 비율로 안분
+        const agencyCny = totalCny * (nv(agencyPct) / 100);
+        const agencyKrw = Math.round(agencyCny * rate);
+        let accA = 0;
+        const final = withShare.map((b, i) => {
+          let a = totalKrw > 0 ? agencyKrw * (b.totalKrw / totalKrw)
+                : (totalQty > 0 ? agencyKrw * (b.qty / totalQty) : agencyKrw / withShare.length);
+          let ai = Math.round(a);
+          if (i === withShare.length - 1) ai = agencyKrw - accA; else accA += ai;
+          const add = ai + b.taxShare + b.logShare;
+          return { ...b, agencyShare: ai, addTotal: add,
+            finalUnit: b.qty > 0 ? b.unitKrw + add / b.qty : b.unitKrw + add };
+        });
+        return { bs: final, totalQty, totalCny, totalKrw, sumCbm, sumUsd,
+          tax, log, myTax, myLog, agencyKrw,
+          grandTotal: Math.round(totalKrw) + taxR + logR + agencyKrw };
+      }, [bundles, costs, agencyPct, lclMode, lclTotalCbm, lclTotalUsd, rate]);
+
+      const W = (n) => (isFinite(n) ? Math.round(n).toLocaleString("ko-KR") : "0");
+
+      const box = { background:"#FFFDF8", border:"1px solid #DCD5C3", borderRadius:12, padding:14, marginBottom:12 };
+      const lab = { fontSize:11.5, fontWeight:800, color:"#6B7684", marginBottom:5, display:"block" };
+      const inp = { width:"100%", padding:"8px 10px", border:"1px solid #DCD5C3", borderRadius:8,
+        fontSize:13, fontFamily:"inherit", background:"#fff", boxSizing:"border-box" };
+      const btn = { padding:"9px 14px", borderRadius:9, border:"1px solid #DCD5C3", background:"#fff",
+        fontSize:12.5, fontWeight:800, cursor:"pointer", fontFamily:"inherit", color:"#1B2A3D" };
+      const btnGold = { ...btn, background:"#D98E3D", border:"none", color:"#fff" };
+
+      return (
+        <div style={{ maxWidth:1080, margin:"0 auto" }}>
+
+          {/* 안내 */}
+          <div style={{ ...box, background:"#F1EEE6", borderColor:"#E0D7C2" }}>
+            <div style={{ fontSize:12.5, lineHeight:1.75, color:"#4A5568" }}>
+              포워더 인보이스의 <b>실제 통관·물류비</b>를 상품별로 나눠 <b>개당 원가</b>를 구합니다.
+              세금은 신고금액(USD) 비율, 물류비는 CBM 비율로 안분하는 실무 기준을 따릅니다.
+              <br/>계산이 끝나면 아래 버튼으로 <b>간편 계산 탭</b>에 개당 원가를 그대로 넘길 수 있어요.
+            </div>
+          </div>
+
+          {msg && (
+            <div style={{ ...box, background:"#FBF3E4", borderColor:"#E5C98B", fontSize:12.5, lineHeight:1.7 }}>
+              {msg}
+            </div>
+          )}
+
+          {/* 1. 인보이스 */}
+          <div style={box}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
+              flexWrap:"wrap", gap:8, marginBottom:12 }}>
+              <b style={{ fontSize:14 }}>① 통관·물류 비용 (인보이스)</b>
+              <label style={{ ...btn, display:"inline-block" }}>
+                엑셀 불러오기
+                <input type="file" accept=".xlsx,.xls,.csv" style={{ display:"none" }}
+                  onChange={e => { const f = e.target.files[0]; e.target.value=""; if (f) readInvoice(f); }} />
+              </label>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))", gap:10 }}>
+              {COST_DEFS.map(d => (
+                <div key={d.key}>
+                  <label style={lab}>
+                    {d.name}
+                    <span style={{ marginLeft:5, fontWeight:700,
+                      color: d.kind === "TAX" ? "#B8453A" : "#5B7C99" }}>
+                      {d.kind === "TAX" ? "세금" : "물류"}
+                    </span>
+                  </label>
+                  <input style={inp} inputMode="numeric" placeholder="0"
+                    value={costs[d.key]} onChange={e => setCost(d.key, e.target.value)} />
+                </div>
+              ))}
+            </div>
+            <div style={{ display:"flex", gap:16, marginTop:12, fontSize:12.5, flexWrap:"wrap" }}>
+              <span>세금 합계 <b style={{ color:"#B8453A" }}>₩{W(R.tax)}</b></span>
+              <span>물류비 합계 <b style={{ color:"#5B7C99" }}>₩{W(R.log)}</b></span>
+            </div>
+            {costLog.length > 0 && (
+              <details style={{ marginTop:10 }}>
+                <summary style={{ fontSize:12, color:"#6B7684", cursor:"pointer" }}>
+                  자동 인식된 {costLog.length}개 행 보기
+                </summary>
+                <div style={{ marginTop:8, maxHeight:150, overflowY:"auto", fontSize:11.5, color:"#6B7684" }}>
+                  {costLog.map((l, i) => (
+                    <div key={i} style={{ padding:"3px 0", borderBottom:"1px solid #F0EBE0" }}>
+                      {l.label} → <b>{COST_DEFS.find(d => d.key === l.key).name}</b> ₩{W(l.amount)}
+                    </div>
+                  ))}
+                </div>
+              </details>
+            )}
+          </div>
+
+          {/* 2. 혼적 */}
+          <div style={box}>
+            <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", fontSize:13.5, fontWeight:800 }}>
+              <input type="checkbox" checked={lclMode} onChange={e => setLclMode(e.target.checked)} />
+              ② 혼적(LCL) — 전체 화물 중 내 몫만 계산
+            </label>
+            {lclMode && (
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))", gap:10, marginTop:12 }}>
+                <div><label style={lab}>전체 화물 총 CBM</label>
+                  <input style={inp} inputMode="decimal" placeholder="예: 10.5"
+                    value={lclTotalCbm} onChange={e => setLclTotalCbm(e.target.value)} /></div>
+                <div><label style={lab}>전체 화물 총 신고금액 ($)</label>
+                  <input style={inp} inputMode="decimal" placeholder="예: 5000"
+                    value={lclTotalUsd} onChange={e => setLclTotalUsd(e.target.value)} /></div>
+                <div style={{ gridColumn:"1/-1", fontSize:12, color:"#6B7684", lineHeight:1.7 }}>
+                  내 몫 세금 <b>₩{W(R.myTax)}</b> · 내 몫 물류비 <b>₩{W(R.myLog)}</b>
+                  <br/>(내 CBM {R.sumCbm.toFixed(2)} / 내 신고금액 ${R.sumUsd.toFixed(2)} 기준)
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 3. 상품 묶음 */}
+          <div style={box}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
+              flexWrap:"wrap", gap:8, marginBottom:12 }}>
+              <b style={{ fontSize:14 }}>③ 상품 묶음 ({bundles.length}개)</b>
+              <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                <label style={{ ...btn, display:"inline-block" }}>
+                  출고리스트 엑셀
+                  <input type="file" accept=".xlsx,.xls,.csv" style={{ display:"none" }}
+                    onChange={e => { const f = e.target.files[0]; e.target.value=""; if (f) readShipping(f); }} />
+                </label>
+                <button style={btn} onClick={addB}>+ 묶음 추가</button>
+              </div>
+            </div>
+
+            {bundles.map((b, i) => (
+              <div key={b.id} style={{ border:"1px solid #E8E1D2", borderRadius:10, padding:12, marginBottom:10 }}>
+                <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:10 }}>
+                  <input style={{ ...inp, fontWeight:800 }} placeholder={"상품명 " + (i+1)}
+                    value={b.name} onChange={e => updB(i, "name", e.target.value)} />
+                  {bundles.length > 1 && (
+                    <button style={{ ...btn, padding:"8px 11px", color:"#B8453A" }}
+                      onClick={() => delB(i)}>✕</button>
+                  )}
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))", gap:9 }}>
+                  <div><label style={lab}>수량</label>
+                    <input style={inp} inputMode="numeric" placeholder="0"
+                      value={b.qty} onChange={e => updB(i,"qty",e.target.value)} /></div>
+                  <div><label style={lab}>본품 단가 (¥)</label>
+                    <input style={inp} inputMode="decimal" placeholder="0"
+                      value={b.unitCny} onChange={e => updB(i,"unitCny",e.target.value)} /></div>
+                  <div><label style={lab}>옵션·부자재 (¥)</label>
+                    <input style={inp} inputMode="decimal" placeholder="0"
+                      value={b.optCny} onChange={e => updB(i,"optCny",e.target.value)} /></div>
+                  <div><label style={lab}>중국 내륙비 (¥)</label>
+                    <input style={inp} inputMode="decimal" placeholder="0"
+                      value={b.inlandCny} onChange={e => updB(i,"inlandCny",e.target.value)} /></div>
+                  <div><label style={lab}>CBM (체적)</label>
+                    <input style={inp} inputMode="decimal" placeholder="0"
+                      value={b.cbm} onChange={e => updB(i,"cbm",e.target.value)} /></div>
+                  <div><label style={lab}>신고금액 ($)</label>
+                    <input style={inp} inputMode="decimal" placeholder="0"
+                      value={b.usd} onChange={e => updB(i,"usd",e.target.value)} /></div>
+                </div>
+              </div>
+            ))}
+
+            <div style={{ marginTop:6 }}>
+              <label style={lab}>공통 수수료 (%) — 구매대행 등, 중국원가에 일괄 적용</label>
+              <input style={{ ...inp, maxWidth:200 }} inputMode="decimal" placeholder="예: 5"
+                value={agencyPct} onChange={e => setAgencyPct(e.target.value)} />
+            </div>
+          </div>
+
+          {/* 4. 결과 */}
+          <div style={{ ...box, background:"#1B2A3D", borderColor:"#1B2A3D", color:"#fff" }}>
+            <b style={{ fontSize:14, display:"block", marginBottom:12 }}>④ 계산 결과</b>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",
+              gap:10, marginBottom:14 }}>
+              {[["중국 원가", "₩"+W(R.totalKrw)], ["세금", "₩"+W(R.myTax)],
+                ["물류비", "₩"+W(R.myLog)], ["공통 수수료", "₩"+W(R.agencyKrw)],
+                ["총 수입원가", "₩"+W(R.grandTotal)], ["총 수량", W(R.totalQty)+"개"]].map(([k,v]) => (
+                <div key={k} style={{ background:"rgba(255,255,255,.07)", borderRadius:9, padding:"9px 11px" }}>
+                  <div style={{ fontSize:10.5, color:"rgba(255,255,255,.55)", fontWeight:700 }}>{k}</div>
+                  <div style={{ fontSize:15, fontWeight:900, marginTop:2 }}>{v}</div>
+                </div>
+              ))}
+            </div>
+
+            {R.bs.map((b, i) => (
+              <div key={b.id} style={{ background:"rgba(255,255,255,.06)", borderRadius:10,
+                padding:"11px 13px", marginBottom:8 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
+                  flexWrap:"wrap", gap:8 }}>
+                  <b style={{ fontSize:13 }}>{b.name || "상품 " + (i+1)}</b>
+                  <span style={{ fontSize:17, fontWeight:900, color:"#E8B563" }}>
+                    개당 ₩{W(b.finalUnit)}
+                  </span>
+                </div>
+                <div style={{ fontSize:11, color:"rgba(255,255,255,.55)", marginTop:5, lineHeight:1.7 }}>
+                  (중국원가 ₩{W(b.totalKrw)} + 세금 ₩{W(b.taxShare)} + 물류 ₩{W(b.logShare)}
+                  {b.agencyShare ? " + 수수료 ₩"+W(b.agencyShare) : ""}) ÷ {b.qty || 1}개
+                </div>
+                <button style={{ ...btnGold, marginTop:9, fontSize:12 }}
+                  onClick={() => onApply(Math.round(b.finalUnit), b.name)}>
+                  이 원가로 간편 계산하기 →
+                </button>
+              </div>
+            ))}
+            <div style={{ fontSize:11, color:"rgba(255,255,255,.45)", marginTop:10, lineHeight:1.7 }}>
+              ※ 적용 환율 ¥1 = ₩{W(rate)} (간편 계산 탭의 환율 설정을 따릅니다)
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+
     function App() {
+      const [tab, setTab] = useState("simple"); // "simple" | "customs"
       const [sp,    setSp   ] = useState("");
       const [ch,    setCh   ] = useState("rocket");
       const [ci,    setCi   ] = useState(0);
@@ -670,8 +1120,38 @@
               background: "linear-gradient(90deg,#C2703D55,#C2703D18,transparent)" }} />
           </div>
 
+          {/* TABS */}
+          <div style={{ maxWidth: 1080, margin: "0 auto 16px", display: "flex", gap: 8 }}>
+            {[["simple", "간편 계산"], ["customs", "통관 정밀 계산"]].map(([k, t]) => (
+              <button key={k} onClick={() => setTab(k)}
+                style={{ flex: 1, padding: "11px 14px", borderRadius: 10, cursor: "pointer",
+                  fontFamily: "inherit", fontSize: 13.5, fontWeight: 800,
+                  border: tab === k ? "none" : "1px solid #DCD5C3",
+                  background: tab === k ? "#1B2A3D" : "#FFFDF8",
+                  color: tab === k ? "#fff" : "#6B7684" }}>
+                {t}
+              </button>
+            ))}
+          </div>
+
+          {tab === "customs" && (
+            <CustomsTab xrCny={xrMode === "simple" ? simRate : xrCny} xrUsd={xrUsd}
+              onApply={(unitKrw, name) => {
+                // 개당 원가에 세금·물류비가 이미 포함되어 있으므로
+                // 간편 계산에서 관세·부가세·포워딩·통관비를 다시 더하지 않도록 0으로 맞춘다.
+                setCur("KRW");
+                setXrMode("manual");
+                updateOpt(0, "bp", String(unitKrw));
+                setCr("0"); setVat(false); setFw("0"); setCl("0");
+                if (name) setPName(name);
+                setTab("simple");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }} />
+          )}
+
           {/* MAIN GRID */}
-          <div className="mc-main-grid" style={{ maxWidth: 1080, margin: "0 auto", display: "grid",
+          <div className="mc-main-grid" style={{ display: tab === "simple" ? "grid" : "none",
+            maxWidth: 1080, margin: "0 auto",
             gap: 16, alignItems: "start" }}>
 
             {/* ──── LEFT: INPUTS ──── */}
