@@ -564,6 +564,7 @@ products.forEach(function(p, i){ p._id = i; });
    상품명이 같은 항목을 이 대시보드 상세 화면에 그대로 보여준다.
    매니페스트에서 상품을 추가/수정하면 여기서도 자동으로 갱신된다. */
 var MANIFEST_SUMMARY_KEY = 'moriva_manifest_summary_v1';
+var MANIFEST_ITEMS_KEY = 'sourcing-items';   // 소싱 매니페스트 원본 데이터
 
 function normalizeProductName(v){
   return String(v == null ? '' : v)
@@ -574,6 +575,35 @@ function normalizeProductName(v){
 }
 
 function loadManifestSummary(){
+  // 1) 소싱 매니페스트의 원본 데이터를 그대로 읽는다.
+  //    (매니페스트를 한 번도 열지 않은 상태에서도 바로 보이도록 원본을 우선한다)
+  try{
+    var rawItems = localStorage.getItem(MANIFEST_ITEMS_KEY);
+    if(rawItems){
+      var mf = JSON.parse(rawItems);
+      var items = Array.isArray(mf) ? mf : (mf.items || []);
+      if(items.length){
+        return items.map(function(it){
+          return {
+            id: it.id,
+            name: (it.name || '').trim(),
+            link: it.link || '',
+            image: it.image || '',
+            folder: it.folder || '',
+            category: it.category || '',
+            status: it.status || '',
+            memo: it.memo || '',
+            cny: it.cny,
+            yearlySales: it.yearlySales || '',
+            options: (it.options || []).map(function(o){
+              return { name: o.name || '', cny: o.cny, image: o.image || '' };
+            })
+          };
+        });
+      }
+    }
+  }catch(e){}
+  // 2) 원본을 읽지 못하면 매니페스트가 저장해 둔 요약을 사용한다.
   try{
     var raw = localStorage.getItem(MANIFEST_SUMMARY_KEY);
     if(!raw) return [];
@@ -581,15 +611,17 @@ function loadManifestSummary(){
     return Array.isArray(parsed) ? parsed : (parsed.items || []);
   }catch(e){ return []; }
 }
-
 function manifestMatchesFor(productName){
   var key = normalizeProductName(productName);
   if(!key) return [];
   return loadManifestSummary().filter(function(m){
     var mk = normalizeProductName(m.name);
     if(!mk) return false;
-    // 완전히 같거나, 한쪽이 다른 쪽을 포함하면 같은 상품으로 본다
-    return mk === key || mk.indexOf(key) !== -1 || key.indexOf(mk) !== -1;
+    // 완전히 같으면 당연히 같은 상품.
+    if(mk === key) return true;
+    // 부분일치는 이름이 너무 짧으면 엉뚱한 상품까지 걸리므로 2글자 이상일 때만 인정한다.
+    if(key.length < 2 || mk.length < 2) return false;
+    return mk.indexOf(key) !== -1 || key.indexOf(mk) !== -1;
   });
 }
 
