@@ -618,74 +618,6 @@ function fmtWonSafe(v){
   return Math.round(Number(v)).toLocaleString('ko-KR') + '원';
 }
 
-function renderManifestSection(p){
-  var matches = manifestMatchesFor(p.name);
-
-  // 이미 "1688 소싱처"에 등록된 링크는 같은 상품이므로 중복해서 보여주지 않는다.
-  var existing = {};
-  (p.sourcing_1688 || []).forEach(function(sc){
-    var k = normalize1688Link(sc.url);
-    if(k) existing[k] = true;
-  });
-  var fresh = [], dupCount = 0;
-  matches.forEach(function(m){
-    var k = normalize1688Link(m.link);
-    if(k && existing[k]) dupCount++; else fresh.push(m);
-  });
-
-  var html = '<div class="section-title"><span class="num">M</span>소싱 매니페스트 연동</div>';
-
-  if(!matches.length){
-    return html + '<div class="card"><div class="mf-empty">'+
-      '<b>매니페스트에 같은 이름의 상품이 없습니다.</b>'+
-      '<p>소싱 매니페스트에서 상품명을 <b>'+esc(p.name)+'</b> 와 같게 저장하면, 그곳에 입력한 사입 단가·이미지·메모·1688 링크가 여기에 자동으로 나타납니다.</p>'+
-      '<button type="button" class="mf-go" data-action="open-manifest">소싱 매니페스트 열기 ↗</button>'+
-      '</div></div>';
-  }
-
-  html += '<div class="card">';
-
-  if(!fresh.length){
-    html += '<div class="mf-note">매니페스트에 등록한 '+matches.length+'건이 모두 위 <b>1688 소싱처</b>에 이미 있습니다. (링크 기준 중복 정리됨)</div>';
-  } else {
-    html += '<div class="src1688-list">';
-    fresh.forEach(function(m){
-      var opts = (m.options || []).filter(function(o){ return o && (o.cny || o.name); });
-      var sub = [];
-      if(m.folder) sub.push(m.folder);
-      if(m.status) sub.push(m.status);
-      html += '<div class="src-row from-manifest">'+
-        '<div class="src-thumb-wrap">'+
-          (m.image
-            ? '<img class="src-thumb" src="'+esc(m.image)+'" alt="'+esc(m.name)+'" onerror="this.style.visibility=\'hidden\';">'
-            : '<div class="src-thumb"></div>')+
-        '</div>'+
-        '<div class="src-1688-field"><div class="mf-static-price">'+fmtYuanSafe(m.cny)+'</div><div class="u-sub">단가</div></div>'+
-        '<div class="src-1688-field"><div class="mf-static">'+esc(m.name)+'</div><div class="u-sub">'+esc(sub.join(' · ') || '매니페스트')+'</div></div>'+
-        '<div class="src-1688-field opts-field"><div class="mf-static-sm">'+
-          (opts.length > 1
-            ? opts.map(function(o){ return esc(o.name || '옵션')+' '+fmtYuanSafe(o.cny); }).join(' / ')
-            : esc(m.memo || '—'))+
-        '</div>'+ (opts.length > 1 && m.memo ? '<div class="u-sub">'+esc(m.memo)+'</div>' : '') +'</div>'+
-        '<div class="src-1688-field url-field">'+
-          '<span class="mf-static-url" title="'+esc(m.link || '')+'">'+esc(m.link ? shortLink(m.link) : '링크 없음')+'</span>'+
-          (m.link ? '<a class="go" href="'+esc(m.link)+'" target="_blank" rel="noopener">열기 ↗</a>' : '<span class="go go-disabled">열기 ↗</span>')+
-        '</div>'+
-        '<span class="mf-badge" title="소싱 매니페스트에서 가져온 항목">M</span>'+
-      '</div>';
-    });
-    html += '</div>';
-    if(dupCount > 0){
-      html += '<div class="mf-note">같은 1688 링크 '+dupCount+'건은 위 <b>1688 소싱처</b>에 이미 있어 여기서는 제외했습니다.</div>';
-    }
-  }
-
-  html += '<button type="button" class="mf-go" data-action="open-manifest">소싱 매니페스트에서 편집 ↗</button>';
-  html += '<div class="save-hint" style="margin-top:10px;">※ 이 정보는 소싱 매니페스트에 입력한 내용입니다. 매니페스트에서 수정하면 이 화면에도 자동으로 반영됩니다.</div>';
-  html += '</div>';
-  return html;
-}
-
 function blankProduct(){
   return {
     _isCustom: true,
@@ -1081,11 +1013,18 @@ function bestScenario(p){
   return best;
 }
 function cheapest1688(p){
+  // 소싱처 정보는 소싱 매니페스트가 기준이다. 요약표의 "1688 최저단가"도 같은 값을 쓴다.
   var best = null;
-  (p.sourcing_1688||[]).forEach(function(s){
-    if(typeof s.unit_price === 'number'){
-      if(!best || s.unit_price < best.unit_price) best = s;
+  manifestMatchesFor(p.name).forEach(function(m){
+    var v = Number(m.cny);
+    if(isFinite(v) && v > 0 && (!best || v < best.unit_price)){
+      best = { unit_price: v, url: m.link || '', yearly_sales: m.yearlySales || '', options: '' };
     }
+  });
+  if(best) return best;
+  // 매니페스트에 아직 없으면 예전에 직접 입력해둔 값을 참고한다
+  (p.sourcing_1688||[]).forEach(function(sc){
+    if(typeof sc.unit_price === 'number' && (!best || sc.unit_price < best.unit_price)) best = sc;
   });
   return best;
 }
@@ -1464,45 +1403,65 @@ function renderProduct(p){
   '<div class="save-hint" style="margin-top:10px;">※ 판매가·중국원가·매입가·그로스비용·쿠팡수수료를 직접 입력하면 부가세·순수익·수익률이 자동으로 재계산됩니다. (부가세 = (판매가－매입가－그로스비용－수수료)×10%)</div>'+
   '</div>';
 
-  // 3. 1688 sourcing
+  // 3. 1688 소싱처 — 소싱 매니페스트에 등록한 내용을 그대로 사용한다(읽기 전용).
+  //    매니페스트에서 수정하면 이 화면도 자동으로 갱신된다.
   html += '<div class="section-title"><span class="num">3</span>1688 소싱처</div>';
-  var cheapest = cheapest1688(p);
+  var mfItems = manifestMatchesFor(p.name);
   var repSrc = getRepSrc(p, note);
-  // 매니페스트에 같은 1688 링크가 있으면 해당 행에 표시해 연결 관계를 알 수 있게 한다
-  var mfByLink = {};
-  manifestMatchesFor(p.name).forEach(function(m){
-    var k = normalize1688Link(m.link);
-    if(k) mfByLink[k] = m;
-  });
 
-  html += '<div class="card"><div class="src1688-list">'+
-    ((p.sourcing_1688||[]).map(function(s, idx){
-      var isCheap = cheapest && s===cheapest && typeof s.unit_price === 'number';
-      var customUrl = note.imgUrls[idx];
-      var thumbSrc = customUrl || repSrc;
-      var hasCustom = !!customUrl;
-      return '<div class="src-row'+(isCheap?' cheapest':'')+'" data-src-idx="'+idx+'">'+
-        '<div class="src-thumb-wrap'+(hasCustom?' has-custom':'')+'" data-idx="'+idx+'" title="클릭해서 상품 이미지 바꾸기">'+
-          (thumbSrc ? '<img class="src-thumb" src="'+esc(thumbSrc)+'" alt="'+esc(p.name)+'" onerror="this.style.visibility=\'hidden\';">' : '<div class="src-thumb"></div>')+
-          '<div class="src-thumb-edit">'+editIconSvg+'</div>'+
-        '</div>'+
-        '<div class="src-1688-field"><div class="sc-inputrow">'+ef('sourcing_1688.'+idx+'.unit_price', s.unit_price, {step:'0.1', cls:'ef-1688-price'})+'<span class="cc-unit">¥</span></div><div class="u-sub">단가</div></div>'+
-        '<div class="src-1688-field">'+ef('sourcing_1688.'+idx+'.yearly_sales', s.yearly_sales, {type:'text', cls:'ef-1688-sales'})+'<div class="u-sub">연간 판매량</div></div>'+
-        '<div class="src-1688-field opts-field">'+ef('sourcing_1688.'+idx+'.options', s.options, {type:'text', cls:'ef-1688-opts', placeholder:'옵션/색상/특징 메모'})+'</div>'+
-        '<div class="src-1688-field url-field">'+ef('sourcing_1688.'+idx+'.url', s.url, {type:'text', cls:'ef-1688-url', placeholder:'https://detail.1688.com/...'})+
-          (s.url ? '<a class="go" href="'+esc(s.url)+'" target="_blank" rel="noopener">열기 ↗</a>' : '<span class="go go-disabled">열기 ↗</span>')+
-        '</div>'+
-        (mfByLink[normalize1688Link(s.url)] ? '<span class="mf-badge inrow" title="소싱 매니페스트에도 등록된 상품입니다">M</span>' : '')+
-        '<button type="button" class="row-remove-btn" data-action="remove-1688" data-idx="'+idx+'" title="이 소싱처 삭제">✕</button>'+
+  html += '<div class="card">';
+  if(!mfItems.length){
+    html += '<div class="mf-empty">'+
+      '<b>소싱 매니페스트에 등록된 소싱처가 없습니다.</b>'+
+      '<p>소싱 매니페스트에서 상품명을 <b>'+esc(p.name)+'</b> 와 같게 저장하면, 그곳에 입력한 이미지·사입 단가·연간 판매량·1688 링크가 여기에 자동으로 나타납니다.</p>'+
+      '<button type="button" class="mf-go" data-action="open-manifest">소싱 매니페스트 열기 ↗</button>'+
       '</div>';
-    }).join('') || '<div style="color:var(--sub); font-size:13px;">등록된 1688 소싱처가 없습니다.</div>') +
-  '</div>'+
-  '<button type="button" class="add-row-btn" data-action="add-1688">+ 소싱처 추가</button>'+
-  '<div class="save-hint" style="margin-top:10px;">※ 단가·판매량·옵션·링크를 모두 직접 입력/수정할 수 있어요. 썸네일의 연필 아이콘으로는 실제 상품 이미지를 등록할 수 있습니다.</div>'+
-  '</div>';
+  } else {
+    // 같은 1688 링크가 여러 건이면 한 번만 보여준다
+    var seen = {}, list = [];
+    mfItems.forEach(function(m){
+      var k = normalize1688Link(m.link) || ('name:' + (m.name || '') + ':' + (m.cny || ''));
+      if(seen[k]) return;
+      seen[k] = true;
+      list.push(m);
+    });
+    var cheapestCny = null;
+    list.forEach(function(m){
+      var c = Number(m.cny);
+      if(isFinite(c) && c > 0 && (cheapestCny === null || c < cheapestCny)) cheapestCny = c;
+    });
 
-  // 소싱 매니페스트에서 같은 이름으로 등록한 상품 정보
-  html += renderManifestSection(p);
+    html += '<div class="src1688-list">';
+    list.forEach(function(m){
+      var thumb = m.image || repSrc;
+      var isCheap = list.length > 1 && cheapestCny !== null && Number(m.cny) === cheapestCny;
+      var opts = (m.options || []).filter(function(o){ return o && (o.cny || o.name); });
+      var optText = opts.length > 1
+        ? opts.map(function(o){ return esc(o.name || '옵션') + ' ' + fmtYuanSafe(o.cny); }).join(' / ')
+        : esc(m.memo || '—');
+      html += '<div class="src-row from-manifest'+(isCheap?' cheapest':'')+'">'+
+        '<div class="src-thumb-wrap">'+
+          (thumb
+            ? '<img class="src-thumb" src="'+esc(thumb)+'" alt="'+esc(m.name)+'" onerror="this.style.visibility=\'hidden\';">'
+            : '<div class="src-thumb"></div>')+
+        '</div>'+
+        '<div class="src-1688-field"><div class="mf-static-price">'+fmtYuanSafe(m.cny)+'</div><div class="u-sub">단가</div></div>'+
+        '<div class="src-1688-field"><div class="mf-static">'+esc(m.yearlySales || '-')+'</div><div class="u-sub">연간 판매량</div></div>'+
+        '<div class="src-1688-field opts-field"><div class="mf-static-sm">'+optText+'</div>'+
+          (opts.length > 1 && m.memo ? '<div class="u-sub">'+esc(m.memo)+'</div>' : '')+
+        '</div>'+
+        '<div class="src-1688-field url-field">'+
+          '<span class="mf-static-url" title="'+esc(m.link || '')+'">'+esc(m.link ? shortLink(m.link) : '링크 없음')+'</span>'+
+          (m.link ? '<a class="go" href="'+esc(m.link)+'" target="_blank" rel="noopener">열기 ↗</a>' : '<span class="go go-disabled">열기 ↗</span>')+
+        '</div>'+
+        '<span class="mf-badge" title="소싱 매니페스트에서 가져온 항목">M</span>'+
+      '</div>';
+    });
+    html += '</div>';
+    html += '<button type="button" class="mf-go" data-action="open-manifest">소싱 매니페스트에서 편집 ↗</button>';
+  }
+  html += '<div class="save-hint" style="margin-top:10px;">※ 소싱처 정보는 <b>소싱 매니페스트</b>에서 관리합니다. 이미지·사입 단가·연간 판매량·1688 링크를 그곳에서 수정하면 이 화면에 자동으로 반영됩니다.</div>';
+  html += '</div>';
 
   // pointer to the interactive category fee table (replaces the old static screenshot)
   html += '<div class="section-title"><span class="num">4</span>이 상품의 카테고리 수수료</div>';

@@ -803,6 +803,11 @@
             <label>1688 링크</label>
             <input type="url" id="f-link" placeholder="https://detail.1688.com/offer/..." />
           </div>
+          <div class="field full">
+            <label>연간 판매량 <span style="font-weight:400;">(선택)</span></label>
+            <input type="text" id="f-yearly-sales" placeholder="예: 5,000개 · 1688 상품페이지의 판매 수량" />
+            <span class="hint">소싱 대시보드의 1688 소싱처에 그대로 표시됩니다</span>
+          </div>
           <div class="field">
             <label>브랜드 카테고리</label>
             <select id="f-category">
@@ -1476,6 +1481,7 @@
           id: it.id,
           name: (it.name || '').trim(),
           link: it.link || '',
+          yearlySales: it.yearlySales || '',
           image: it.image || '',
           folder: it.folder || '',
           category: it.category || '',
@@ -3419,6 +3425,7 @@
       fillFolderSelect(it.folder);
       $('#f-folder-new').value = '';
       $('#f-link').value = it.link;
+      $('#f-yearly-sales').value = it.yearlySales || '';
       $('#f-category').value = it.category;
       $('#f-status').value = it.status;
       setSeg($('#seg-bundle'), it.isBundle ? 'true' : 'false');
@@ -3467,6 +3474,7 @@
       fillFolderSelect(presetFolder);
       $('#f-folder-new').value = '';
       $('#f-status').value = '검토중';
+      $('#f-yearly-sales').value = '';
       $('#f-category').value = presetCategory;
       setSeg($('#seg-bundle'), 'false');
       $('#f-bundleqty').value = 2;
@@ -3606,6 +3614,7 @@
       name: $('#f-name').value.trim(),
       folder: getFolderValue(),
       link: $('#f-link').value.trim(),
+      yearlySales: $('#f-yearly-sales').value.trim(),
       image: primary.image,
       category: $('#f-category').value,
       status: $('#f-status').value,
