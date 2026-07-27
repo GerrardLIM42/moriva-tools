@@ -48,6 +48,8 @@
     transition:transform .12s,box-shadow .12s,border-color .12s;
   }
   a.card:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(7,26,53,.09);border-color:var(--gold);}
+  a.card.pinned{border-color:var(--gold);background:linear-gradient(180deg,#FFFDF7,#FFF);}
+  a.card.pinned .cico{background:#F7EBD2;}
   .ctop{display:flex;align-items:center;gap:10px;}
   .cico{
     width:38px;height:38px;border-radius:10px;background:#F1EEE6;flex-shrink:0;
@@ -90,15 +92,29 @@ if (window.top === window.self && location.search.indexOf("solo=1") === -1) {
   location.replace("./index.html#home");
 }
 var host = document.getElementById("host");
-host.innerHTML = window.MORIVA_TOOLS.map(function (g) {
-  return '<div class="glabel">' + g.group + "</div><div class=\"grid\">" +
-    g.items.map(function (t) {
-      return '<a class="card" href="./index.html#' + t.id + '" data-id="' + t.id + '">' +
-        '<div class="ctop"><div class="cico">' + t.icon + '</div>' +
-        '<div class="cname">' + t.name + (t.badge ? '<span class="cnew">' + t.badge + "</span>" : "") + "</div></div>" +
-        '<div class="cdesc">' + t.desc + "</div></a>";
-    }).join("") + "</div>";
+
+function cardHtml(t, extraClass) {
+  return '<a class="card' + (extraClass ? " " + extraClass : "") + '" href="./index.html#' + t.id + '" data-id="' + t.id + '">' +
+    '<div class="ctop"><div class="cico">' + t.icon + '</div>' +
+    '<div class="cname">' + t.name + (t.badge ? '<span class="cnew">' + t.badge + "</span>" : "") + "</div></div>" +
+    '<div class="cdesc">' + t.desc + "</div></a>";
+}
+
+var html = "";
+
+// 그룹에 넣지 않고 위로 올린 도구(상품런칭 캘린더)
+var pinned = window.MORIVA_PINNED || [];
+if (pinned.length) {
+  html += '<div class="glabel">바로가기</div><div class="grid">' +
+    pinned.map(function (t) { return cardHtml(t, "pinned"); }).join("") + "</div>";
+}
+
+html += window.MORIVA_TOOLS.map(function (g) {
+  return '<div class="glabel">' + g.group + '</div><div class="grid">' +
+    g.items.map(function (t) { return cardHtml(t); }).join("") + "</div>";
 }).join("");
+
+host.innerHTML = html;
 
 // 셸(index.html) 안에서 열렸으면 부모에게 이동을 요청해 사이드바를 유지한다.
 host.querySelectorAll("a.card").forEach(function (a) {

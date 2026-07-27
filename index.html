@@ -41,6 +41,8 @@
   nav::-webkit-scrollbar{width:6px;}
   nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:3px;}
   .nav-group{margin-bottom:14px;}
+  /* 맨 위 묶음(도구 모음 + 상품런칭 캘린더)은 아래 그룹과 선으로 구분 */
+  .nav-group.nav-top{padding-bottom:12px;border-bottom:1px solid var(--line);}
   .nav-group > span{
     display:block; padding:6px 8px 7px; color:rgba(255,255,255,.34);
     font-size:10.5px; font-weight:800; letter-spacing:.12em;
@@ -169,7 +171,15 @@
 
 /* ── 사이드바 렌더링 ── */
 var nav = document.getElementById("nav");
-var html = '<div class="nav-group"><a href="#home" data-id="home"><span class="ico">🏠</span><span class="nm">도구 모음</span></a></div>';
+// 맨 위: 도구 모음 + 그룹에 넣지 않고 따로 올린 도구(상품런칭 캘린더 등)
+var html = '<div class="nav-group nav-top">' +
+  '<a href="#home" data-id="home"><span class="ico">🏠</span><span class="nm">도구 모음</span></a>' +
+  (window.MORIVA_PINNED || []).map(function (t) {
+    return '<a href="#' + t.id + '" data-id="' + t.id + '">' +
+      '<span class="ico">' + t.icon + '</span><span class="nm">' + t.name + "</span>" +
+      (t.badge ? '<span class="new">' + t.badge + "</span>" : "") + "</a>";
+  }).join("") +
+  "</div>";
 window.MORIVA_TOOLS.forEach(function (g) {
   html += '<div class="nav-group"><span>' + g.group + "</span>" +
     g.items.map(function (t) {
@@ -184,7 +194,7 @@ nav.innerHTML = html;
    ASSET_VERSION: 도구 파일을 수정할 때마다 이 값을 올린다.
    모바일 브라우저는 HTML을 오래 캐시해 수정 사항이 바로 반영되지 않는데,
    주소에 버전을 붙이면 새 주소로 인식해 항상 최신 파일을 받아온다. */
-var ASSET_VERSION = "20260727i";
+var ASSET_VERSION = "20260727j";
 var frame = document.getElementById("frame");
 function route() {
   var id = (location.hash || "#home").slice(1);
@@ -206,6 +216,14 @@ function route() {
 }
 window.addEventListener("hashchange", route);
 route();
+
+/* 사이드바 상단 로고를 누르면 언제나 도구 모음 화면으로 돌아온다.
+   (이미 #home 상태라 hashchange가 일어나지 않는 경우에도 확실히 이동하도록 직접 처리) */
+document.querySelector(".brand").addEventListener("click", function (e) {
+  e.preventDefault();
+  if (location.hash === "#home" || location.hash === "") route();
+  else location.hash = "#home";
+});
 
 /* 홈 카드에서 프레임 내부 이동 요청 */
 window.addEventListener("message", function (e) {
