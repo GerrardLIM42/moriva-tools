@@ -87,9 +87,11 @@
 
   /* ── 우측 콘텐츠 ── */
   main{flex:1; min-width:0; height:100vh; height:100dvh; display:flex; flex-direction:column;}
+  /* 도구 이름은 각 도구 페이지가 직접 보여주므로 PC에서는 상단 바를 두지 않는다.
+     모바일에서는 사이드바가 숨겨지므로 메뉴·뒤로가기 버튼용으로만 표시한다. */
   .topbar{
-    flex-shrink:0; height:52px; display:flex; align-items:center; gap:12px;
-    padding:0 16px; background:#fff; border-bottom:1px solid #E3E6EA;
+    display:none; flex-shrink:0; height:48px; align-items:center; gap:8px;
+    padding:0 12px; background:#fff; border-bottom:1px solid #E3E6EA;
   }
   .burger{display:none;background:none;border:0;font-size:19px;cursor:pointer;color:#1B2A3D;padding:4px 6px;}
   /* 모바일에서는 사이드바가 숨겨지므로 도구 모음으로 돌아가는 버튼을 상단에 둔다 */
@@ -98,19 +100,6 @@
     font-size:16px;line-height:1;cursor:pointer;color:#1B2A3D;padding:7px 10px;flex-shrink:0;
   }
   .backbtn:hover{border-color:var(--gold);}
-  .topbar .tool-ico{
-    width:28px;height:28px;border-radius:8px;background:#F1EEE6;
-    display:grid;place-items:center;font-size:15px;flex-shrink:0;
-  }
-  /* 전체 보기 화면(도구 미선택)에서는 아이콘 자리를 비운다 */
-  body:not(.in-tool) .topbar .tool-ico{display:none;}
-  .topbar h1{margin:0;font-size:15px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .topbar .spacer{flex:1;}
-  .topbar a.newwin{
-    color:#6C7686;text-decoration:none;font-size:12px;font-weight:700;
-    border:1px solid #E3E6EA;border-radius:8px;padding:7px 11px;white-space:nowrap;
-  }
-  .topbar a.newwin:hover{border-color:var(--gold);color:var(--navy);}
   iframe{flex:1;width:100%;border:0;display:block;background:var(--paper);}
 
   .scrim{display:none;position:fixed;inset:0;background:rgba(7,26,53,.45);z-index:35;}
@@ -143,8 +132,7 @@
     .burger{display:block;}
     /* 도구를 보고 있을 때만 뒤로가기 표시 (도구 모음 화면에서는 숨김) */
     body.in-tool .backbtn{display:block;}
-    .topbar{gap:8px;padding:0 12px;}
-    .topbar a.newwin{display:none;}
+    .topbar{display:flex;}
   }
 </style>
 </head>
@@ -168,10 +156,6 @@
   <div class="topbar">
     <button class="burger" id="burger" aria-label="메뉴 열기">☰</button>
     <button class="backbtn" id="backBtn" aria-label="전체 보기로">←</button>
-    <span class="tool-ico" id="topIco"></span>
-    <h1 id="topTitle"></h1>
-    <span class="spacer"></span>
-    <a class="newwin" id="newWin" href="#" target="_blank" rel="noopener">새 창으로 열기 ↗</a>
   </div>
   <iframe id="frame" title="도구 화면"></iframe>
 </main>
@@ -222,7 +206,7 @@ nav.innerHTML = html;
    ASSET_VERSION: 도구 파일을 수정할 때마다 이 값을 올린다.
    모바일 브라우저는 HTML을 오래 캐시해 수정 사항이 바로 반영되지 않는데,
    주소에 버전을 붙이면 새 주소로 인식해 항상 최신 파일을 받아온다. */
-var ASSET_VERSION = "20260727r";
+var ASSET_VERSION = "20260727s";
 var frame = document.getElementById("frame");
 function route() {
   var id = (location.hash || "#home").slice(1);
@@ -233,10 +217,7 @@ function route() {
     frame.setAttribute("data-file", file);
     frame.src = abs;
   }
-  // 전체 보기 화면에서는 상단에 도구 이름을 표시하지 않는다(로고가 그 역할을 한다)
-  document.getElementById("topIco").textContent = tool ? tool.icon : "";
-  document.getElementById("topTitle").textContent = tool ? tool.name : "";
-  document.getElementById("newWin").href = abs;
+  // 도구 이름은 각 도구 페이지 안에서 표시하므로 상단 바에는 넣지 않는다.
   document.title = tool ? "MORIVA · " + tool.name : "MORIVA";
   nav.querySelectorAll("a").forEach(function (a) {
     a.classList.toggle("active", a.getAttribute("data-id") === id);
