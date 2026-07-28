@@ -488,6 +488,39 @@ input.ef[type=number]{-moz-appearance:textfield;}
 .mf-go{margin-top:10px; background:var(--gold-soft); color:var(--navy); border:1px solid var(--gold);
   border-radius:9px; padding:9px 15px; font-size:12.5px; font-weight:800; cursor:pointer; font-family:inherit;}
 .mf-go:hover{background:var(--gold); color:#fff;}
+/* 대시보드에서 바로 고치는 소싱처 입력칸 */
+.mf-in{
+  width:100%; border:1px solid transparent; border-radius:7px; padding:5px 7px;
+  font-family:inherit; font-size:13px; font-weight:700; color:var(--navy);
+  background:transparent; outline:none; min-width:0;
+}
+.mf-in:hover{border-color:var(--line); background:#fff;}
+.mf-in:focus{border-color:var(--gold); background:#fff; box-shadow:0 0 0 2px rgba(201,150,26,.14);}
+.mf-in::placeholder{color:#B9C0C8; font-weight:600;}
+.mf-in-cny{font-size:15px; font-weight:800;}
+.mf-in-url{font-size:11.5px; font-weight:600; color:var(--sub);}
+.mf-del{
+  width:24px; height:24px; border-radius:7px; border:1px solid var(--line);
+  background:#fff; color:#B8453A; font-size:14px; line-height:1; cursor:pointer;
+  font-family:inherit; justify-self:center; flex:none; padding:0;
+}
+.mf-del:hover{background:#FDF1F0; border-color:#E6BDB8;}
+.mf-actions{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;}
+.mf-add{background:var(--navy); color:#fff; border:1px solid var(--navy);
+  border-radius:9px; padding:9px 15px; font-size:12.5px; font-weight:800;
+  cursor:pointer; font-family:inherit;}
+.mf-add:hover{background:var(--navy-3);}
+.mf-sync{
+  position:fixed; left:50%; bottom:20px; transform:translateX(-50%); z-index:99999;
+  background:var(--navy); color:#fff; padding:9px 17px; border-radius:999px;
+  font-size:12.5px; font-weight:700; opacity:0; transition:opacity .18s; pointer-events:none;
+  font-family:inherit; max-width:88vw; text-align:center;
+}
+.mf-sync.show{opacity:1;}
+.mf-sync.err{background:#B8453A;}
+@media (max-width:900px){
+  .src-row.from-manifest .mf-del{grid-column:2; justify-self:end;}
+}
 @media (max-width:900px){
   .src-row.from-manifest .mf-badge{grid-column:2; justify-self:end;}
   .mf-static-sm, .mf-static-url{white-space:normal;}
@@ -668,6 +701,182 @@ function manifestMatchesFor(productName){
       return nameLooksSame(productName, part);
     });
   });
+}
+
+/* ══════════ 소싱 후보(소싱처) 편집 — 대시보드에서 바로 고치기 ══════════
+   여기서 고친 내용은 소싱 후보와 같은 저장소에 기록되므로
+   소싱 후보 화면에서도, 다른 기기에서도 똑같이 보인다.
+   소싱 후보가 쓰는 것과 동일한 Cloudflare Worker 프록시를 사용한다. */
+var MANIFEST_WORKER_URL = 'https://moriva-github-proxy.moriva-hyeoncl.workers.dev';
+var manifestSha = null;
+var manifestSaveTimer = null;
+
+function mfUid(){
+  return 'id' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+function mfB64Encode(str){ return btoa(unescape(encodeURIComponent(str))); }
+
+/* 화면 아래에 잠깐 뜨는 저장 상태 알림 */
+var mfSyncEl = null, mfSyncTimer = null;
+function mfSay(text, isError, keep){
+  if(!mfSyncEl){
+    mfSyncEl = document.createElement('div');
+    mfSyncEl.className = 'mf-sync';
+    document.body.appendChild(mfSyncEl);
+  }
+  mfSyncEl.textContent = text;
+  mfSyncEl.classList.toggle('err', !!isError);
+  mfSyncEl.classList.add('show');
+  clearTimeout(mfSyncTimer);
+  if(!keep) mfSyncTimer = setTimeout(function(){ mfSyncEl.classList.remove('show'); }, isError ? 6000 : 1800);
+}
+
+/* 소싱 후보의 원본 데이터를 통째로 읽고 쓴다 (소싱 후보와 같은 형식을 지킨다) */
+function readManifestPayload(){
+  var empty = { items: [], folderKeywords: {}, hiddenFolders: [] };
+  try{
+    var raw = localStorage.getItem(MANIFEST_ITEMS_KEY);
+    if(!raw) return empty;
+    var v = JSON.parse(raw);
+    if(Array.isArray(v)) return { items: v, folderKeywords: {}, hiddenFolders: [] };
+    if(v && typeof v === 'object'){
+      return {
+        items: Array.isArray(v.items) ? v.items : [],
+        folderKeywords: (v.folderKeywords && typeof v.folderKeywords === 'object') ? v.folderKeywords : {},
+        hiddenFolders: Array.isArray(v.hiddenFolders) ? v.hiddenFolders : []
+      };
+    }
+    return empty;
+  }catch(e){ return empty; }
+}
+function writeManifestPayload(payload){
+  try{
+    localStorage.setItem(MANIFEST_ITEMS_KEY, JSON.stringify(payload));
+  }catch(e){
+    mfSay('이 브라우저에 저장하지 못했습니다: ' + e.message, true);
+    return false;
+  }
+  /* 소싱 후보가 다른 프레임/탭에 열려 있으면 다시 그리도록 알린다 */
+  try{ window.parent.postMessage({ type: 'moriva-manifest-updated' }, '*'); }catch(e){}
+  scheduleManifestSync(payload);
+  return true;
+}
+
+function scheduleManifestSync(payload){
+  mfSay('저장 중…', false, true);
+  clearTimeout(manifestSaveTimer);
+  manifestSaveTimer = setTimeout(function(){ pushManifest(payload); }, 600);
+}
+function fetchManifestSha(){
+  return fetch(MANIFEST_WORKER_URL, {
+    headers: { 'Accept': 'application/vnd.github+json' }, cache: 'no-store'
+  }).then(function(res){
+    if(res.status === 404){ manifestSha = null; return null; }
+    if(!res.ok) throw new Error('읽기 실패 ' + res.status);
+    return res.json().then(function(d){ manifestSha = d.sha || null; return d; });
+  });
+}
+function pushManifest(payload){
+  var first = manifestSha ? Promise.resolve() : fetchManifestSha().catch(function(){});
+  return first.then(function(){ return doPushManifest(payload, false); })
+    .catch(function(err){
+      mfSay('다른 기기와 맞추지 못했습니다(이 기기에는 저장됨): ' + err.message, true);
+    });
+}
+function doPushManifest(payload, retried){
+  var body = {
+    message: 'update sourcing data from dashboard (' + new Date().toISOString() + ')',
+    content: mfB64Encode(JSON.stringify(payload, null, 2))
+  };
+  if(manifestSha) body.sha = manifestSha;
+  return fetch(MANIFEST_WORKER_URL, {
+    method: 'PUT',
+    headers: { 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  }).then(function(res){
+    if(res.ok){
+      return res.json().then(function(d){
+        if(d && d.content && d.content.sha) manifestSha = d.content.sha;
+        mfSay('저장했습니다');
+      });
+    }
+    /* 다른 곳에서 먼저 저장해 기준이 어긋난 경우 — 최신 상태를 받아 한 번 더 시도 */
+    if((res.status === 409 || res.status === 422) && !retried){
+      return fetchManifestSha().then(function(){ return doPushManifest(payload, true); });
+    }
+    throw new Error('저장 실패 ' + res.status);
+  });
+}
+
+function findManifestItem(payload, id){
+  for(var i = 0; i < payload.items.length; i++){
+    if(payload.items[i] && payload.items[i].id === id) return payload.items[i];
+  }
+  return null;
+}
+/* 소싱 후보는 단가·이미지를 항목과 옵션1에 함께 갖고 있다.
+   한쪽만 고치면 소싱 후보가 옵션을 하나 더 만들어 버리므로 반드시 같이 바꾼다. */
+function setPrimaryOption(it, key, value){
+  if(!Array.isArray(it.options) || !it.options.length){
+    it.options = [{
+      id: mfUid(), name: '', cny: it.cny || 0, sell: it.sell || 0,
+      image: it.image || '', inputMode: 'margin', savedMarginPct: null
+    }];
+  }
+  it.options[0][key] = value;
+}
+
+function updateManifestField(id, field, rawValue){
+  var payload = readManifestPayload();
+  var it = findManifestItem(payload, id);
+  if(!it){ mfSay('소싱 후보에서 이 항목을 찾지 못했습니다.', true); return false; }
+
+  if(field === 'cny'){
+    var num = parseFloat(String(rawValue == null ? '' : rawValue).replace(/[^0-9.]/g, ''));
+    if(!isFinite(num) || num < 0) num = 0;
+    it.cny = num;
+    setPrimaryOption(it, 'cny', num);
+  } else if(field === 'image'){
+    var img = String(rawValue == null ? '' : rawValue).trim();
+    it.image = img;
+    setPrimaryOption(it, 'image', img);
+  } else if(field === 'yearlySales'){
+    it.yearlySales = String(rawValue == null ? '' : rawValue).trim();
+  } else if(field === 'link'){
+    it.link = String(rawValue == null ? '' : rawValue).trim();
+  } else {
+    return false;
+  }
+  return writeManifestPayload(payload);
+}
+
+function addManifestItemFor(product){
+  var payload = readManifestPayload();
+  var now = Date.now();
+  var nm = (product && product.name) ? String(product.name).trim() : '';
+  payload.items.unshift({
+    id: mfUid(), createdAt: now,
+    name: nm, folder: nm,
+    link: '', image: '',
+    category: (product && product.category) || 'ACTIVE',
+    status: '검토중',
+    isBundle: false, bundleQty: 2,
+    cny: 0, sell: 0, rate: 300,
+    yearlySales: '', memo: '',
+    options: [{ id: mfUid(), name: '', cny: 0, sell: 0, image: '', inputMode: 'margin', savedMarginPct: null }]
+  });
+  return writeManifestPayload(payload);
+}
+
+function deleteManifestItem(id){
+  var payload = readManifestPayload();
+  var before = payload.items.length;
+  payload.items = payload.items.filter(function(it){ return !it || it.id !== id; });
+  if(payload.items.length === before){
+    mfSay('소싱 후보에서 이 항목을 찾지 못했습니다.', true);
+    return false;
+  }
+  return writeManifestPayload(payload);
 }
 
 function normalize1688Link(url){
@@ -1538,7 +1747,10 @@ function renderProduct(p){
     html += '<div class="mf-empty">'+
       '<b>소싱 후보에 등록된 소싱처가 없습니다.</b>'+
       '<p>소싱 후보에서 상품명을 <b>'+esc(p.name)+'</b> 와 같게 저장하면, 그곳에 입력한 이미지·사입 단가·연간 판매량·1688 링크가 여기에 자동으로 나타납니다.</p>'+
-      '<button type="button" class="mf-go" data-action="open-manifest">소싱 후보 열기 ↗</button>'+
+      '<div class="mf-actions">'+
+        '<button type="button" class="mf-add" data-action="mf-add">+ 소싱처 추가</button>'+
+        '<button type="button" class="mf-go" data-action="open-manifest">소싱 후보 열기 ↗</button>'+
+      '</div>'+
       '</div>';
   } else {
     // 같은 1688 링크가 여러 건이면 한 번만 보여준다
@@ -1563,28 +1775,39 @@ function renderProduct(p){
       var optText = opts.length > 1
         ? opts.map(function(o){ return esc(o.name || '옵션') + ' ' + fmtYuanSafe(o.cny); }).join(' / ')
         : esc(m.memo || '—');
-      html += '<div class="src-row from-manifest'+(isCheap?' cheapest':'')+'">'+
-        '<div class="src-thumb-wrap">'+
+      var cnyVal = (m.cny === null || m.cny === undefined || m.cny === '' || isNaN(m.cny)) ? '' : String(m.cny);
+      html += '<div class="src-row from-manifest'+(isCheap?' cheapest':'')+'" data-mf-id="'+esc(m.id)+'">'+
+        '<div class="src-thumb-wrap" data-action="mf-image" data-mf-id="'+esc(m.id)+'" title="클릭해서 이미지 주소 바꾸기">'+
           (thumb
             ? safeImgTag(thumb, 'src-thumb', m.name)
             : '<div class="src-thumb"></div>')+
+          '<div class="src-thumb-edit">'+editIconSvg+'</div>'+
         '</div>'+
-        '<div class="src-1688-field"><div class="mf-static-price">'+fmtYuanSafe(m.cny)+'</div><div class="u-sub">단가</div></div>'+
-        '<div class="src-1688-field"><div class="mf-static">'+esc(m.yearlySales || '-')+'</div><div class="u-sub">연간 판매량</div></div>'+
+        '<div class="src-1688-field">'+
+          '<input type="text" inputmode="decimal" class="mf-in mf-in-cny" data-mf-field="cny" data-mf-id="'+esc(m.id)+'" value="'+esc(cnyVal)+'" placeholder="0">'+
+          '<div class="u-sub">단가 ¥</div>'+
+        '</div>'+
+        '<div class="src-1688-field">'+
+          '<input type="text" class="mf-in" data-mf-field="yearlySales" data-mf-id="'+esc(m.id)+'" value="'+esc(m.yearlySales || '')+'" placeholder="-">'+
+          '<div class="u-sub">연간 판매량</div>'+
+        '</div>'+
         '<div class="src-1688-field opts-field"><div class="mf-static-sm">'+optText+'</div>'+
           (opts.length > 1 && m.memo ? '<div class="u-sub">'+esc(m.memo)+'</div>' : '')+
         '</div>'+
         '<div class="src-1688-field url-field">'+
-          '<span class="mf-static-url" title="'+esc(m.link || '')+'">'+esc(m.link ? shortLink(m.link) : '링크 없음')+'</span>'+
+          '<input type="text" class="mf-in mf-in-url" data-mf-field="link" data-mf-id="'+esc(m.id)+'" value="'+esc(m.link || '')+'" placeholder="1688 링크 붙여넣기" title="'+esc(m.link || '')+'">'+
           (m.link ? '<a class="go" href="'+esc(m.link)+'" target="_blank" rel="noopener">열기 ↗</a>' : '<span class="go go-disabled">열기 ↗</span>')+
         '</div>'+
-        '<span class="mf-badge" title="소싱 후보에서 가져온 항목">M</span>'+
+        '<button type="button" class="mf-del" data-action="mf-delete" data-mf-id="'+esc(m.id)+'" title="소싱 후보에서 삭제">✕</button>'+
       '</div>';
     });
     html += '</div>';
-    html += '<button type="button" class="mf-go" data-action="open-manifest">소싱 후보에서 편집 ↗</button>';
+    html += '<div class="mf-actions">'+
+      '<button type="button" class="mf-add" data-action="mf-add">+ 소싱처 추가</button>'+
+      '<button type="button" class="mf-go" data-action="open-manifest">소싱 후보에서 자세히 편집 ↗</button>'+
+    '</div>';
   }
-  html += '<div class="save-hint" style="margin-top:10px;">※ 소싱처 정보는 <b>소싱 후보</b>에서 관리합니다. 이미지·사입 단가·연간 판매량·1688 링크를 그곳에서 수정하면 이 화면에 자동으로 반영됩니다.</div>';
+  html += '<div class="save-hint" style="margin-top:10px;">※ 여기서 고친 <b>이미지·단가·연간 판매량·1688 링크</b>는 <b>소싱 후보</b>에도 그대로 반영되며, 다른 기기에서도 똑같이 보입니다. 옵션·판매가·마진 등 자세한 항목은 소싱 후보에서 편집하세요.</div>';
   html += '</div>';
 
   // pointer to the interactive category fee table (replaces the old static screenshot)
@@ -1616,7 +1839,9 @@ function renderProduct(p){
   document.getElementById('mainContent').innerHTML = html;
 
   // 1688 thumbnail editors
-  Array.prototype.forEach.call(document.querySelectorAll('.src-thumb-wrap'), function(el){
+  // data-idx 가 있는 예전 방식 행에만 연결한다.
+  // 소싱 후보 연동 행(data-mf-id)은 아래쪽 위임 처리에서 따로 다룬다.
+  Array.prototype.forEach.call(document.querySelectorAll('.src-thumb-wrap[data-idx]'), function(el){
     el.addEventListener('click', function(){
       var idx = el.getAttribute('data-idx');
       var current = note.imgUrls[idx] || '';
@@ -1881,6 +2106,69 @@ mainContentEl.addEventListener('click', function(e){
   persistEdits(p);
   renderProduct(p);
   renderSidebar();
+});
+
+/* ── 대시보드에서 소싱처 직접 편집 (소싱 후보에 그대로 반영) ── */
+
+/* 값 수정: 칸을 벗어날 때(change) 저장한다. 글자마다 저장하면 커서가 튀기 때문. */
+mainContentEl.addEventListener('change', function(e){
+  var el = e.target;
+  if(!el || !el.getAttribute) return;
+  var field = el.getAttribute('data-mf-field');
+  if(!field) return;
+  var id = el.getAttribute('data-mf-id');
+  if(!id) return;
+  if(updateManifestField(id, field, el.value) && currentProductRef){
+    renderProduct(currentProductRef);
+    renderSidebar();
+  }
+});
+
+/* 이미지 주소 바꾸기 / 소싱처 추가 / 삭제 */
+mainContentEl.addEventListener('click', function(e){
+  var btn = e.target.closest('[data-action]');
+  if(!btn) return;
+  var action = btn.getAttribute('data-action');
+  if(action !== 'mf-image' && action !== 'mf-add' && action !== 'mf-delete') return;
+  e.preventDefault();
+  e.stopPropagation();
+
+  var id = btn.getAttribute('data-mf-id');
+
+  if(action === 'mf-image'){
+    var payload = readManifestPayload();
+    var it = findManifestItem(payload, id);
+    openImageEditor({
+      currentSrc: it ? (it.image || '') : '',
+      onSave: function(val){
+        if(updateManifestField(id, 'image', val) && currentProductRef){
+          renderProduct(currentProductRef); renderSidebar();
+        }
+      },
+      onReset: function(){
+        if(updateManifestField(id, 'image', '') && currentProductRef){
+          renderProduct(currentProductRef); renderSidebar();
+        }
+      }
+    });
+    return;
+
+  } else if(action === 'mf-add'){
+    if(!currentProductRef) return;
+    if(!addManifestItemFor(currentProductRef)) return;
+
+  } else if(action === 'mf-delete'){
+    var pay2 = readManifestPayload();
+    var it2 = findManifestItem(pay2, id);
+    var label = it2 ? (it2.name || it2.folder || '이 소싱처') : '이 소싱처';
+    if(!confirm('"' + label + '" 을(를) 소싱 후보에서 완전히 삭제할까요?\n\n옵션·판매가·메모 등 이 항목의 모든 내용이 함께 지워지며 되돌릴 수 없습니다.')) return;
+    if(!deleteManifestItem(id)) return;
+  }
+
+  if(currentProductRef){
+    renderProduct(currentProductRef);
+    renderSidebar();
+  }
 });
 
 /* 소싱 후보 열기 버튼 */
