@@ -141,6 +141,16 @@
     var toast = document.createElement("div");
     toast.className = "mvs-toast";
 
+    // 떠 있는 버튼이 맨 아래 내용을 가리지 않도록 여백을 하나 둔다
+    var spacer = document.getElementById("moriva-saves-spacer");
+    if (!spacer) {
+      spacer = document.createElement("div");
+      spacer.id = "moriva-saves-spacer";
+      spacer.setAttribute("aria-hidden", "true");
+      spacer.style.cssText = "height:74px;flex:none;pointer-events:none;";
+      document.body.appendChild(spacer);
+    }
+
     document.body.appendChild(bar);
     document.body.appendChild(ov);
     document.body.appendChild(toast);
