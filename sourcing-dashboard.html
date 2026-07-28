@@ -899,6 +899,51 @@ function imgSrc(file){
   return 'data:image/jpeg;base64,' + images[file];
 }
 
+/* ── 1688(알리바바) 이미지 안전하게 불러오기 ──
+   alicdn 계열은 다른 사이트에서 직접 불러오는 것(핫링크)을 막는 경우가 있어
+   기기·통신망에 따라 어떤 곳에서는 보이고 어떤 곳에서는 안 보인다.
+   그래서 이미지 프록시를 먼저 쓰고, 그게 실패하면 원본 주소로 한 번 더 시도한다.
+   (소싱 후보 화면이 쓰는 방식과 동일하게 맞췄다) */
+var HOTLINK_HOSTS = ['alicdn.com', '1688.com', 'taobao.com', 'tbcdn.cn', 'aliyuncs.com'];
+function proxyImgUrl(url){
+  if(!url) return '';
+  if(url.indexOf('data:') === 0) return url;
+  try{
+    var u = new URL(url, location.href);
+    if(u.protocol !== 'http:' && u.protocol !== 'https:') return url;
+    var blocked = HOTLINK_HOSTS.some(function(d){
+      return u.hostname === d || u.hostname.slice(-(d.length + 1)) === ('.' + d);
+    });
+    if(!blocked) return url;
+    return 'https://images.weserv.nl/?url=' + encodeURIComponent(u.hostname + u.pathname + u.search);
+  }catch(e){ return url; }
+}
+/* <img ...> 한 줄을 만들어 준다. 프록시를 쓴 경우 원본 주소를 예비로 달아 둔다. */
+function safeImgTag(url, cls, alt){
+  if(!url) return '';
+  var shown = proxyImgUrl(url);
+  var out = '<img';
+  if(cls) out += ' class="' + cls + '"';
+  out += ' src="' + esc(shown) + '"';
+  out += ' alt="' + esc(alt || '') + '"';
+  out += ' loading="lazy" referrerpolicy="no-referrer"';
+  if(shown !== url) out += ' data-img-fallback="' + esc(url) + '"';
+  return out + '>';
+}
+/* 프록시가 실패하면 원본으로 한 번 더, 그것도 실패하면 조용히 숨긴다.
+   (이미지 오류는 위로 안 올라오므로 캡처 단계에서 받는다) */
+document.addEventListener('error', function(e){
+  var el = e.target;
+  if(!el || el.tagName !== 'IMG') return;
+  var alt = el.getAttribute('data-img-fallback');
+  if(alt){
+    el.removeAttribute('data-img-fallback');
+    el.src = alt;
+    return;
+  }
+  el.style.visibility = 'hidden';
+}, true);
+
 // ---------------- thousands-comma formatting for editable number fields ----------------
 function formatWithCommas(numStr){
   var neg = numStr.charAt(0) === '-';
@@ -989,7 +1034,7 @@ function openImageEditor(opts){
     '<div class="img-modal">'+
       '<div class="img-modal-head"><b>이미지 설정</b><button type="button" class="img-modal-x" aria-label="닫기">&times;</button></div>'+
       '<div class="img-modal-preview" id="imgModalPreview">'+
-        (opts.currentSrc ? '<img src="'+opts.currentSrc+'" alt="미리보기">' : '<span class="img-modal-empty">이미지 없음</span>')+
+        (opts.currentSrc ? safeImgTag(opts.currentSrc, '', '미리보기') : '<span class="img-modal-empty">이미지 없음</span>')+
       '</div>'+
       '<div class="img-modal-row">'+
         '<label class="img-modal-label">1. 파일 선택</label>'+
@@ -1437,7 +1482,7 @@ function renderProduct(p){
       var hasCustom = !!note.compImgUrls[idx];
       return '<div class="comp-card'+(isMin?' min-price':'')+(hasCustom?' has-custom-img':'')+'" data-comp-card-idx="'+idx+'">'+
         '<div class="comp-img-wrap" data-comp-idx="'+idx+'" title="클릭해서 상품 이미지 바꾸기">'+
-          (src ? '<img src="'+esc(src)+'" alt="'+esc(c.name||'')+'">' : '<div style="aspect-ratio:1/1; background:var(--cream-2);"></div>')+
+          (src ? safeImgTag(src, '', c.name||'') : '<div style="aspect-ratio:1/1; background:var(--cream-2);"></div>')+
           '<div class="cc-edit">'+editIconSvg+'</div>'+
         '</div>'+
         '<div class="cc-body">'+
@@ -1519,7 +1564,7 @@ function renderProduct(p){
       html += '<div class="src-row from-manifest'+(isCheap?' cheapest':'')+'">'+
         '<div class="src-thumb-wrap">'+
           (thumb
-            ? '<img class="src-thumb" src="'+esc(thumb)+'" alt="'+esc(m.name)+'" onerror="this.style.visibility=\'hidden\';">'
+            ? safeImgTag(thumb, 'src-thumb', m.name)
             : '<div class="src-thumb"></div>')+
         '</div>'+
         '<div class="src-1688-field"><div class="mf-static-price">'+fmtYuanSafe(m.cny)+'</div><div class="u-sub">단가</div></div>'+
