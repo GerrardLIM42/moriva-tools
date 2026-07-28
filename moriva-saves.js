@@ -179,7 +179,9 @@
     /* ── 동작 ── */
     bar.querySelector(".mvs-save").addEventListener("click", function () {
       var data;
-      try { data = opt.collect(); } catch (e) { data = null; }
+      try { data = opt.collect(); } catch (e) { data = undefined; }
+      // 도구가 null 을 돌려주면 "직접 안내했으니 조용히 멈춰라"라는 뜻이다
+      if (data === null) return;
       if (!data) { alert("지금 화면에서 저장할 내용을 읽지 못했습니다."); return; }
 
       var hint = "";
