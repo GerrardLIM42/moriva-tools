@@ -269,33 +269,26 @@
     });
 
     /* 통관 정밀 계산 탭 본체 */
-    function CustomsTab({ xrCny, xrUsd, onApply, regRef }) {
-      const [bundles, setBundles]   = React.useState(() => [mkBundle(1)]);
+    function CustomsTab({ xrCny, xrUsd, onApply, snap }) {
+      // snap: 탭을 오갈 때(또는 저장/불러오기) 내용이 사라지지 않도록 담아 두는 보관함
+      const seed = (snap && snap.current) || null;
+      const [bundles, setBundles]   = React.useState(() =>
+        (seed && Array.isArray(seed.bundles) && seed.bundles.length) ? seed.bundles : [mkBundle(1)]);
       const [costs, setCosts]       = React.useState(() =>
-        COST_DEFS.reduce((a, d) => (a[d.key] = "", a), {}));
-      const [agencyPct, setAgencyPct] = React.useState("");
-      const [lclMode, setLclMode]   = React.useState(false);
-      const [lclTotalCbm, setLclTotalCbm] = React.useState("");
-      const [lclTotalUsd, setLclTotalUsd] = React.useState("");
+        (seed && seed.costs && typeof seed.costs === "object") ? seed.costs
+          : COST_DEFS.reduce((a, d) => (a[d.key] = "", a), {}));
+      const [agencyPct, setAgencyPct] = React.useState(() => seed ? (seed.agencyPct || "") : "");
+      const [lclMode, setLclMode]   = React.useState(() => seed ? Boolean(seed.lclMode) : false);
+      const [lclTotalCbm, setLclTotalCbm] = React.useState(() => seed ? (seed.lclTotalCbm || "") : "");
+      const [lclTotalUsd, setLclTotalUsd] = React.useState(() => seed ? (seed.lclTotalUsd || "") : "");
       const [msg, setMsg]           = React.useState("");
-      const [costLog, setCostLog]   = React.useState([]);
+      const [costLog, setCostLog]   = React.useState(() =>
+        (seed && Array.isArray(seed.costLog)) ? seed.costLog : []);
+
+      // 화면이 바뀔 때마다 현재 내용을 보관해 둔다(간편 탭으로 옮겨도 그대로 남는다)
+      if (snap) snap.current = { bundles, costs, agencyPct, lclMode, lclTotalCbm, lclTotalUsd, costLog };
 
       const rate = nv(xrCny) || 0;
-
-      /* 저장 보관함이 이 탭의 내용도 함께 담을 수 있게 등록해 둔다 */
-      if (regRef) regRef.current = {
-        collect: () => ({ bundles, costs, agencyPct, lclMode, lclTotalCbm, lclTotalUsd, costLog }),
-        restore: (d) => {
-          if (!d) return;
-          if (Array.isArray(d.bundles) && d.bundles.length) setBundles(d.bundles);
-          if (d.costs && typeof d.costs === "object") setCosts(d.costs);
-          if (d.agencyPct    !== undefined) setAgencyPct(d.agencyPct);
-          if (d.lclMode      !== undefined) setLclMode(Boolean(d.lclMode));
-          if (d.lclTotalCbm  !== undefined) setLclTotalCbm(d.lclTotalCbm);
-          if (d.lclTotalUsd  !== undefined) setLclTotalUsd(d.lclTotalUsd);
-          setCostLog(Array.isArray(d.costLog) ? d.costLog : []);
-        }
-      };
 
       const setCost = (k, v) => setCosts(p => ({ ...p, [k]: v }));
       const updB = (i, k, v) => setBundles(p => p.map((b, j) => j === i ? { ...b, [k]: v } : b));
@@ -680,8 +673,9 @@
 
     function App() {
       const [tab, setTab] = useState("simple"); // "simple" | "customs"
-      const customsRef = React.useRef(null);   // 통관 탭 상태 접근용
-      const saveApi    = React.useRef(null);   // 저장 보관함이 쓰는 현재 상태 함수
+      const customsSnap = React.useRef(null);  // 통관 탭 내용 보관(탭 이동·저장에 사용)
+      const [customsKey, setCustomsKey] = React.useState(0); // 불러오기 시 통관 탭 다시 그리기
+      const saveApi     = React.useRef(null);  // 저장 보관함이 쓰는 현재 상태 함수
       const [sp,    setSp   ] = useState("");
       const [ch,    setCh   ] = useState("rocket");
       const [ci,    setCi   ] = useState(0);
@@ -850,23 +844,28 @@
           v: 2,
           tab,
           main: collectState(),
-          customs: customsRef.current ? customsRef.current.collect() : null
+          customs: customsSnap.current || null
         }),
         restore: (d) => {
           if (!d) return;
           // 예전 형식(본 계산 값만 저장한 경우)도 그대로 불러온다
           const main = d.main || d;
           restoreState(main);
-          if (d.customs && customsRef.current) customsRef.current.restore(d.customs);
+          customsSnap.current = d.customs || null;
+          setCustomsKey(k => k + 1);       // 통관 탭을 저장된 내용으로 다시 그린다
           if (d.tab) setTab(d.tab);
           window.scrollTo({ top: 0, behavior: "smooth" });
         },
         hint: () => (collectState().pName || "").trim(),
         summary: (d) => {
           const m = (d && d.main) || d || {};
-          const nm = (m.mCat || "").trim();
-          return (nm ? nm + " · " : "") + (d && d.customs && (d.customs.bundles || []).length > 1
-            ? "통관 " + d.customs.bundles.length + "묶음" : "간편 계산");
+          const parts = [];
+          const n = Array.isArray(m.options) ? m.options.length : 0;
+          if (n) parts.push("옵션 " + n + "개");
+          parts.push(m.ch === "rocket" ? "로켓그로스" : "마켓플레이스");
+          const nb = (d && d.customs && (d.customs.bundles || []).length) || 0;
+          if (nb) parts.push("통관 " + nb + "묶음");
+          return parts.join(" · ");
         }
       };
 
@@ -1193,7 +1192,7 @@
           </div>
 
           {tab === "customs" && (
-            <CustomsTab regRef={customsRef} xrCny={xrMode === "simple" ? simRate : xrCny} xrUsd={xrUsd}
+            <CustomsTab key={customsKey} snap={customsSnap} xrCny={xrMode === "simple" ? simRate : xrCny} xrUsd={xrUsd}
               onApply={(unitKrw, name) => {
                 // 개당 원가에 세금·물류비가 이미 포함되어 있으므로
                 // 간편 계산에서 관세·부가세·포워딩·통관비를 다시 더하지 않도록 0으로 맞춘다.
