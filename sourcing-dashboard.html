@@ -926,7 +926,9 @@ function safeImgTag(url, cls, alt){
   if(cls) out += ' class="' + cls + '"';
   out += ' src="' + esc(shown) + '"';
   out += ' alt="' + esc(alt || '') + '"';
-  out += ' loading="lazy" referrerpolicy="no-referrer"';
+  /* loading=lazy 는 이 화면(프레임 안)에서 이미지가 아예 요청되지 않는 문제가 있어 쓰지 않는다.
+     referrerpolicy=no-referrer 는 핫링크 차단을 피하는 데 도움이 된다. */
+  out += ' referrerpolicy="no-referrer"';
   if(shown !== url) out += ' data-img-fallback="' + esc(url) + '"';
   return out + '>';
 }
