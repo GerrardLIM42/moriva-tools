@@ -749,40 +749,80 @@ function readManifestPayload(){
     return empty;
   }catch(e){ return empty; }
 }
-function writeManifestPayload(payload){
+/* 이 브라우저에만 먼저 저장해 화면이 곧바로 바뀌게 한다 */
+function saveLocalManifest(payload){
   try{
     localStorage.setItem(MANIFEST_ITEMS_KEY, JSON.stringify(payload));
   }catch(e){
     mfSay('이 브라우저에 저장하지 못했습니다: ' + e.message, true);
     return false;
   }
-  /* 소싱 후보가 다른 프레임/탭에 열려 있으면 다시 그리도록 알린다 */
   try{ window.parent.postMessage({ type: 'moriva-manifest-updated' }, '*'); }catch(e){}
-  scheduleManifestSync(payload);
   return true;
 }
 
-function scheduleManifestSync(payload){
+/* ── 저장 방식에 대하여 ──
+   이 브라우저에 있는 사본을 통째로 서버에 올리면, 다른 기기에서 방금 추가한 내용을
+   모르고 지워버릴 수 있다. 그래서 저장할 때는 언제나
+   ① 서버의 최신본을 먼저 받아오고 ② 거기에 방금 한 변경만 다시 적용해서 ③ 올린다.
+   그러기 위해 변경은 "몇 번을 적용해도 결과가 같은" 함수(apply) 형태로 넘긴다. */
+var pendingApplies = [];
+
+function mutateManifest(apply){
+  var local = readManifestPayload();
+  var ok = false;
+  try{ ok = apply(local); }catch(e){ ok = false; }
+  if(!ok) return false;
+  if(!saveLocalManifest(local)) return false;
+
+  pendingApplies.push(apply);
   mfSay('저장 중…', false, true);
   clearTimeout(manifestSaveTimer);
-  manifestSaveTimer = setTimeout(function(){ pushManifest(payload); }, 600);
+  manifestSaveTimer = setTimeout(runManifestSync, 700);
+  return true;
 }
-function fetchManifestSha(){
+
+function runManifestSync(){
+  var applies = pendingApplies.slice();
+  pendingApplies = [];
+  return fetchManifestPayload()
+    .then(function(server){
+      /* 서버를 못 읽었으면 이 브라우저 사본을 기준으로 삼는다 */
+      var base = (server && Array.isArray(server.items)) ? server : readManifestPayload();
+      applies.forEach(function(fn){ try{ fn(base); }catch(e){} });
+      saveLocalManifest(base);
+      return doPushManifest(base, false).then(function(){
+        if(typeof currentProductRef !== 'undefined' && currentProductRef){
+          try{ renderProduct(currentProductRef); renderSidebar(); }catch(e){}
+        }
+      });
+    })
+    .catch(function(err){
+      mfSay('다른 기기와 맞추지 못했습니다 (이 기기에는 저장됨): ' + err.message, true);
+    });
+}
+
+/* 서버(소싱 후보와 같은 저장소)의 최신 내용을 받아온다 */
+function fetchManifestPayload(){
   return fetch(MANIFEST_WORKER_URL, {
     headers: { 'Accept': 'application/vnd.github+json' }, cache: 'no-store'
   }).then(function(res){
     if(res.status === 404){ manifestSha = null; return null; }
     if(!res.ok) throw new Error('읽기 실패 ' + res.status);
-    return res.json().then(function(d){ manifestSha = d.sha || null; return d; });
+    return res.json().then(function(d){
+      manifestSha = d.sha || null;
+      var text = decodeURIComponent(escape(atob(String(d.content || '').replace(/\n/g, ''))));
+      var raw = JSON.parse(text || '{}');
+      if(Array.isArray(raw)) return { items: raw, folderKeywords: {}, hiddenFolders: [] };
+      return {
+        items: Array.isArray(raw.items) ? raw.items : [],
+        folderKeywords: (raw.folderKeywords && typeof raw.folderKeywords === 'object') ? raw.folderKeywords : {},
+        hiddenFolders: Array.isArray(raw.hiddenFolders) ? raw.hiddenFolders : []
+      };
+    });
   });
 }
-function pushManifest(payload){
-  var first = manifestSha ? Promise.resolve() : fetchManifestSha().catch(function(){});
-  return first.then(function(){ return doPushManifest(payload, false); })
-    .catch(function(err){
-      mfSay('다른 기기와 맞추지 못했습니다(이 기기에는 저장됨): ' + err.message, true);
-    });
-}
+
 function doPushManifest(payload, retried){
   var body = {
     message: 'update sourcing data from dashboard (' + new Date().toISOString() + ')',
@@ -800,12 +840,25 @@ function doPushManifest(payload, retried){
         mfSay('저장했습니다');
       });
     }
-    /* 다른 곳에서 먼저 저장해 기준이 어긋난 경우 — 최신 상태를 받아 한 번 더 시도 */
+    /* 그 사이 다른 곳에서 저장한 경우 — 최신 내용을 다시 받아 한 번 더 시도 */
     if((res.status === 409 || res.status === 422) && !retried){
-      return fetchManifestSha().then(function(){ return doPushManifest(payload, true); });
+      return fetchManifestPayload().then(function(){ return doPushManifest(payload, true); });
     }
     throw new Error('저장 실패 ' + res.status);
   });
+}
+
+/* 화면을 열 때 서버의 최신 내용을 받아 이 브라우저에 맞춰 둔다.
+   (소싱 후보를 아직 열지 않은 기기에서도 최신 소싱처가 바로 보인다) */
+function refreshManifestFromServer(){
+  return fetchManifestPayload().then(function(server){
+    if(!server || !Array.isArray(server.items) || !server.items.length) return;
+    var before = localStorage.getItem(MANIFEST_ITEMS_KEY) || '';
+    var next = JSON.stringify(server);
+    if(before === next) return;
+    saveLocalManifest(server);
+    try{ render(); }catch(e){}
+  }).catch(function(){ /* 인터넷이 없으면 이 브라우저에 있는 내용으로 계속 쓴다 */ });
 }
 
 function findManifestItem(payload, id){
@@ -827,31 +880,36 @@ function setPrimaryOption(it, key, value){
 }
 
 function updateManifestField(id, field, rawValue){
-  var payload = readManifestPayload();
-  var it = findManifestItem(payload, id);
-  if(!it){ mfSay('소싱 후보에서 이 항목을 찾지 못했습니다.', true); return false; }
-
+  var value;
   if(field === 'cny'){
-    var num = parseFloat(String(rawValue == null ? '' : rawValue).replace(/[^0-9.]/g, ''));
-    if(!isFinite(num) || num < 0) num = 0;
-    it.cny = num;
-    setPrimaryOption(it, 'cny', num);
-  } else if(field === 'image'){
-    var img = String(rawValue == null ? '' : rawValue).trim();
-    it.image = img;
-    setPrimaryOption(it, 'image', img);
-  } else if(field === 'yearlySales'){
-    it.yearlySales = String(rawValue == null ? '' : rawValue).trim();
-  } else if(field === 'link'){
-    it.link = String(rawValue == null ? '' : rawValue).trim();
+    value = parseFloat(String(rawValue == null ? '' : rawValue).replace(/[^0-9.]/g, ''));
+    if(!isFinite(value) || value < 0) value = 0;
+  } else if(field === 'image' || field === 'yearlySales' || field === 'link'){
+    value = String(rawValue == null ? '' : rawValue).trim();
   } else {
     return false;
   }
-  return writeManifestPayload(payload);
+
+  var found = false;
+  var ok = mutateManifest(function(payload){
+    var it = findManifestItem(payload, id);
+    if(!it) return false;
+    found = true;
+    if(field === 'cny'){
+      it.cny = value;
+      setPrimaryOption(it, 'cny', value);
+    } else if(field === 'image'){
+      it.image = value;
+      setPrimaryOption(it, 'image', value);
+    } else {
+      it[field] = value;
+    }
+    return true;
+  });
+  if(!ok && !found) mfSay('소싱 후보에서 이 항목을 찾지 못했습니다.', true);
+  return ok;
 }
 
-/* 대시보드에서 상품에 지정해 둔 분류(ACTIVE/CAMP/HOME/…)를 그대로 물려준다.
-   분류를 아직 정하지 않았으면 소싱 후보의 기본값(ACTIVE)을 쓴다. */
 function manifestCategoryFor(product){
   try{
     var c = product ? (getNote(product).category || '') : '';
@@ -861,11 +919,11 @@ function manifestCategoryFor(product){
 }
 
 function addManifestItemFor(product){
-  var payload = readManifestPayload();
-  var now = Date.now();
   var nm = (product && product.name) ? String(product.name).trim() : '';
-  payload.items.unshift({
-    id: mfUid(), createdAt: now,
+  /* 항목은 미리 한 번만 만들어 둔다. 서버 최신본에 다시 적용할 때
+     새로 만들면 같은 것이 두 개 생기기 때문. */
+  var newItem = {
+    id: mfUid(), createdAt: Date.now(),
     name: nm, folder: nm,
     link: '', image: '',
     category: manifestCategoryFor(product),
@@ -874,19 +932,23 @@ function addManifestItemFor(product){
     cny: 0, sell: 0, rate: 300,
     yearlySales: '', memo: '',
     options: [{ id: mfUid(), name: '', cny: 0, sell: 0, image: '', inputMode: 'margin', savedMarginPct: null }]
+  };
+  return mutateManifest(function(payload){
+    if(!findManifestItem(payload, newItem.id)) payload.items.unshift(newItem);
+    return true;
   });
-  return writeManifestPayload(payload);
 }
 
 function deleteManifestItem(id){
-  var payload = readManifestPayload();
-  var before = payload.items.length;
-  payload.items = payload.items.filter(function(it){ return !it || it.id !== id; });
-  if(payload.items.length === before){
-    mfSay('소싱 후보에서 이 항목을 찾지 못했습니다.', true);
-    return false;
-  }
-  return writeManifestPayload(payload);
+  var existed = false;
+  var ok = mutateManifest(function(payload){
+    var before = payload.items.length;
+    payload.items = payload.items.filter(function(it){ return !it || it.id !== id; });
+    if(payload.items.length !== before) existed = true;
+    return true;   /* 서버에 이미 없어도 정상으로 본다 */
+  });
+  if(ok && !existed) mfSay('소싱 후보에서 이 항목을 찾지 못했습니다.', true);
+  return ok;
 }
 
 function normalize1688Link(url){
@@ -2207,6 +2269,9 @@ window.addEventListener('message', function(e){
 });
 
 render();
+
+/* 화면을 연 뒤 서버의 최신 소싱처 내용을 확인해 반영한다 */
+refreshManifestFromServer();
 })();
 </script>
 <script src="./moriva-sync.js"></script>
