@@ -850,6 +850,16 @@ function updateManifestField(id, field, rawValue){
   return writeManifestPayload(payload);
 }
 
+/* 대시보드에서 상품에 지정해 둔 분류(ACTIVE/CAMP/HOME/…)를 그대로 물려준다.
+   분류를 아직 정하지 않았으면 소싱 후보의 기본값(ACTIVE)을 쓴다. */
+function manifestCategoryFor(product){
+  try{
+    var c = product ? (getNote(product).category || '') : '';
+    if(c && CATEGORIES.indexOf(c) !== -1) return c;
+  }catch(e){}
+  return 'ACTIVE';
+}
+
 function addManifestItemFor(product){
   var payload = readManifestPayload();
   var now = Date.now();
@@ -858,7 +868,7 @@ function addManifestItemFor(product){
     id: mfUid(), createdAt: now,
     name: nm, folder: nm,
     link: '', image: '',
-    category: (product && product.category) || 'ACTIVE',
+    category: manifestCategoryFor(product),
     status: '검토중',
     isBundle: false, bundleQty: 2,
     cny: 0, sell: 0, rate: 300,
