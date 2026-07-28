@@ -51,6 +51,39 @@
   .ptab.active .option-tag{background:rgba(255,255,255,.2);color:#fff;}
   .prod-thumb{width:44px;height:44px;border-radius:10px;object-fit:cover;border:1px solid var(--border);flex-shrink:0;}
   .prod-thumb-sm{width:26px;height:26px;border-radius:8px;object-fit:cover;border:1px solid var(--border);flex-shrink:0;vertical-align:middle;}
+  /* 1688 발주 계산 */
+  .ord-card{margin-bottom:14px;}
+  .ord-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .ord-head b{font-size:15px;}
+  .ord-head label{font-size:12.5px;color:var(--sub);display:flex;align-items:center;gap:6px;}
+  .ord-sum{font-size:13px;margin-left:auto;background:#FFF8E6;border:1px solid #E8DFC6;border-radius:8px;padding:6px 12px;}
+  .ord-sum b{color:#9a6d00;}
+  .ord-del{margin-left:0;}
+  .ord-scroll{overflow-x:auto;margin-top:10px;}
+  .ord-table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:640px;}
+  .ord-table th{background:#F6F7F9;border:1px solid var(--border);padding:8px 6px;font-size:11.5px;color:var(--sub);white-space:nowrap;}
+  .ord-table td{border:1px solid var(--border);padding:6px;text-align:center;vertical-align:middle;}
+  .ord-table .ord-name{text-align:left;font-weight:700;white-space:nowrap;padding-left:10px;}
+  .ord-pri{color:#c9a227;}
+  .ord-auto{color:var(--sub);}
+  .ord-final{font-weight:800;font-size:14px;background:#FFFBEF;}
+  .ord-boxinfo{font-size:10.5px;color:var(--sub);font-weight:500;}
+  .ord-neg b{color:#dc2626;}
+  .ord-in{width:64px;text-align:right;padding:5px 6px;border:1px solid var(--border);border-radius:7px;font-family:inherit;font-size:12.5px;}
+  .ord-in.is-auto{color:#5a6470;background:#FAFBFC;}
+  .ord-in-wrap{display:inline-flex;align-items:center;gap:3px;}
+  .ord-unit{color:var(--sub);font-size:11px;}
+  .ord-in-adj{width:56px;}
+  .ord-total{width:84px;text-align:right;font-weight:700;}
+  .ord-date{padding:5px 6px;border:1px solid var(--border);border-radius:7px;font-family:inherit;font-size:12px;}
+  .ord-adj-cell{white-space:nowrap;}
+  .ord-step{border:1px solid var(--border);background:#fff;border-radius:6px;padding:4px 6px;font-size:10.5px;cursor:pointer;font-family:inherit;color:var(--sub);}
+  .ord-step:hover{background:#F1F3F5;}
+  .ord-reset{color:#c9a227;}
+  @media (max-width:640px){
+    .ord-head{gap:8px;}
+    .ord-sum{margin-left:0;width:100%;text-align:center;}
+  }
   .img-input{display:flex;flex-direction:column;gap:8px;}
   .img-drop{
     border:2px dashed var(--border); border-radius:12px; padding:16px 14px;
@@ -336,7 +369,7 @@ function setPrimaryOption(pid, optionId){
 }
 
 function createProduct(name, launchDateStr, color, optionName, image){
-  const p = { id: uid(), name, color, image: image||null, launchDate: launchDateStr, options: [], primaryOptionId: null, maxDayIndex: DEFAULT_MAX_DAY, days: {} };
+  const p = { id: uid(), name, color, image: image||null, launchDate: launchDateStr, options: [], primaryOptionId: null, maxDayIndex: DEFAULT_MAX_DAY, days: {}, orders: [], orderCoverDays: 40 };
   const opt = newOption(optionName || '기본옵션', color);
   opt.reviewDates = defaultReviewDates(opt.reviewStartDayIndex);
   p.options = [opt];
@@ -348,6 +381,9 @@ function createProduct(name, launchDateStr, color, optionName, image){
 
 /* Migrate any older saved product shapes into the current options-based structure */
 function migrateProduct(p){
+  /* 1688 발주 계산용 데이터 */
+  if(!Array.isArray(p.orders)) p.orders = [];
+  if(!p.orderCoverDays) p.orderCoverDays = 40;
   if(p.options && Array.isArray(p.options)){
     if(p.image===undefined) p.image = null;
     if(!p.primaryOptionId || !p.options.some(o=>o.id===p.primaryOptionId)) p.primaryOptionId = p.options[0] ? p.options[0].id : null;
@@ -747,7 +783,7 @@ function renderViewTabs(){
   if(isMultiMode()){
     tabs = [['calendar','📅 통합 캘린더'],['table','📋 제품별 요약표'],['compare','⚖️ 비교분석']];
   } else {
-    tabs = [['calendar','📅 캘린더'],['table','📋 일별 기록표'],['chart','📈 차트'],['settings','⚙️ 옵션 / 리뷰스케줄 설정']];
+    tabs = [['calendar','📅 캘린더'],['table','📋 일별 기록표'],['chart','📈 차트'],['orders','📦 1688 발주 계산'],['settings','⚙️ 옵션 / 리뷰스케줄 설정']];
   }
   if(!tabs.find(t=>t[0]===state.view)) state.view = 'calendar';
   vt.innerHTML = tabs.map(t=>`<button class="${state.view===t[0]?'active':''}" onclick="setView('${t[0]}')">${t[1]}</button>`).join('');
@@ -765,6 +801,7 @@ function renderView(){
   if(state.view==='table') return isMultiMode() ? renderAllTableView(area) : renderProductTableView(area);
   if(state.view==='chart') return renderChartView(area);
   if(state.view==='settings') return renderSettingsView(area);
+  if(state.view==='orders') return renderOrdersView(area);
   if(state.view==='compare') return renderCompareView(area);
 }
 
@@ -1575,6 +1612,245 @@ function handleXLSXImportFile(evt){
 }
 
 /* ---------------- Master render ---------------- */
+/* ═══════════════ 1688 발주 계산 ═══════════════
+   차수(1차·2차·3차…)별로 발주 수량을 계산한다.
+   흐름: 총 주문수량 → 판매비율로 배분 → 10개 단위 반올림(수정 가능)
+        → 주력옵션 추가량 → 박스당 개수의 배수로 올림 = 최종 주문.
+   일별 기록표의 판매(리뷰 판매 + 자연 판매)를 그대로 읽어
+   남은 재고와 다음 차수 제안 수량을 자동으로 계산한다. */
+
+function fmtC(n){ return (Number(n)||0).toLocaleString('ko-KR'); }
+function near10(n){ return Math.round(n/10)*10; }
+function ceilStep(n, step){ return step>0 ? Math.ceil(n/step)*step : Math.ceil(n); }
+
+function ordRow(round, oid){
+  if(!round.rows) round.rows = {};
+  if(!round.rows[oid]) round.rows[oid] = { ratio:'', adj:null, extra:0, boxSize:'' };
+  return round.rows[oid];
+}
+/* 한 옵션의 계산 결과. adj가 null이면 "비율수량을 10개 단위로 반올림"한 자동값을 쓴다. */
+function ordCalc(round, oid){
+  const r = ordRow(round, oid);
+  const total = Number(round.totalQty)||0;
+  const ratio = Number(r.ratio)||0;
+  const ratioQty = Math.round(total*ratio/100);
+  const auto = (r.adj===null || r.adj===undefined || r.adj==='');
+  const adj = auto ? near10(ratioQty) : (Number(r.adj)||0);
+  const extra = Number(r.extra)||0;
+  const box = Number(r.boxSize)||0;
+  const pre = adj + extra;
+  const finalQty = (box>0 && pre>0) ? ceilStep(pre, box) : pre;
+  return { ratio, ratioQty, adj, auto, extra, box, pre, finalQty };
+}
+function ordRoundTotal(p, round){
+  return p.options.reduce((s,o)=> s + ordCalc(round, o.id).finalQty, 0);
+}
+/* 옵션별 총 입고(모든 차수 최종 주문 합) */
+function ordReceived(p, oid){
+  return (p.orders||[]).reduce((s,rd)=> s + ordCalc(rd, oid).finalQty, 0);
+}
+/* 옵션별 누적 판매 = 일별 기록표의 리뷰 판매 + 자연 판매 */
+function ordSold(p, oid){
+  let s=0;
+  for(let i=0;i<=p.maxDayIndex;i++){
+    const d=p.days[i];
+    if(d && d.opt && d.opt[oid]) s += (Number(d.opt[oid].reviewActual)||0) + (Number(d.opt[oid].naturalSales)||0);
+  }
+  return s;
+}
+/* 최근 7일(기록 범위 안) 하루 평균 판매량 */
+function ordDailyAvg(p, oid){
+  const today = dayIndexForDate(p, formatDate(new Date()));
+  const end = Math.min(today, p.maxDayIndex);
+  if(end < 0) return 0;
+  const start = Math.max(0, end-6);
+  let s=0;
+  for(let i=start;i<=end;i++){
+    const d=p.days[i];
+    if(d && d.opt && d.opt[oid]) s += (Number(d.opt[oid].reviewActual)||0) + (Number(d.opt[oid].naturalSales)||0);
+  }
+  return s/(end-start+1);
+}
+/* 옵션의 박스당 개수 — 가장 최근 차수에 적어 둔 값을 물려받는다 */
+function ordLastBox(p, oid){
+  for(let i=(p.orders||[]).length-1;i>=0;i--){
+    const b = Number(ordRow(p.orders[i], oid).boxSize)||0;
+    if(b>0) return b;
+  }
+  return 0;
+}
+/* 다음 차수 제안 = 하루 평균 × 커버 일수 − 남은 재고 (박스 배수/10개 단위로 올림) */
+function ordSuggest(p, oid){
+  const remain = ordReceived(p,oid) - ordSold(p,oid);
+  const avg = ordDailyAvg(p,oid);
+  const cover = Number(p.orderCoverDays)||40;
+  const need = Math.max(0, Math.ceil(avg*cover - remain));
+  if(need<=0) return 0;
+  const box = ordLastBox(p,oid);
+  return box>0 ? ceilStep(need, box) : ceilStep(need, 10);
+}
+
+function addOrderRound(pid, fromSuggest){
+  const p = getProduct(pid); if(!p) return;
+  p.orders = p.orders||[];
+  const prev = p.orders[p.orders.length-1] || null;
+  const round = { id: uid(), date: formatDate(new Date()), totalQty: prev ? prev.totalQty : 500, rows: {} };
+  p.options.forEach(o=>{
+    const prevRow = prev ? ordRow(prev, o.id) : null;
+    round.rows[o.id] = {
+      ratio: prevRow ? prevRow.ratio : '',
+      adj: null,
+      extra: 0,
+      boxSize: prevRow ? prevRow.boxSize : ''
+    };
+    if(fromSuggest){
+      /* 제안 수량을 "수량 조정" 칸에 그대로 넣는다 (비율은 참고용으로 비움) */
+      round.rows[o.id].ratio = '';
+      round.rows[o.id].adj = ordSuggest(p, o.id);
+    }
+  });
+  if(fromSuggest) round.totalQty = p.options.reduce((s,o)=> s + (Number(round.rows[o.id].adj)||0), 0);
+  p.orders.push(round);
+  saveState(); renderView();
+}
+function deleteOrderRound(pid, rid){
+  const p = getProduct(pid); if(!p) return;
+  const idx = (p.orders||[]).findIndex(r=>r.id===rid);
+  if(idx===-1) return;
+  if(!confirm((idx+1)+'차 발주 계산을 삭제할까요?')) return;
+  p.orders.splice(idx,1);
+  saveState(); renderView();
+}
+function updOrderRound(pid, rid, field, value){
+  const p = getProduct(pid); if(!p) return;
+  const round = (p.orders||[]).find(r=>r.id===rid); if(!round) return;
+  if(field==='totalQty') round.totalQty = Number(String(value).replace(/[^0-9]/g,''))||0;
+  else round[field] = value;
+  saveState(); renderView();
+}
+function updOrderCell(pid, rid, oid, field, value){
+  const p = getProduct(pid); if(!p) return;
+  const round = (p.orders||[]).find(r=>r.id===rid); if(!round) return;
+  const row = ordRow(round, oid);
+  const cleaned = String(value).replace(/[^0-9.]/g,'');
+  if(field==='adj') row.adj = cleaned==='' ? null : Number(cleaned);
+  else if(field==='ratio') row.ratio = cleaned;
+  else if(field==='extra') row.extra = Number(cleaned)||0;
+  else if(field==='boxSize') row.boxSize = cleaned;
+  saveState(); renderView();
+}
+function resetOrderAdj(pid, rid, oid){
+  const p = getProduct(pid); if(!p) return;
+  const round = (p.orders||[]).find(r=>r.id===rid); if(!round) return;
+  ordRow(round, oid).adj = null;
+  saveState(); renderView();
+}
+function stepOrderAdj(pid, rid, oid, delta){
+  const p = getProduct(pid); if(!p) return;
+  const round = (p.orders||[]).find(r=>r.id===rid); if(!round) return;
+  const cur = ordCalc(round, oid).adj;
+  ordRow(round, oid).adj = Math.max(0, cur + delta);
+  saveState(); renderView();
+}
+function setOrderCover(pid, value){
+  const p = getProduct(pid); if(!p) return;
+  p.orderCoverDays = Math.max(1, Number(String(value).replace(/[^0-9]/g,''))||40);
+  saveState(); renderView();
+}
+
+function renderOrdersView(area){
+  const p = getVisibleProducts()[0];
+  if(!p){ area.innerHTML = '<div class="card"><div class="empty">제품을 선택해 주세요.</div></div>'; return; }
+  p.orders = p.orders||[];
+
+  /* ── 차수별 발주 계산표 ── */
+  let roundsHtml = p.orders.map((rd, ri)=>{
+    const rows = p.options.map(o=>{
+      const c = ordCalc(rd, o.id);
+      const isPri = p.primaryOptionId===o.id;
+      return `<tr>
+        <td class="ord-name">${isPri?'<span class="ord-pri">★</span> ':''}${escHtml(o.name)}</td>
+        <td><span class="ord-in-wrap"><input class="ord-in" inputmode="decimal" value="${escAttr(String(ordRow(rd,o.id).ratio))}" placeholder="0"
+          onchange="updOrderCell('${p.id}','${rd.id}','${o.id}','ratio',this.value)"><span class="ord-unit">%</span></span></td>
+        <td class="ord-auto">${fmtC(c.ratioQty)}</td>
+        <td class="ord-adj-cell">
+          <button class="ord-step" onclick="stepOrderAdj('${p.id}','${rd.id}','${o.id}',-10)">−10</button>
+          <input class="ord-in ord-in-adj${c.auto?' is-auto':''}" inputmode="numeric" value="${c.adj}"
+            title="${c.auto?'비율수량을 10개 단위로 맞춘 자동값':'직접 입력한 값'}"
+            onchange="updOrderCell('${p.id}','${rd.id}','${o.id}','adj',this.value)">
+          <button class="ord-step" onclick="stepOrderAdj('${p.id}','${rd.id}','${o.id}',10)">+10</button>
+          ${c.auto?'':`<button class="ord-step ord-reset" title="자동값으로 되돌리기" onclick="resetOrderAdj('${p.id}','${rd.id}','${o.id}')">↺</button>`}
+        </td>
+        <td><input class="ord-in" inputmode="numeric" value="${c.extra||''}" placeholder="0"
+          onchange="updOrderCell('${p.id}','${rd.id}','${o.id}','extra',this.value)"></td>
+        <td><input class="ord-in" inputmode="numeric" value="${escAttr(String(ordRow(rd,o.id).boxSize))}" placeholder="-"
+          onchange="updOrderCell('${p.id}','${rd.id}','${o.id}','boxSize',this.value)"></td>
+        <td class="ord-final">${fmtC(c.finalQty)}${c.box>0&&c.finalQty>0?`<div class="ord-boxinfo">${fmtC(c.finalQty/c.box)}박스</div>`:''}</td>
+      </tr>`;
+    }).join('');
+    const total = ordRoundTotal(p, rd);
+    return `<div class="card ord-card">
+      <div class="ord-head">
+        <b>${ri+1}차 발주</b>
+        <label>발주일 <input type="date" class="ord-date" value="${escAttr(rd.date||'')}"
+          onchange="updOrderRound('${p.id}','${rd.id}','date',this.value)"></label>
+        <label>총 주문수량 <input class="ord-in ord-total" inputmode="numeric" value="${fmtC(rd.totalQty)}"
+          onchange="updOrderRound('${p.id}','${rd.id}','totalQty',this.value)"></label>
+        <span class="ord-sum">최종 합계 <b>${fmtC(total)}개</b></span>
+        <button class="btn danger ord-del" onclick="deleteOrderRound('${p.id}','${rd.id}')">삭제</button>
+      </div>
+      <div class="ord-scroll"><table class="ord-table">
+        <thead><tr><th>옵션명</th><th>판매비율</th><th>비율수량</th><th>수량 조정 (10개 단위)</th><th>주력옵션 추가</th><th>박스당 개수</th><th>최종 주문</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </div>`;
+  }).join('');
+  if(!p.orders.length){
+    roundsHtml = `<div class="card"><div class="empty">아직 발주 계산이 없습니다. 아래 <b>+ 발주 차수 추가</b>를 눌러 1차 발주를 만들어 보세요.<br>
+    <span style="font-size:11.5px;">판매비율은 셀하 확장 프로그램의 "옵션별 판매 비율"에서 확인한 %를 그대로 적으면 됩니다.</span></div></div>`;
+  }
+
+  /* ── 재고 현황 + 다음 차수 제안 ── */
+  const invRows = p.options.map(o=>{
+    const rec = ordReceived(p,o.id), sold = ordSold(p,o.id), remain = rec-sold;
+    const avg = ordDailyAvg(p,o.id);
+    const daysLeft = avg>0 ? Math.floor(Math.max(0,remain)/avg) : null;
+    const sug = ordSuggest(p,o.id);
+    return `<tr>
+      <td class="ord-name">${p.primaryOptionId===o.id?'<span class="ord-pri">★</span> ':''}${escHtml(o.name)}</td>
+      <td>${fmtC(rec)}</td>
+      <td>${fmtC(sold)}</td>
+      <td class="${remain<0?'ord-neg':''}"><b>${fmtC(remain)}</b></td>
+      <td>${avg>0?avg.toFixed(1):'-'}</td>
+      <td>${daysLeft===null?'-':(daysLeft+'일')}</td>
+      <td class="ord-final">${sug>0?fmtC(sug):'-'}</td>
+    </tr>`;
+  }).join('');
+  const sugTotal = p.options.reduce((s,o)=>s+ordSuggest(p,o.id),0);
+
+  area.innerHTML = `
+  ${roundsHtml}
+  <div class="toolbar" style="margin-bottom:14px;">
+    <button class="btn primary" onclick="addOrderRound('${p.id}')">+ 발주 차수 추가</button>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">재고 현황 · 다음 차수 제안</h3>
+    <div style="font-size:12px;color:var(--sub);margin-bottom:10px;line-height:1.7;">
+      누적 판매는 <b>일별 기록표</b>의 리뷰 판매 + 자연 판매를 자동으로 더한 값입니다.
+      제안 수량 = 최근 7일 하루 평균 판매 × 커버 일수 − 남은 재고 (박스당 개수를 적어 두었으면 박스 배수, 없으면 10개 단위로 올림)
+    </div>
+    <div class="ord-head" style="margin-bottom:10px;">
+      <label>커버 일수(다음 발주로 버틸 기간) <input class="ord-in ord-total" inputmode="numeric" value="${p.orderCoverDays||40}"
+        onchange="setOrderCover('${p.id}',this.value)"> 일</label>
+      ${sugTotal>0?`<button class="btn primary" onclick="addOrderRound('${p.id}',true)">제안 수량으로 ${p.orders.length+1}차 발주 만들기 (${fmtC(sugTotal)}개)</button>`:''}
+    </div>
+    <div class="ord-scroll"><table class="ord-table">
+      <thead><tr><th>옵션명</th><th>총 입고</th><th>누적 판매</th><th>남은 재고</th><th>일평균(7일)</th><th>소진 예상</th><th>제안 수량</th></tr></thead>
+      <tbody>${invRows}</tbody>
+    </table></div>
+  </div>`;
+}
+
 /* ── 제품 색상은 고르지 않고 자동으로 정한다 ──
    목록에 있는 순서대로 팔레트를 돌려 쓰므로, 서로 다른 제품은 늘 다른 색으로 보인다.
    차트·캘린더·탭이 모두 p.color 를 쓰기 때문에 여기서 한 번만 맞춰 주면 된다. */
