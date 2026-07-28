@@ -51,6 +51,20 @@
   .ptab.active .option-tag{background:rgba(255,255,255,.2);color:#fff;}
   .prod-thumb{width:44px;height:44px;border-radius:10px;object-fit:cover;border:1px solid var(--border);flex-shrink:0;}
   .prod-thumb-sm{width:26px;height:26px;border-radius:8px;object-fit:cover;border:1px solid var(--border);flex-shrink:0;vertical-align:middle;}
+  .img-input{display:flex;flex-direction:column;gap:8px;}
+  .img-drop{
+    border:2px dashed var(--border); border-radius:12px; padding:16px 14px;
+    text-align:center; font-size:12.5px; color:var(--sub); line-height:1.7;
+    cursor:pointer; outline:none; background:#FAFBFC; transition:border-color .12s, background .12s;
+  }
+  .img-drop:hover{border-color:#9aa4b2;}
+  .img-drop.is-active{border-color:var(--accent,#1b2a4e); background:#F4F7FF; color:#1b2a4e;}
+  .img-drop.is-over{border-color:#c9a227; background:#FFFBF0;}
+  .img-drop b{color:#1b2a4e;}
+  .img-alt{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+  .img-alt input[type=text]{flex:1; min-width:180px;}
+  .img-msg{font-size:11.5px; color:var(--sub); min-height:16px;}
+  .img-msg.err{color:#dc2626;}
   .img-upload-preview{display:flex;align-items:center;gap:10px;margin-top:6px;}
   .img-upload-preview img{width:70px;height:70px;object-fit:cover;border-radius:10px;border:1px solid var(--border);}
   .compare-picklist{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
@@ -398,6 +412,136 @@ function migrateProduct(p){
 }
 
 /* Resize/compress an uploaded image file to a small base64 dataURL (keeps localStorage light) */
+/* ── 이미지 넣는 방법 3가지: 파일 선택 · 붙여넣기(Ctrl+V) · 이미지 주소 ──
+   1688 같은 사이트는 다른 곳에서 이미지를 직접 불러오는 것을 막아 두는 경우가 있어
+   주소로 넣을 때는 이미지 프록시를 거친다. 받아온 그림은 이 도구 안에 그대로 저장하므로
+   나중에 원본 주소가 사라져도 계속 보인다. */
+function proxiedImageUrl(url){
+  try{
+    const u = new URL(String(url).trim(), location.href);
+    if(u.protocol !== 'http:' && u.protocol !== 'https:') return url;
+    return 'https://images.weserv.nl/?url=' + encodeURIComponent(u.hostname + u.pathname + u.search);
+  }catch(e){ return url; }
+}
+function shrinkToDataURL(img, maxDim){
+  let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+  if(!w || !h) return null;
+  if(w > h){ if(w > maxDim){ h = Math.round(h*maxDim/w); w = maxDim; } }
+  else { if(h > maxDim){ w = Math.round(w*maxDim/h); h = maxDim; } }
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+  return canvas.toDataURL('image/jpeg', 0.82);
+}
+function readImageFromUrl(url, maxDim, onDone, onFail){
+  const clean = String(url || '').trim();
+  if(!clean){ onFail && onFail('주소를 입력해 주세요.'); return; }
+  if(/^data:image\//i.test(clean)){ onDone(clean); return; }
+  if(!/^https?:\/\//i.test(clean)){ onFail && onFail('http:// 또는 https:// 로 시작하는 주소를 넣어 주세요.'); return; }
+
+  let done = false;
+  const tryLoad = (src, isLast) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = function(){
+      if(done) return;
+      let data = null;
+      try{ data = shrinkToDataURL(img, maxDim); }catch(e){ data = null; }
+      done = true;
+      /* 그림으로 옮기지 못하면(보안 제한) 주소를 그대로 저장한다 */
+      onDone(data || clean);
+    };
+    img.onerror = function(){
+      if(done) return;
+      if(isLast){ done = true; onFail && onFail('이미지를 불러오지 못했습니다. 주소를 다시 확인해 주세요.'); }
+    };
+    img.src = src;
+  };
+  tryLoad(proxiedImageUrl(clean), false);
+  /* 프록시가 막히면 원본 주소로도 시도 */
+  setTimeout(function(){ if(!done) tryLoad(clean, true); }, 2500);
+}
+
+/* 붙여넣기·끌어놓기로 들어온 내용에서 이미지를 꺼낸다 */
+function extractImageFromTransfer(dt, maxDim, onDone, onFail){
+  if(!dt) return false;
+  const items = dt.items ? Array.prototype.slice.call(dt.items) : [];
+  for(let i = 0; i < items.length; i++){
+    if(items[i].kind === 'file' && items[i].type && items[i].type.indexOf('image/') === 0){
+      const file = items[i].getAsFile();
+      if(file){ readImageAsDataURL(file, maxDim, onDone); return true; }
+    }
+  }
+  const files = dt.files ? Array.prototype.slice.call(dt.files) : [];
+  for(let i = 0; i < files.length; i++){
+    if(files[i].type && files[i].type.indexOf('image/') === 0){
+      readImageAsDataURL(files[i], maxDim, onDone); return true;
+    }
+  }
+  /* 이미지가 아니면 복사한 글이 이미지 주소인지 확인한다 */
+  let text = '';
+  try{ text = dt.getData ? (dt.getData('text/plain') || dt.getData('text') || '') : ''; }catch(e){}
+  text = String(text).trim();
+  if(/^https?:\/\//i.test(text) || /^data:image\//i.test(text)){
+    readImageFromUrl(text, maxDim, onDone, onFail);
+    return true;
+  }
+  return false;
+}
+
+/* 어느 칸에 넣을지 — 설정 화면이면 제품에, 새 제품 창이면 임시 보관 */
+function applyPickedImage(zone, dataUrl){
+  const target = zone.getAttribute('data-img-target');
+  if(target === 'new'){
+    newProductImage = dataUrl;
+    updateNewProductPreview();
+    setImageMsg(zone, '이미지를 넣었습니다.', false);
+    return;
+  }
+  const p = getProduct(zone.getAttribute('data-pid'));
+  if(!p){ setImageMsg(zone, '제품을 찾지 못했습니다.', true); return; }
+  p.image = dataUrl;
+  saveState();
+  renderAll();
+}
+function setImageMsg(zone, text, isError){
+  const box = zone.closest('.img-input');
+  const el = box && box.querySelector('.img-msg');
+  if(!el) return;
+  el.textContent = text || '';
+  el.classList.toggle('err', !!isError);
+}
+function updateNewProductPreview(){
+  const wrap = document.getElementById('np_img_preview');
+  if(!wrap) return;
+  wrap.innerHTML = newProductImage
+    ? '<img src="' + newProductImage + '"><button class="btn" type="button" onclick="clearNewProductImage()">이미지 제거</button>'
+    : '';
+}
+function clearNewProductImage(){
+  newProductImage = null;
+  updateNewProductPreview();
+}
+
+/* 이미지 넣는 칸을 만들어 주는 공통 조각 */
+function imageInputHtml(target, pid, previewHtml){
+  const idBase = target === 'new' ? 'np' : 'set';
+  return `<div class="img-input">
+    <div class="img-drop" tabindex="0" data-img-target="${target}" data-pid="${pid || ''}">
+      <b>여기를 클릭한 뒤 Ctrl+V</b> 로 복사한 이미지를 붙여넣거나,<br>이미지 파일을 이 상자로 끌어다 놓으세요.
+    </div>
+    <div class="img-alt">
+      <input type="file" accept="image/*" id="${idBase}_image_file">
+    </div>
+    <div class="img-alt">
+      <input type="text" class="img-url" placeholder="또는 이미지 주소(https://...) 붙여넣기">
+      <button class="btn" type="button" data-img-url-apply="1">주소로 넣기</button>
+    </div>
+    <div class="img-msg"></div>
+    ${previewHtml || ''}
+  </div>`;
+}
+
 function readImageAsDataURL(file, maxDim, callback){
   const reader = new FileReader();
   reader.onload = function(e){
@@ -1134,10 +1278,8 @@ function renderSettingsView(area){
       <div class="field"><label>제품명</label><input id="set_name" value="${escAttr(p.name)}"></div>
       <div class="field"><label>런칭일 (0일차 = 상품등록일)</label><input type="date" id="set_launch" value="${p.launchDate}"></div>
     </div>
-    <div class="field"><label>대표 색상 (탭/캘린더 구분용)</label><input type="color" id="set_color" value="${p.color}" style="width:70px;"></div>
     <div class="field"><label>제품 이미지</label>
-      <input type="file" accept="image/*" id="set_image_file" onchange="handleSettingsImage('${p.id}', this.files[0])">
-      ${previewHtml}
+      ${imageInputHtml('product', p.id, previewHtml)}
     </div>
     <div class="toolbar"><button class="btn primary" onclick="saveSettings('${p.id}')">제품 정보 저장</button></div>
   </div>
@@ -1173,7 +1315,6 @@ function saveSettings(pid){
   const p = getProduct(pid);
   p.name = document.getElementById('set_name').value || p.name;
   p.launchDate = document.getElementById('set_launch').value || p.launchDate;
-  p.color = document.getElementById('set_color').value || p.color;
   saveState();
   renderAll();
 }
@@ -1243,20 +1384,15 @@ function handleRemoveOption(pid, optionId){
 let newProductImage = null;
 function openProductModal(){
   newProductImage = null;
-  const nextColor = PALETTE[state.products.length % PALETTE.length];
   const todayStr = formatDate(new Date());
   const body = `<h3>새 제품 런칭 계획 추가</h3>
     <div class="row2">
       <div class="field"><label>제품명</label><input id="np_name" placeholder="예: 텀블러"></div>
       <div class="field"><label>첫 옵션명 (선택, 예: 블랙/L)</label><input id="np_option" placeholder="비워두면 '기본옵션'"></div>
     </div>
-    <div class="row2">
-      <div class="field"><label>런칭일 (0일차 = 상품등록일)</label><input type="date" id="np_launch" value="${todayStr}"></div>
-      <div class="field"><label>대표 색상</label><input type="color" id="np_color" value="${nextColor}"></div>
-    </div>
+    <div class="field"><label>런칭일 (0일차 = 상품등록일)</label><input type="date" id="np_launch" value="${todayStr}"></div>
     <div class="field"><label>제품 이미지 (선택)</label>
-      <input type="file" accept="image/*" id="np_image_file" onchange="handleNewProductImage(this.files[0])">
-      <div class="img-upload-preview" id="np_img_preview"></div>
+      ${imageInputHtml('new', '', '<div class="img-upload-preview" id="np_img_preview"></div>')}
     </div>
     <div style="font-size:11.5px;color:var(--sub);">옵션(색상/사이즈 등)이 여러 개라면 추가 후 "옵션 / 리뷰스케줄 설정" 탭에서 옵션을 더 추가할 수 있습니다.</div>
     <div class="modal-actions"><button class="btn" onclick="closeModal()">취소</button><button class="btn primary" onclick="createProductFromModal()">추가</button></div>`;
@@ -1266,15 +1402,15 @@ function handleNewProductImage(file){
   if(!file) return;
   readImageAsDataURL(file, 500, (dataUrl)=>{
     newProductImage = dataUrl;
-    const wrap = document.getElementById('np_img_preview');
-    if(wrap) wrap.innerHTML = `<img src="${dataUrl}">`;
+    updateNewProductPreview();
   });
 }
 function createProductFromModal(){
   const name = document.getElementById('np_name').value.trim() || ('상품'+(state.products.length+1));
   const option = document.getElementById('np_option').value.trim();
   const launch = document.getElementById('np_launch').value || formatDate(new Date());
-  const color = document.getElementById('np_color').value;
+  /* 색상은 고르지 않는다. 목록 순서에 따라 자동으로 정해진다. */
+  const color = PALETTE[state.products.length % PALETTE.length];
   const p = createProduct(name, launch, color, option, newProductImage);
   state.products.push(p);
   state.selectedId = p.id;
@@ -1439,12 +1575,99 @@ function handleXLSXImportFile(evt){
 }
 
 /* ---------------- Master render ---------------- */
+/* ── 제품 색상은 고르지 않고 자동으로 정한다 ──
+   목록에 있는 순서대로 팔레트를 돌려 쓰므로, 서로 다른 제품은 늘 다른 색으로 보인다.
+   차트·캘린더·탭이 모두 p.color 를 쓰기 때문에 여기서 한 번만 맞춰 주면 된다. */
+function applyAutoColors(){
+  (state.products || []).forEach(function(p, i){
+    p.color = PALETTE[i % PALETTE.length];
+  });
+}
+
 function renderAll(){
+  applyAutoColors();
   renderTabs();
   renderSummary();
   renderViewTabs();
   renderView();
 }
+
+/* ── 이미지 넣기 동작 연결 ──
+   화면을 다시 그려도 계속 동작하도록 문서 전체에서 한 번만 연결한다. */
+const IMG_MAX_DIM = 500;
+
+function activeImageZone(){ return document.querySelector('.img-drop.is-active'); }
+
+document.addEventListener('click', function(e){
+  const zone = e.target.closest ? e.target.closest('.img-drop') : null;
+  if(zone){
+    document.querySelectorAll('.img-drop.is-active').forEach(z=>{ if(z!==zone) z.classList.remove('is-active'); });
+    zone.classList.add('is-active');
+    zone.focus();
+    return;
+  }
+  /* "주소로 넣기" 버튼 */
+  const btn = e.target.closest ? e.target.closest('[data-img-url-apply]') : null;
+  if(btn){
+    const box = btn.closest('.img-input');
+    const input = box && box.querySelector('.img-url');
+    const drop = box && box.querySelector('.img-drop');
+    if(!input || !drop) return;
+    setImageMsg(drop, '불러오는 중…', false);
+    readImageFromUrl(input.value, IMG_MAX_DIM,
+      (dataUrl)=>{ applyPickedImage(drop, dataUrl); },
+      (msg)=>{ setImageMsg(drop, msg, true); });
+  }
+});
+
+/* 파일 선택 */
+document.addEventListener('change', function(e){
+  const el = e.target;
+  if(!el || el.type !== 'file') return;
+  if(el.id !== 'set_image_file' && el.id !== 'np_image_file') return;
+  const box = el.closest('.img-input');
+  const drop = box && box.querySelector('.img-drop');
+  const file = el.files && el.files[0];
+  if(!drop || !file) return;
+  readImageAsDataURL(file, IMG_MAX_DIM, (dataUrl)=>{ applyPickedImage(drop, dataUrl); });
+});
+
+/* 붙여넣기 (Ctrl+V) */
+document.addEventListener('paste', function(e){
+  const zone = activeImageZone();
+  if(!zone) return;
+  const ok = extractImageFromTransfer(e.clipboardData, IMG_MAX_DIM,
+    (dataUrl)=>{ applyPickedImage(zone, dataUrl); },
+    (msg)=>{ setImageMsg(zone, msg, true); });
+  if(ok){
+    e.preventDefault();
+    setImageMsg(zone, '이미지를 읽는 중…', false);
+  } else {
+    setImageMsg(zone, '붙여넣은 것에서 이미지를 찾지 못했습니다. 이미지 자체나 이미지 주소를 복사해 주세요.', true);
+  }
+});
+
+/* 끌어다 놓기 */
+document.addEventListener('dragover', function(e){
+  const zone = e.target.closest ? e.target.closest('.img-drop') : null;
+  if(!zone) return;
+  e.preventDefault();
+  zone.classList.add('is-over');
+});
+document.addEventListener('dragleave', function(e){
+  const zone = e.target.closest ? e.target.closest('.img-drop') : null;
+  if(zone) zone.classList.remove('is-over');
+});
+document.addEventListener('drop', function(e){
+  const zone = e.target.closest ? e.target.closest('.img-drop') : null;
+  if(!zone) return;
+  e.preventDefault();
+  zone.classList.remove('is-over');
+  const ok = extractImageFromTransfer(e.dataTransfer, IMG_MAX_DIM,
+    (dataUrl)=>{ applyPickedImage(zone, dataUrl); },
+    (msg)=>{ setImageMsg(zone, msg, true); });
+  if(!ok) setImageMsg(zone, '이미지 파일이 아닙니다.', true);
+});
 
 renderAll();
 </script>
