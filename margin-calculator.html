@@ -269,7 +269,7 @@
     });
 
     /* 통관 정밀 계산 탭 본체 */
-    function CustomsTab({ xrCny, xrUsd, onApply }) {
+    function CustomsTab({ xrCny, xrUsd, onApply, regRef }) {
       const [bundles, setBundles]   = React.useState(() => [mkBundle(1)]);
       const [costs, setCosts]       = React.useState(() =>
         COST_DEFS.reduce((a, d) => (a[d.key] = "", a), {}));
@@ -281,6 +281,21 @@
       const [costLog, setCostLog]   = React.useState([]);
 
       const rate = nv(xrCny) || 0;
+
+      /* 저장 보관함이 이 탭의 내용도 함께 담을 수 있게 등록해 둔다 */
+      if (regRef) regRef.current = {
+        collect: () => ({ bundles, costs, agencyPct, lclMode, lclTotalCbm, lclTotalUsd, costLog }),
+        restore: (d) => {
+          if (!d) return;
+          if (Array.isArray(d.bundles) && d.bundles.length) setBundles(d.bundles);
+          if (d.costs && typeof d.costs === "object") setCosts(d.costs);
+          if (d.agencyPct    !== undefined) setAgencyPct(d.agencyPct);
+          if (d.lclMode      !== undefined) setLclMode(Boolean(d.lclMode));
+          if (d.lclTotalCbm  !== undefined) setLclTotalCbm(d.lclTotalCbm);
+          if (d.lclTotalUsd  !== undefined) setLclTotalUsd(d.lclTotalUsd);
+          setCostLog(Array.isArray(d.costLog) ? d.costLog : []);
+        }
+      };
 
       const setCost = (k, v) => setCosts(p => ({ ...p, [k]: v }));
       const updB = (i, k, v) => setBundles(p => p.map((b, j) => j === i ? { ...b, [k]: v } : b));
@@ -665,6 +680,8 @@
 
     function App() {
       const [tab, setTab] = useState("simple"); // "simple" | "customs"
+      const customsRef = React.useRef(null);   // 통관 탭 상태 접근용
+      const saveApi    = React.useRef(null);   // 저장 보관함이 쓰는 현재 상태 함수
       const [sp,    setSp   ] = useState("");
       const [ch,    setCh   ] = useState("rocket");
       const [ci,    setCi   ] = useState(0);
@@ -827,6 +844,47 @@
         if (s.tm      !== undefined) setTm(s.tm);
         if (s.taxType !== undefined) setTaxType(s.taxType);
       };
+      /* ── 저장 보관함 (이름 붙여 저장 / 불러오기 / 삭제) ── */
+      saveApi.current = {
+        collect: () => ({
+          v: 2,
+          tab,
+          main: collectState(),
+          customs: customsRef.current ? customsRef.current.collect() : null
+        }),
+        restore: (d) => {
+          if (!d) return;
+          // 예전 형식(본 계산 값만 저장한 경우)도 그대로 불러온다
+          const main = d.main || d;
+          restoreState(main);
+          if (d.customs && customsRef.current) customsRef.current.restore(d.customs);
+          if (d.tab) setTab(d.tab);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        },
+        hint: () => (collectState().pName || "").trim(),
+        summary: (d) => {
+          const m = (d && d.main) || d || {};
+          const nm = (m.mCat || "").trim();
+          return (nm ? nm + " · " : "") + (d && d.customs && (d.customs.bundles || []).length > 1
+            ? "통관 " + d.customs.bundles.length + "묶음" : "간편 계산");
+        }
+      };
+
+      React.useEffect(() => {
+        const start = () => {
+          if (!window.MorivaSaves) { setTimeout(start, 300); return; }
+          window.MorivaSaves.init({
+            storeKey: "moriva_margin_saves_v1",
+            title: "마진 계산",
+            collect : () => saveApi.current.collect(),
+            restore : (d) => saveApi.current.restore(d),
+            nameHint: () => saveApi.current.hint(),
+            summary : (d) => saveApi.current.summary(d)
+          });
+        };
+        start();
+      }, []);
+
       const persist = (list, skipGh = false) => {
         setSavedList(list);
         localStorage.setItem("moriva_margin_v1", JSON.stringify(list));
@@ -1135,7 +1193,7 @@
           </div>
 
           {tab === "customs" && (
-            <CustomsTab xrCny={xrMode === "simple" ? simRate : xrCny} xrUsd={xrUsd}
+            <CustomsTab regRef={customsRef} xrCny={xrMode === "simple" ? simRate : xrCny} xrUsd={xrUsd}
               onApply={(unitKrw, name) => {
                 // 개당 원가에 세금·물류비가 이미 포함되어 있으므로
                 // 간편 계산에서 관세·부가세·포워딩·통관비를 다시 더하지 않도록 0으로 맞춘다.
@@ -1680,6 +1738,7 @@
 
     ReactDOM.createRoot(document.getElementById("root")).render(<App />);
   </script>
+<script src="./moriva-saves.js"></script>
 <script src="./moriva-sync.js"></script>
 </body>
 </html>

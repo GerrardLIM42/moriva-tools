@@ -588,8 +588,34 @@
   });
 
   render();
+
+  /* ── 저장 보관함 연결 ── */
+  window.addEventListener('load', function(){
+    if (!window.MorivaSaves) return;
+    MorivaSaves.init({
+      storeKey: 'moriva_pricing_saves_v1',
+      title: '가격 세팅',
+      collect: function(){ return { s: Object.assign({}, state) }; },
+      restore: function(d){
+        var v = (d && d.s) || {};
+        ['finalPrice','instantDiscount','downDiscount','targetRate','roundUnit'].forEach(function(k){
+          if (typeof v[k] === 'number') state[k] = v[k];
+        });
+        els.rateSlider.value = state.targetRate;
+        els.rateInput.value = state.targetRate;
+        els.roundUnit.value = String(state.roundUnit);
+        render();
+      },
+      summary: function(d){
+        var v = (d && d.s) || {};
+        return '최종소비자가 ' + Math.round(v.finalPrice||0).toLocaleString('ko-KR') + '원';
+      }
+    });
+  });
+
 })();
 </script>
+<script src="./moriva-saves.js"></script>
 <script src="./moriva-sync.js"></script>
 </body>
 </html>

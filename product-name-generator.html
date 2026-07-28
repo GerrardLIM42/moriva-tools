@@ -256,6 +256,7 @@
 
 <script>
 const $ = (id) => document.getElementById(id);
+let lastResult = null; // 마지막 분석 결과(저장·불러오기에 사용)
 let images = [];      // 검색결과 스크린샷
 let autoImages = [];  // 자동완성/연관검색어 캡처
 let sendImages = [];  // 전송용 (검색결과 + 자동완성)
@@ -688,6 +689,7 @@ ${hint ? "- 참고: " + hint : ""}
     if(repaired || recs.length < 5){
       showWarn("응답이 일부 잘려 " + recs.length + "개 안만 복구했습니다. 다시 실행하면 5개를 모두 받을 수 있습니다.");
     }
+    lastResult = { parsed: parsed, recs: recs };
     render(parsed, recs);
   }catch(e){
     let m = e.message || "";
@@ -770,7 +772,44 @@ function render(parsed, recs){
   $("sec3").classList.add("show");
   $("sec1").scrollIntoView({ behavior: "smooth", block: "start" });
 }
+
+/* ── 저장 보관함 연결 ── */
+window.addEventListener("load", function(){
+  if (!window.MorivaSaves) return;
+  MorivaSaves.init({
+    storeKey: "moriva_pname_saves_v1",
+    title: "상품명",
+    collect: function(){
+      if (!lastResult) { alert("먼저 상품명을 생성한 뒤 저장해 주세요."); return null; }
+      return {
+        brand: $("brand").value,
+        hint: $("hint").value,
+        parsed: lastResult.parsed,
+        recs: lastResult.recs
+      };
+    },
+    nameHint: function(){
+      if (lastResult && lastResult.recs && lastResult.recs[0] && lastResult.recs[0].n) {
+        return String(lastResult.recs[0].n).trim();
+      }
+      return "";
+    },
+    summary: function(d){
+      var n = (d && d.recs) ? d.recs.length : 0;
+      var t = (d && d.parsed && d.parsed.kw && d.parsed.kw.t) || [];
+      return (t.length ? t.slice(0,2).join(", ") + " · " : "") + n + "개 제안";
+    },
+    restore: function(d){
+      if (!d) return;
+      if (d.brand !== undefined) $("brand").value = d.brand;
+      if (d.hint  !== undefined) $("hint").value  = d.hint;
+      lastResult = { parsed: d.parsed || {}, recs: d.recs || [] };
+      render(lastResult.parsed, lastResult.recs);
+    }
+  });
+});
 </script>
+<script src="./moriva-saves.js"></script>
 <script src="./moriva-sync.js"></script>
 </body>
 </html>
