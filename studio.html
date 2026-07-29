@@ -588,7 +588,8 @@ var state = {
   batchProgress: null,
   galleryLoading: null,
   currentProjectId: null,
-  currentProjectName: ""
+  currentProjectName: "",
+  downloadingAll: false
 };
 
 /* ── 설정(키/모델/글자크기) ── */
@@ -1070,7 +1071,7 @@ function getBrandReference() {
 /* ── 분석 스키마 & 지시문 (원본 서버 라우트와 동일) ── */
 var outputSchema = {
   type:"object", additionalProperties:false,
-  required:["product","strategy","thumbnails","detail_sections","copy_draft","warnings"],
+  required:["product","strategy","visual_style","thumbnails","detail_sections","copy_draft","warnings"],
   properties:{
     product:{ type:"object", additionalProperties:false,
       required:["name","category","color","materials","features","target_customer","evidence_notes","uncertainties"],
@@ -1082,13 +1083,15 @@ var outputSchema = {
       required:["positioning","review_insights","competitive_patterns","differentiators"],
       properties:{ positioning:{type:"string"}, review_insights:{type:"array",items:{type:"string"}},
         competitive_patterns:{type:"array",items:{type:"string"}}, differentiators:{type:"array",items:{type:"string"}} } },
+    visual_style:{ type:"string" },
     thumbnails:{ type:"array", items:{ type:"object", additionalProperties:false,
       required:["title","goal","prompt"],
       properties:{ title:{type:"string"}, goal:{type:"string"}, prompt:{type:"string"} } } },
     detail_sections:{ type:"array", items:{ type:"object", additionalProperties:false,
-      required:["number","title","copy_headline","copy_body","prompt"],
+      required:["number","title","copy_headline","copy_body","prompt","includesProduct","length"],
       properties:{ number:{type:"integer"}, title:{type:"string"}, copy_headline:{type:"string"},
-        copy_body:{type:"string"}, prompt:{type:"string"} } } },
+        copy_body:{type:"string"}, prompt:{type:"string"},
+        includesProduct:{type:"boolean"}, length:{type:"string", enum:["standard","tall"]} } } },
     copy_draft:{ type:"object", additionalProperties:false,
       required:["hero","subcopy","bullets","trust_copy","cta"],
       properties:{ hero:{type:"string"}, subcopy:{type:"string"}, bullets:{type:"array",items:{type:"string"}},
@@ -1114,10 +1117,15 @@ var INSTRUCTIONS = [
 "- 작은 글씨로 많은 문구·수치·표를 빽빽하게 나열하는 표현은 피한다. 큰 타이포와 아이콘·일러스트·사진 중심으로 구성해 모바일과 PC 화면 모두에서 한눈에 읽히게 한다.",
 "- 썸네일은 1:1 1080×1080px 기준, 제품 전체가 잘리지 않게 한다.",
 "- 상세페이지 섹션은 폭 780px 기준이며 모바일 가독성을 우선한다.",
+"","상세페이지는 섹션을 하나씩 따로 만드는 게 아니라 처음부터 끝까지 하나로 이어지는 페이지라고 생각하고 전체 구성을 먼저 설계한다:",
+"- visual_style 필드에 이 상세페이지 전체가 공유할 배경톤·색감·분위기를 한두 문장으로 정의한다(예: '따뜻한 아이보리 배경, 딥네이비와 골드 포인트, 부드러운 자연광'). 모든 섹션의 prompt에는 이 visual_style을 그대로 반영하라는 문장을 포함해, 섹션마다 색감이 따로 노는 일이 없게 한다.",
+"- 모든 섹션에 제품 실물 사진이 나올 필요는 없다. 각 detail_sections 항목의 includesProduct를 그 섹션의 성격에 맞게 true/false로 정한다. 제품을 직접 보여줘야 하는 섹션(정면·디테일·사용 장면 등)만 true로 하고, 브랜드 스토리·인증·소재 설명·라이프스타일 무드처럼 제품 실물이 없어도 되는 섹션은 false로 표시한다. 전체 섹션 중 일부만 제품이 등장해도 되며, 제품이 자연스럽게 여러 번 반복 등장하지 않도록 전체 흐름을 보고 배분한다. includesProduct가 false인 섹션의 prompt에는 제품 실물 사진을 억지로 등장시키지 않는다는 지시를 포함한다.",
+"- 모든 섹션의 폭은 780px로 고정하되, 세로 길이는 섹션마다 다를 수 있다. length 필드를 대부분 'standard'(정사각형에 가까운 기본 길이)로 두고, 표·비교·프로세스 설명처럼 내용상 세로로 더 길어야 하는 섹션에만 'tall'(더 긴 세로형)을 선택한다. length를 'tall'로 늘려서 여백 없이 정보를 욱여넣는 용도로 쓰지 않는다 — 오히려 여백을 넉넉히 유지한 채로 자연스럽게 더 길어지는 구성에만 사용한다.",
+"- MORIVA 로고(M 심볼·워드마크)는 상세페이지 전체에서 첫 번째 섹션과 마지막 섹션에만 넣는다. 중간 섹션들의 prompt에는 로고나 브랜드명을 넣지 않는다는 지시를 명시적으로 포함한다.",
 "- 제공된 MORIVA 브랜드 가이드를 공식 기준으로 사용한다. 브랜드명은 영문 ‘MORIVA’, 한글 ‘모리바’, 슬로건은 ‘Better Life, Better Move’로 정확히 표기한다.",
-"- M 심볼과 워드마크의 형태·비율·간격을 임의로 재설계하지 않는다. 브랜드를 넣는 모든 썸네일과 상세 섹션 프롬프트에 로고 위치, 안전 여백, 가독성 규칙을 명시한다.",
+"- M 심볼과 워드마크의 형태·비율·간격을 임의로 재설계하지 않는다. 로고가 들어가는 첫 번째·마지막 상세 섹션과 모든 썸네일 프롬프트에 로고 위치, 안전 여백, 가독성 규칙을 명시한다.",
 "- MORIVA 브랜드 팔레트인 딥 네이비 #071A35, 화이트, 골드 #C9961A를 일관되게 적용한다.",
-"- 썸네일에서는 제품이 주인공이 되도록 로고를 작고 절제되게 배치하고, 상세페이지에서는 섹션 흐름에 맞춰 헤더·푸터·신뢰 영역에 일관되게 적용한다.",
+"- 썸네일에서는 제품이 주인공이 되도록 로고를 작고 절제되게 배치한다.",
 "- 한글은 짧고 자연스럽게 쓴다. 중국어, 임의 문자, 오탈자를 금지한다.",
 "- 상위 판매자의 설득 원리는 참고하되 결과는 독창적으로 재구성한다."
 ].join("\n");
@@ -1232,14 +1240,15 @@ function dataUrlToBlob(dataUrl) {
   return { blob: new Blob([bytes], { type: mime }), ext: mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg" };
 }
 
-function requestGeneratedImage(prompt, format, referenceDataUrls) {
+function requestGeneratedImage(prompt, format, referenceDataUrls, size, attachMain) {
   var key = getApiKey();
   if (!key) return Promise.reject(new Error("먼저 API 키를 등록해주세요."));
+  if (attachMain === undefined) attachMain = true;
   return getBrandReference().then(function (brandImage) {
     var form = new FormData();
     form.append("model", cfg.modelImage);
     form.append("prompt", prompt + IMAGE_RULES);
-    form.append("size", format === "detail" ? "1024x1536" : "1024x1024");
+    form.append("size", size || (format === "detail" ? "1024x1024" : "1024x1024"));
     form.append("quality", "medium");
     form.append("output_format", "webp");
     form.append("output_compression", "85");
@@ -1247,7 +1256,7 @@ function requestGeneratedImage(prompt, format, referenceDataUrls) {
       var b = dataUrlToBlob(u);
       form.append("image[]", b.blob, "product-reference-" + (i + 1) + "." + b.ext);
     });
-    if (state.mainImage) {
+    if (attachMain && state.mainImage) {
       var mb = dataUrlToBlob(state.mainImage.dataUrl);
       form.append("image[]", mb.blob, "main-reference-locked." + mb.ext);
     }
@@ -1278,6 +1287,36 @@ function productDataUrls() {
   return list;
 }
 
+/* 상세 섹션 하나에 실제로 넣을 참조 이미지: 이 섹션에 제품이 등장해야 할 때만 포함한다.
+   포함하지 않으면 이미지 생성 모델이 제품을 억지로 그려 넣을 수 없다. */
+function detailReferenceUrls(item) {
+  if (item && item.includesProduct === false) return [];
+  return productDataUrls();
+}
+
+/* 상세 섹션의 이미지 크기: 대부분 정사각형(standard), 필요한 섹션만 세로로 긴 비율(tall).
+   폭은 stitchSelectedDetails()가 항상 780px로 맞춰 이어붙이므로, 여기서 정한 비율 차이가
+   실제 상세페이지에서 섹션별 길이 차이로 나타난다. */
+function detailImageSize(item) {
+  return (item && item.length === "tall") ? "1024x1536" : "1024x1024";
+}
+
+/* 로고·색감 통일·제품 등장 여부 지시를 섹션 위치/속성에 맞게 프롬프트에 덧붙인다.
+   분석 단계에서 모델이 빠뜨리더라도 항상 적용되도록 하는 클라이언트 측 안전장치다. */
+function detailPromptWithRules(item, total) {
+  var isEdge = item.number === 1 || item.number === total;
+  var logoNote = isEdge
+    ? "\n\n[로고]\n이 섹션은 상세페이지의 " + (item.number === 1 ? "첫" : "마지막") + " 섹션이다. MORIVA 로고(M 심볼)와 워드마크를 헤더 또는 푸터 영역에 절제된 크기로 포함해라."
+    : "\n\n[로고]\n이 섹션은 중간 섹션이다. MORIVA 로고나 워드마크, 브랜드명을 넣지 않는다.";
+  var styleNote = (state.result && state.result.visual_style)
+    ? "\n\n[전체 색감 통일]\n이 상세페이지 시리즈 전체는 다음 톤을 일관되게 유지한다: " + state.result.visual_style
+    : "";
+  var productNote = (item.includesProduct === false)
+    ? "\n\n[제품 등장 여부]\n이 섹션에는 제품 실물 사진을 억지로 등장시키지 않는다. 컨셉·타이포·아이콘·무드 중심으로 구성해라."
+    : "";
+  return item.prompt + logoNote + styleNote + productNote;
+}
+
 /* 전체 생성 */
 function generateAll(type) {
   if (!state.images.product.length && !state.mainImage) { showNotice("제품 사진을 먼저 첨부해주세요."); return; }
@@ -1288,7 +1327,11 @@ function generateAll(type) {
   var chain = Promise.resolve();
   items.forEach(function (item, index) {
     chain = chain.then(function () {
-      return requestGeneratedImage(item.prompt, type, productDataUrls()).then(function (image) {
+      var promptText = type === "detail" ? detailPromptWithRules(item, items.length) : item.prompt;
+      var refs = type === "detail" ? detailReferenceUrls(item) : productDataUrls();
+      var size = type === "detail" ? detailImageSize(item) : "1024x1024";
+      var attachMain = type !== "detail" || item.includesProduct !== false;
+      return requestGeneratedImage(promptText, type, refs, size, attachMain).then(function (image) {
         if (type === "thumbnail") state.generatedThumbnails[index] = image;
         else {
           state.generatedDetails[index] = image;
@@ -1314,10 +1357,15 @@ function generateAll(type) {
 /* 개별 생성 */
 function generateOne(type, index) {
   var item = type === "thumbnail" ? state.result.thumbnails[index] : state.result.detail_sections[index];
+  var total = type === "detail" ? state.result.detail_sections.length : 0;
   var loadKey = type + "-" + index;
   state.galleryLoading = loadKey;
   renderOutput();
-  requestGeneratedImage(item.prompt, type, productDataUrls()).then(function (image) {
+  var promptText = type === "detail" ? detailPromptWithRules(item, total) : item.prompt;
+  var refs = type === "detail" ? detailReferenceUrls(item) : productDataUrls();
+  var size = type === "detail" ? detailImageSize(item) : "1024x1024";
+  var attachMain = type !== "detail" || item.includesProduct !== false;
+  requestGeneratedImage(promptText, type, refs, size, attachMain).then(function (image) {
     if (type === "thumbnail") state.generatedThumbnails[index] = image;
     else {
       state.generatedDetails[index] = image;
@@ -1339,14 +1387,19 @@ function editGalleryImage(type, index) {
   var current = type === "thumbnail" ? state.generatedThumbnails[index] : state.generatedDetails[index];
   var instruction = (state.galleryEdits[key] || "").trim();
   var item = type === "thumbnail" ? state.result.thumbnails[index] : state.result.detail_sections[index];
+  var total = type === "detail" ? state.result.detail_sections.length : 0;
   if (!current || !instruction) { showNotice("수정하거나 보완할 내용을 입력해주세요."); return; }
   state.galleryLoading = key;
   renderOutput();
-  var editPrompt = item.prompt +
+  var basePrompt = type === "detail" ? detailPromptWithRules(item, total) : item.prompt;
+  var editPrompt = basePrompt +
     "\n\n[현재 생성 이미지 수정 및 프롬프트 보완]\n첫 번째 참조 이미지는 현재 생성 결과다. 전체 제품과 디자인의 일관성은 유지하고 아래 요청을 우선 반영한다.\n\n" +
     instruction +
     "\n\n요청하지 않은 제품 형태·색상·로고·구성품·핵심 카피는 임의로 변경하지 않는다.";
-  requestGeneratedImage(editPrompt, type, [current].concat(productDataUrls())).then(function (image) {
+  var refs = type === "detail" ? [current].concat(detailReferenceUrls(item)) : [current].concat(productDataUrls());
+  var size = type === "detail" ? detailImageSize(item) : "1024x1024";
+  var attachMain = type !== "detail" || item.includesProduct !== false;
+  requestGeneratedImage(editPrompt, type, refs, size, attachMain).then(function (image) {
     if (type === "thumbnail") state.generatedThumbnails[index] = image;
     else state.generatedDetails[index] = image;
     state.galleryEdits[key] = "";
@@ -1356,6 +1409,56 @@ function editGalleryImage(type, index) {
     showNotice(friendlyErr(err, "이미지 수정 중 오류가 발생했습니다."));
   }).finally(function () {
     state.galleryLoading = null;
+    renderOutput();
+  });
+}
+
+/* ── 제작 이미지 전체 압축 다운로드 (zip) ── */
+var jsZipPromise = null;
+function loadJSZip() {
+  if (window.JSZip) return Promise.resolve(window.JSZip);
+  if (jsZipPromise) return jsZipPromise;
+  jsZipPromise = new Promise(function (resolve, reject) {
+    var s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+    s.onload = function () { resolve(window.JSZip); };
+    s.onerror = function () { jsZipPromise = null; reject(new Error("압축 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인해주세요.")); };
+    document.head.appendChild(s);
+  });
+  return jsZipPromise;
+}
+function downloadAllGenerated() {
+  var tKeys = Object.keys(state.generatedThumbnails);
+  var dKeys = Object.keys(state.generatedDetails);
+  if (!tKeys.length && !dKeys.length) { showNotice("먼저 이미지를 만들어주세요."); return; }
+  state.downloadingAll = true;
+  renderOutput();
+  loadJSZip().then(function (JSZip) {
+    var zip = new JSZip();
+    tKeys.forEach(function (rawIndex) {
+      var index = Number(rawIndex);
+      var b64 = state.generatedThumbnails[index].split(",")[1];
+      zip.file("thumbnail-" + pad2(index + 1) + ".webp", b64, { base64:true });
+    });
+    dKeys.forEach(function (rawIndex) {
+      var index = Number(rawIndex);
+      var item = state.result.detail_sections[index];
+      var b64 = state.generatedDetails[index].split(",")[1];
+      zip.file("detail-" + pad2(item ? item.number : index + 1) + ".webp", b64, { base64:true });
+    });
+    return zip.generateAsync({ type:"blob" });
+  }).then(function (blob) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "moriva-generated-images.zip";
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+    showNotice("제작 이미지 " + (tKeys.length + dKeys.length) + "장을 압축 파일로 저장했습니다.");
+  }).catch(function (err) {
+    showNotice(friendlyErr(err, "압축 파일을 만들지 못했습니다."));
+  }).finally(function () {
+    state.downloadingAll = false;
     renderOutput();
   });
 }
@@ -1565,6 +1668,11 @@ function renderOutput() {
         "<div><span>CREATED IMAGE LIBRARY</span><h3>제작 이미지 보관함</h3><p>생성된 이미지를 한곳에서 확인하고, 이미지마다 수정 요청이나 프롬프트 보완 내용을 입력할 수 있습니다.</p></div>" +
         "<div><strong>" + tKeys.length + "</strong><span>썸네일</span><strong>" + dKeys.length + "</strong><span>상세페이지</span></div>" +
       "</div>";
+    if (tKeys.length + dKeys.length > 0) {
+      h += '<button type="button" class="gallery-stitch" data-downloadall="1"' + (state.downloadingAll ? " disabled" : "") + ">" +
+        (state.downloadingAll ? "압축 파일 준비 중…" : "제작 이미지 전체 압축 다운로드 (zip, " + (tKeys.length + dKeys.length) + "장)") +
+      "</button>";
+    }
     if (tKeys.length + dKeys.length === 0) {
       h += '<div class="gallery-empty"><span>✦</span><strong>아직 제작된 이미지가 없습니다</strong><p>썸네일 또는 상세페이지 탭에서 전체·개별 이미지 만들기를 실행해주세요.</p></div>';
     } else {
@@ -1642,6 +1750,9 @@ function bindOutputEvents() {
   });
   host.querySelectorAll("[data-stitch]").forEach(function (b) {
     b.addEventListener("click", function () { stitchSelectedDetails(); });
+  });
+  host.querySelectorAll("[data-downloadall]").forEach(function (b) {
+    b.addEventListener("click", function () { downloadAllGenerated(); });
   });
   host.querySelectorAll("[data-selectdetail]").forEach(function (cb) {
     cb.addEventListener("change", function () {
