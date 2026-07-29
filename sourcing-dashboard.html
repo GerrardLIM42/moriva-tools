@@ -387,6 +387,7 @@ input.ef[type=number]{-moz-appearance:textfield;}
 .cc-unit{font-size:11px; color:var(--sub);}
 .cc-views-row{font-size:11px; color:var(--sub); margin-top:4px; display:flex; align-items:center; gap:4px;}
 .ef-cc-views{width:60px; padding:2px 4px; font-size:11px; display:inline-block;}
+.sc-tier-select{width:100%; padding:5px 6px; border-radius:6px; border:1px solid var(--line); background:var(--cream-1); color:var(--navy); font-size:11.5px; margin-bottom:5px; cursor:pointer;}
 
 .sc-field{margin-top:6px; border-top:1px dashed var(--line); padding-top:6px;}
 .sc-field label{display:block; font-size:11px; color:var(--sub); font-weight:600; margin-bottom:3px;}
@@ -613,6 +614,17 @@ var images = DATA.images;
 
 var CATEGORIES = ['ACTIVE','CAMP','HOME','PET','BAG'];
 var CATEGORY_LABELS = {ACTIVE:'ACTIVE', CAMP:'CAMP', HOME:'HOME', PET:'PET', BAG:'BAG'};
+
+// 로켓그로스 물류비 규격 티어 (마진 계산기와 동일한 기준)
+var GROWTH_TIERS = [
+  {key:'xs', label:'극소형 (50g 이하)', fee:1800},
+  {key:'s', label:'소형 (2kg 이하)', fee:2500},
+  {key:'m', label:'중형 (5kg 이하)', fee:3500},
+  {key:'l', label:'대형 (10kg 이하)', fee:5000},
+  {key:'xl', label:'특대형 (10kg 초과)', fee:7500},
+  {key:'custom', label:'직접입력', fee:null}
+];
+function growthTierByKey(key){ return GROWTH_TIERS.find(function(t){ return t.key===key; }) || null; }
 
 // ---------------- custom (user-added) products ----------------
 var CUSTOM_KEY = 'moriva_custom_products_v1';
@@ -982,9 +994,9 @@ function blankProduct(){
     sheet: 'custom-' + Date.now() + '-' + Math.floor(Math.random()*1000),
     name: '새 상품',
     monthly_search: null,
-    competitors: [0,1,2,3].map(function(){ return {name:'', sub:'', price:null, views_28d:null, image:null}; }),
+    competitors: [0,1,2,3].map(function(){ return {name:'', sub:'', price:null, views_28d:null, buyers_28d:null, image:null}; }),
     lowest_price: null, avg_price: null,
-    pricing: [0,1,2].map(function(){ return {sell_price:null, china_cost:null, purchase_cost:null, growth_cost:null, coupang_fee:null, vat:null, net_profit:null, profit_rate:null, margin_rate:null}; }),
+    pricing: [0,1,2].map(function(){ return {sell_price:null, china_cost:null, purchase_cost:null, growth_cost:null, growth_tier:null, coupang_fee:null, vat:null, net_profit:null, profit_rate:null, margin_rate:null}; }),
     target_sourcing_price: null,
     sourcing_1688: [],
     related_keywords: [],
@@ -998,9 +1010,9 @@ function fullSnapshotCustom(p){
     sheet: p.sheet,
     name: p.name,
     monthly_search: p.monthly_search,
-    competitors: (p.competitors||[]).map(function(c){ return {name:c.name, sub:c.sub, price:c.price, views_28d:c.views_28d, image:c.image||null}; }),
+    competitors: (p.competitors||[]).map(function(c){ return {name:c.name, sub:c.sub, price:c.price, views_28d:c.views_28d, buyers_28d:c.buyers_28d, image:c.image||null}; }),
     lowest_price: p.lowest_price, avg_price: p.avg_price,
-    pricing: (p.pricing||[]).map(function(s){ return {sell_price:s.sell_price, china_cost:s.china_cost, purchase_cost:s.purchase_cost, growth_cost:s.growth_cost, coupang_fee:s.coupang_fee, vat:s.vat, net_profit:s.net_profit, profit_rate:s.profit_rate, margin_rate:s.margin_rate}; }),
+    pricing: (p.pricing||[]).map(function(s){ return {sell_price:s.sell_price, china_cost:s.china_cost, purchase_cost:s.purchase_cost, growth_cost:s.growth_cost, growth_tier:s.growth_tier, coupang_fee:s.coupang_fee, vat:s.vat, net_profit:s.net_profit, profit_rate:s.profit_rate, margin_rate:s.margin_rate}; }),
     target_sourcing_price: p.target_sourcing_price,
     sourcing_1688: (p.sourcing_1688||[]).map(function(s){ return {unit_price:s.unit_price, yearly_sales:s.yearly_sales, url:s.url, options:s.options}; }),
     related_keywords: (p.related_keywords||[]).slice(),
@@ -1063,8 +1075,8 @@ function snapshotProduct(p){
   return {
     name: p.name,
     monthly_search: p.monthly_search,
-    competitors: (p.competitors||[]).map(function(c){ return {name:c.name, sub:c.sub, price:c.price, views_28d:c.views_28d}; }),
-    pricing: (p.pricing||[]).map(function(s){ return {sell_price:s.sell_price, china_cost:s.china_cost, purchase_cost:s.purchase_cost, growth_cost:s.growth_cost, coupang_fee:s.coupang_fee}; }),
+    competitors: (p.competitors||[]).map(function(c){ return {name:c.name, sub:c.sub, price:c.price, views_28d:c.views_28d, buyers_28d:c.buyers_28d}; }),
+    pricing: (p.pricing||[]).map(function(s){ return {sell_price:s.sell_price, china_cost:s.china_cost, purchase_cost:s.purchase_cost, growth_cost:s.growth_cost, growth_tier:s.growth_tier, coupang_fee:s.coupang_fee}; }),
     sourcing_1688: (p.sourcing_1688||[]).map(function(s){ return {unit_price:s.unit_price, yearly_sales:s.yearly_sales, url:s.url, options:s.options}; }),
     related_keywords: (p.related_keywords||[]).slice()
   };
@@ -1773,6 +1785,7 @@ function renderProduct(p){
           ef('competitors.'+idx+'.sub', c.sub, {type:'text', cls:'ef-cc-sub', placeholder:'옵션/타입'})+
           '<div class="cc-price-row">'+ef('competitors.'+idx+'.price', c.price, {cls:'ef-cc-price'})+'<span class="cc-unit">원</span></div>'+
           '<div class="cc-views-row">28일 조회수 '+ef('competitors.'+idx+'.views_28d', c.views_28d, {cls:'ef-cc-views'})+'</div>'+
+          '<div class="cc-views-row">월 구매수(이상) '+ef('competitors.'+idx+'.buyers_28d', c.buyers_28d, {cls:'ef-cc-views'})+'<span class="cc-unit">명</span></div>'+
         '</div></div>';
     }).join('') +
   '</div>'+
@@ -1780,7 +1793,7 @@ function renderProduct(p){
     '<div class="range-box"><div class="l">최저가 (자동)</div><div class="v" id="lowestPriceVal">'+fmtWon(p.lowest_price)+'</div></div>'+
     '<div class="range-box"><div class="l">평균가 (자동)</div><div class="v" id="avgPriceVal">'+fmtWon(p.avg_price)+'</div></div>'+
   '</div>'+
-  '<div class="save-hint" style="margin-top:10px;">※ 상품명·가격·조회수를 직접 클릭해 수정할 수 있어요. 최저가/평균가는 위 가격을 기준으로 자동 계산됩니다. 이미지 위에 마우스를 올려 연필 아이콘을 클릭하면 파일 업로드, 이미지 주소(URL), 붙여넣기(Ctrl+V)로 실제 이미지를 등록할 수 있어요.</div>'+
+  '<div class="save-hint" style="margin-top:10px;">※ 상품명·가격·조회수·구매수를 직접 클릭해 수정할 수 있어요. 최저가/평균가는 위 가격을 기준으로 자동 계산됩니다. 이미지 위에 마우스를 올려 연필 아이콘을 클릭하면 파일 업로드, 이미지 주소(URL), 붙여넣기(Ctrl+V)로 실제 이미지를 등록할 수 있어요.</div>'+
   '</div>';
 
   // 2. pricing scenarios
@@ -1797,7 +1810,11 @@ function renderProduct(p){
         '<div class="sc-field"><label>중국원가 (¥)</label><div class="sc-inputrow">'+ef('pricing.'+idx+'.china_cost', s.china_cost, {step:'0.1', cls:'ef-sc'})+
           '<button type="button" class="autofill-btn" data-action="autofill-purchase" data-idx="'+idx+'" title="중국원가 × 300으로 매입가 자동 계산">×300 →</button></div></div>'+
         '<div class="sc-field"><label>매입가(원)</label><div class="sc-inputrow">'+ef('pricing.'+idx+'.purchase_cost', s.purchase_cost, {cls:'ef-sc'})+'<span class="cc-unit">원</span></div></div>'+
-        '<div class="sc-field"><label>그로스비용(원)</label><div class="sc-inputrow">'+ef('pricing.'+idx+'.growth_cost', s.growth_cost, {cls:'ef-sc'})+'<span class="cc-unit">원</span></div></div>'+
+        '<div class="sc-field"><label>그로스비용(원)</label>'+
+          '<select class="sc-tier-select" data-tier-idx="'+idx+'" title="박스 규격을 고르면 그로스비용이 자동으로 입력돼요">'+
+            GROWTH_TIERS.map(function(t){ return '<option value="'+t.key+'"'+((s.growth_tier||'custom')===t.key?' selected':'')+'>'+t.label+(t.fee!==null?' · '+fmtNum(t.fee)+'원':'')+'</option>'; }).join('')+
+          '</select>'+
+          '<div class="sc-inputrow">'+ef('pricing.'+idx+'.growth_cost', s.growth_cost, {cls:'ef-sc'})+'<span class="cc-unit">원</span></div></div>'+
         '<div class="sc-field"><label>쿠팡수수료(원)</label><div class="sc-inputrow">'+ef('pricing.'+idx+'.coupang_fee', s.coupang_fee, {cls:'ef-sc'})+
           '<button type="button" class="autofill-btn" data-action="autofill-fee" data-idx="'+idx+'" title="판매가 × 11.55%로 자동 계산">11.55%</button></div></div>'+
         '<div class="row"><span>부가세 (자동)</span><b class="val-vat">'+fmtWon(s.vat)+'</b></div>'+
@@ -1805,7 +1822,7 @@ function renderProduct(p){
     }).join('') +
   '</div>'+
   (p.target_sourcing_price ? '<div class="range-row"><div class="range-box"><div class="l">목표 소싱가 (1688 위안, 참고용)</div><div class="v">'+fmtYuan(p.target_sourcing_price)+'</div></div></div>' : '')+
-  '<div class="save-hint" style="margin-top:10px;">※ 판매가·중국원가·매입가·그로스비용·쿠팡수수료를 직접 입력하면 부가세·순수익·수익률이 자동으로 재계산됩니다. (부가세 = (판매가－매입가－그로스비용－수수료)×10%)</div>'+
+  '<div class="save-hint" style="margin-top:10px;">※ 판매가·중국원가·매입가·그로스비용·쿠팡수수료를 직접 입력하면 부가세·순수익·수익률이 자동으로 재계산됩니다. (부가세 = (판매가－매입가－그로스비용－수수료)×10%) 그로스비용은 박스 규격을 선택하면 해당 규격의 로켓그로스 물류비로 자동 입력되고, 직접 값을 수정하면 "직접입력"으로 바뀝니다.</div>'+
   '</div>';
 
   // 3. 1688 소싱처 — 소싱 후보에 등록한 내용을 그대로 사용한다(읽기 전용).
@@ -2093,6 +2110,11 @@ function patchAfterEdit(p, path){
   }
 
   if(path.indexOf('pricing.') === 0){
+    var growthEdit = path.match(/^pricing\.(\d+)\.growth_cost$/);
+    if(growthEdit){
+      var gs = p.pricing[growthEdit[1]];
+      if(gs) gs.growth_tier = 'custom';
+    }
     (p.pricing||[]).forEach(recomputePricingRow);
     var best = bestScenario(p);
     Array.prototype.forEach.call(root.querySelectorAll('.scenario'), function(el){
@@ -2105,6 +2127,7 @@ function patchAfterEdit(p, path){
       var prEl = el.querySelector('.val-profit-rate'); if(prEl) prEl.textContent = fmtPct(s.profit_rate);
       var mrEl = el.querySelector('.val-margin-rate'); if(mrEl) mrEl.textContent = fmtPct(s.margin_rate);
       var vatEl = el.querySelector('.val-vat'); if(vatEl) vatEl.textContent = fmtWon(s.vat);
+      var tierSel = el.querySelector('.sc-tier-select'); if(tierSel) tierSel.value = s.growth_tier || 'custom';
     });
     var badge = marginBadge(best ? best.margin_rate : null);
     var hn = root.querySelector('#hdrNetProfit'); if(hn) hn.textContent = best ? fmtWon(best.net_profit) : '-';
@@ -2187,6 +2210,23 @@ mainContentEl.addEventListener('click', function(e){
   persistEdits(p);
   renderProduct(p);
   renderSidebar();
+});
+
+/* 그로스비용: 박스 규격 티어를 고르면 해당 규격의 물류비로 자동 입력된다 */
+mainContentEl.addEventListener('change', function(e){
+  var el = e.target;
+  if(!el.classList || !el.classList.contains('sc-tier-select')) return;
+  if(!currentProductRef) return;
+  var idx = el.getAttribute('data-tier-idx');
+  var p = currentProductRef;
+  var s = p.pricing && p.pricing[idx];
+  if(!s) return;
+  var tier = growthTierByKey(el.value);
+  s.growth_tier = el.value;
+  if(tier && tier.fee !== null){ s.growth_cost = tier.fee; }
+  recomputePricingRow(s);
+  persistEdits(p);
+  renderProduct(p);
 });
 
 /* ── 대시보드에서 소싱처 직접 편집 (소싱 후보에 그대로 반영) ── */
