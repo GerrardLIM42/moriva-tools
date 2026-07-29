@@ -510,6 +510,7 @@ input.ef[type=number]{-moz-appearance:textfield;}
 .star-rate .star-ico{position:relative; display:inline-block; font-size:14px; line-height:1; color:#dcdcdc;}
 .star-rate .star-ico.full{color:#f5a623;}
 .star-rate .star-ico .star-half{position:absolute; left:0; top:0; width:50%; overflow:hidden; color:#f5a623;}
+.star-rate .star-num{margin-left:4px; font-size:12px; font-weight:700; color:var(--navy);}
 .star-rate .star-clear{margin-left:4px; border:none; background:none; color:var(--sub); font-size:10px; cursor:pointer; padding:0 2px;}
 .star-rate .star-clear:hover{color:#d33;}
 .star-rate.interactive .star-ico{font-size:19px; cursor:pointer;}
@@ -1471,7 +1472,8 @@ function renderStarPickerHtml(value){
     var half = !full && v >= i - 0.5 - 0.001;
     html += '<span class="star-ico'+(full?' full':'')+'" data-star-i="'+i+'">★'+(half?'<span class="star-half">★</span>':'')+'</span>';
   }
-  html += (v>0?'<button type="button" class="star-clear" title="별점 지우기">✕</button>':'');
+  html += '<span class="star-num">'+(v>0?(Math.round(v*10)/10):'')+'</span>'+
+    (v>0?'<button type="button" class="star-clear" title="별점 지우기">✕</button>':'');
   return html;
 }
 // 실력상가 등급 배지: 1688 실제 등급 마크처럼 등급마다 다른 색의 스타일 로고로 보여준다

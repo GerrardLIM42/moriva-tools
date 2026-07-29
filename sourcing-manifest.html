@@ -523,6 +523,7 @@
   .star-rate .star-ico{ position:relative; display:inline-block; font-size:12.5px; line-height:1; color:#dcdcdc; }
   .star-rate .star-ico.full{ color:#f5a623; }
   .star-rate .star-ico .star-half{ position:absolute; left:0; top:0; width:50%; overflow:hidden; color:#f5a623; }
+  .star-rate .star-num{ margin-left:4px; font-size:11px; font-weight:700; color:var(--ink); }
   .star-rate .star-clear{ margin-left:4px; border:none; background:none; color:var(--mist); font-size:10px; cursor:pointer; padding:0 2px; }
   .star-rate .star-clear:hover{ color:#d33; }
   .star-rate.interactive{ padding:4px 0; }
@@ -1261,7 +1262,8 @@
       var half = !full && v >= i - 0.5 - 0.001;
       html += '<span class="star-ico'+(full?' full':'')+'">★'+(half?'<span class="star-half">★</span>':'')+'</span>';
     }
-    return '<span class="star-rate" title="'+(Math.round(v*10)/10)+'점">' + html + '</span>';
+    html += '<span class="star-num">'+(Math.round(v*10)/10)+'</span>';
+    return '<span class="star-rate">' + html + '</span>';
   }
   function sellerInfoHtml(it){
     var parts = [];
@@ -1282,7 +1284,8 @@
       var half = !full && v >= i - 0.5 - 0.001;
       html += '<span class="star-ico'+(full?' full':'')+'" data-star-i="'+i+'">★'+(half?'<span class="star-half">★</span>':'')+'</span>';
     }
-    html += (v>0?'<button type="button" class="star-clear" title="별점 지우기">✕</button>':'');
+    html += '<span class="star-num">'+(v>0?(Math.round(v*10)/10):'')+'</span>'+
+      (v>0?'<button type="button" class="star-clear" title="별점 지우기">✕</button>':'');
     container.innerHTML = html;
   }
   function setSellerRatingValue(v){
