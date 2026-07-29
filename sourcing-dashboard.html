@@ -1737,6 +1737,8 @@ function renderGuide(){
   }
 }
 function renderProduct(p){
+  // 입력/버튼 조작 후 다시 그릴 때 페이지가 맨 위로 튀지 않도록 스크롤 위치를 기억했다가 복원한다.
+  var __prevScrollY = window.scrollY;
   currentProductRef = p;
   var note = getNote(p);
   var best = bestScenario(p);
@@ -1929,6 +1931,7 @@ function renderProduct(p){
   '</div>';
 
   document.getElementById('mainContent').innerHTML = html;
+  window.scrollTo(0, __prevScrollY);
 
   // 1688 thumbnail editors
   // data-idx 가 있는 예전 방식 행에만 연결한다.
