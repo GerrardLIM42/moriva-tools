@@ -1190,6 +1190,14 @@
 
   function won(n){ return '₩' + Math.round(n||0).toLocaleString('ko-KR'); }
   function pct(n){ return (n||0).toFixed(1) + '%'; }
+  // "연간 판매량" 같은 자유 텍스트 수량: 앞쪽 숫자 덩어리에만 1000단위 콤마를 넣고 "10+", "개" 같은 뒤쪽 글자는 그대로 둔다.
+  function formatQtyText(v){
+    var s = (v === null || v === undefined) ? '' : String(v).trim();
+    if(s === '') return '';
+    var m = s.replace(/,/g, '').match(/^(\d+)(.*)$/);
+    if(!m) return s;
+    return Number(m[1]).toLocaleString('ko-KR') + m[2];
+  }
   function escapeHtml(s){
     return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   }
@@ -3438,7 +3446,7 @@
       fillFolderSelect(it.folder);
       $('#f-folder-new').value = '';
       $('#f-link').value = it.link;
-      $('#f-yearly-sales').value = it.yearlySales || '';
+      $('#f-yearly-sales').value = formatQtyText(it.yearlySales);
       $('#f-category').value = it.category;
       $('#f-status').value = it.status;
       setSeg($('#seg-bundle'), it.isBundle ? 'true' : 'false');
@@ -3627,7 +3635,7 @@
       name: $('#f-name').value.trim(),
       folder: getFolderValue(),
       link: $('#f-link').value.trim(),
-      yearlySales: $('#f-yearly-sales').value.trim(),
+      yearlySales: $('#f-yearly-sales').value.replace(/,/g, '').trim(),
       image: primary.image,
       category: $('#f-category').value,
       status: $('#f-status').value,
@@ -3938,6 +3946,12 @@
     fillCoupangCatOptions('#bulk-coupangcat');
     fillRocketSizeOptions('#bulk-rocketsize');
     renderStatusFilterOptions();
+    var yearlySalesInput = $('#f-yearly-sales');
+    if(yearlySalesInput){
+      yearlySalesInput.addEventListener('blur', function(){
+        yearlySalesInput.value = formatQtyText(yearlySalesInput.value);
+      });
+    }
     fetchLiveRate();
     items = await loadItems();
     exportSummaryForDashboard();   // 대시보드 연동용 요약을 처음 열 때도 만들어 둔다
