@@ -516,6 +516,7 @@
   .rep-note{ font-size:10.5px; color:var(--jade); font-weight:600; }
   .rep-note b{ font-weight:800; }
   .yearly-sales-tag{ font-size:10.5px; color:var(--mist); font-weight:600; }
+  .seller-info-tag{ font-size:10.5px; color:var(--mist); font-weight:600; }
   .cny-price{ font-family:'JetBrains Mono',monospace; font-size:13.5px; font-weight:700; color:var(--rust);
     display:flex; align-items:baseline; gap:6px; flex-wrap:wrap; }
   .cny-price .cny-unit{ font-size:10.5px; font-weight:600; color:var(--mist); font-family:'Pretendard Variable',sans-serif; }
@@ -821,6 +822,24 @@
             <label>연간 판매량 <span style="font-weight:400;">(선택)</span></label>
             <input type="text" id="f-yearly-sales" placeholder="예: 5,000개 · 1688 상품페이지의 판매 수량" />
             <span class="hint">소싱 대시보드의 1688 소싱처에 그대로 표시됩니다</span>
+          </div>
+          <div class="field">
+            <label>1688 입점 연차 <span style="font-weight:400;">(선택)</span></label>
+            <input type="number" id="f-seller-years" min="0" step="1" placeholder="예: 4" />
+          </div>
+          <div class="field">
+            <label>판매자 별점 <span style="font-weight:400;">(선택)</span></label>
+            <input type="number" id="f-seller-rating" min="0" max="5" step="0.1" placeholder="예: 4.5" />
+          </div>
+          <div class="field half">
+            <label>실력상가 등급 <span style="font-weight:400;">(선택)</span></label>
+            <select id="f-seller-grade">
+              <option value="">선택 안 함</option>
+              <option value="실력공장">실력공장 — 자체 공장·생산설비 (OEM·ODM·대량발주)</option>
+              <option value="실력공급업체">실력공급업체 — 도매·무역업체 (소량·다품종·빠른출고)</option>
+              <option value="실력플래그십점">실력플래그십점 — 자체/독점 브랜드 (브랜드 완제품)</option>
+              <option value="실력전문판매점">실력전문판매점 — 브랜드 정식판매권 (정품 브랜드)</option>
+            </select>
           </div>
           <div class="field">
             <label>브랜드 카테고리</label>
@@ -1199,6 +1218,15 @@
     if(!m) return s;
     return Number(m[1]).toLocaleString('ko-KR') + m[2];
   }
+  var SELLER_GRADE_ICON = { '실력공장':'🏭', '실력공급업체':'📦', '실력플래그십점':'🚩', '실력전문판매점':'🏬' };
+  function sellerInfoHtml(it){
+    var parts = [];
+    if(it.sellerGrade) parts.push((SELLER_GRADE_ICON[it.sellerGrade] || '🏷️') + ' ' + escapeHtml(it.sellerGrade));
+    if(it.sellerYears) parts.push('입주 ' + escapeHtml(String(it.sellerYears)) + '년');
+    if(it.sellerRating) parts.push('⭐ ' + escapeHtml(String(it.sellerRating)));
+    if(!parts.length) return '';
+    return '<div class="seller-info-tag">' + parts.join(' · ') + '</div>';
+  }
   function escapeHtml(s){
     return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   }
@@ -1229,6 +1257,9 @@
       category: it.category || 'ACTIVE',
       status: it.status || '검토중',
       yearlySales: it.yearlySales || '',
+      sellerYears: it.sellerYears || '',
+      sellerRating: it.sellerRating || '',
+      sellerGrade: it.sellerGrade || '',
       isBundle: !!it.isBundle,
       bundleQty: it.bundleQty || 2,
       cny: primary.cny,
@@ -1505,6 +1536,9 @@
           name: (it.name || '').trim(),
           link: it.link || '',
           yearlySales: it.yearlySales || '',
+          sellerYears: it.sellerYears || '',
+          sellerRating: it.sellerRating || '',
+          sellerGrade: it.sellerGrade || '',
           image: it.image || '',
           folder: it.folder || '',
           category: it.category || '',
@@ -3237,6 +3271,7 @@
         ${hasMultiOptions ? `<div class="rep-note">${it.repOptionId ? '📌 대표 옵션 직접 지정 중' : '🏆 최고 마진 옵션 표시 중'}: <b>${escapeHtml(rep.name)}</b></div>` : ''}
         <div class="cny-price">¥${(rep.cny||0).toFixed(2)}<span class="cny-unit">/ 개당 위안화 단가${it.isBundle ? ` · 묶음 ${it.bundleQty}개` : ''}</span></div>
         ${it.yearlySales ? `<div class="yearly-sales-tag">📈 연간 판매량 ${escapeHtml(formatQtyText(it.yearlySales))}</div>` : ''}
+        ${sellerInfoHtml(it)}
         <div class="ledger">
           <div class="row"><span>수입원가 (관부가세·물류 포함)</span><span>${won(c.impTotal)}</span></div>
           <div class="row"><span>판매·운영비 (수수료 ${c.feePct.toFixed(1)}%+물류+광고+반품+포장)</span><span>${won(c.sellTotal)}</span></div>
@@ -3450,6 +3485,9 @@
       $('#f-folder-new').value = '';
       $('#f-link').value = it.link;
       $('#f-yearly-sales').value = formatQtyText(it.yearlySales);
+      $('#f-seller-years').value = it.sellerYears || '';
+      $('#f-seller-rating').value = it.sellerRating || '';
+      $('#f-seller-grade').value = it.sellerGrade || '';
       $('#f-category').value = it.category;
       $('#f-status').value = it.status;
       setSeg($('#seg-bundle'), it.isBundle ? 'true' : 'false');
@@ -3499,6 +3537,9 @@
       $('#f-folder-new').value = '';
       $('#f-status').value = '검토중';
       $('#f-yearly-sales').value = '';
+      $('#f-seller-years').value = '';
+      $('#f-seller-rating').value = '';
+      $('#f-seller-grade').value = '';
       $('#f-category').value = presetCategory;
       setSeg($('#seg-bundle'), 'false');
       $('#f-bundleqty').value = 2;
@@ -3639,6 +3680,9 @@
       folder: getFolderValue(),
       link: $('#f-link').value.trim(),
       yearlySales: $('#f-yearly-sales').value.replace(/,/g, '').trim(),
+      sellerYears: $('#f-seller-years').value.trim(),
+      sellerRating: $('#f-seller-rating').value.trim(),
+      sellerGrade: $('#f-seller-grade').value,
       image: primary.image,
       category: $('#f-category').value,
       status: $('#f-status').value,

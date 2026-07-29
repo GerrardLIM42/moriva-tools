@@ -502,6 +502,11 @@ input.ef[type=number]{-moz-appearance:textfield;}
 .mf-in::placeholder{color:#B9C0C8; font-weight:600;}
 .mf-in-cny{font-size:15px; font-weight:800;}
 .mf-in-url{font-size:11.5px; font-weight:600; color:var(--sub);}
+.src-seller-row{grid-column:1 / -1; display:flex; gap:16px; flex-wrap:wrap; padding-top:8px; margin-top:2px; border-top:1px dashed var(--line);}
+.src-seller-field{display:flex; flex-direction:column; gap:1px;}
+.src-seller-field .mf-in-sm{width:64px; font-size:12px; font-weight:700; padding:3px 5px;}
+.src-seller-grade .mf-in-sm{width:170px; cursor:pointer;}
+.src-seller-field .u-sub{font-size:10px; color:var(--sub);}
 .mf-del{
   width:24px; height:24px; border-radius:7px; border:1px solid var(--line);
   background:#fff; color:#B8453A; font-size:14px; line-height:1; cursor:pointer;
@@ -677,6 +682,9 @@ function loadManifestSummary(){
             memo: it.memo || '',
             cny: it.cny,
             yearlySales: it.yearlySales || '',
+            sellerYears: it.sellerYears || '',
+            sellerRating: it.sellerRating || '',
+            sellerGrade: it.sellerGrade || '',
             options: (it.options || []).map(function(o){
               return { name: o.name || '', cny: o.cny, image: o.image || '' };
             })
@@ -898,8 +906,10 @@ function updateManifestField(id, field, rawValue){
   if(field === 'cny'){
     value = parseFloat(String(rawValue == null ? '' : rawValue).replace(/[^0-9.]/g, ''));
     if(!isFinite(value) || value < 0) value = 0;
-  } else if(field === 'yearlySales'){
+  } else if(field === 'yearlySales' || field === 'sellerYears' || field === 'sellerRating'){
     value = String(rawValue == null ? '' : rawValue).replace(/,/g, '').trim();
+  } else if(field === 'sellerGrade'){
+    value = String(rawValue == null ? '' : rawValue).trim();
   } else if(field === 'image' || field === 'link'){
     value = String(rawValue == null ? '' : rawValue).trim();
   } else {
@@ -1866,7 +1876,7 @@ function renderProduct(p){
   if(!mfItems.length){
     html += '<div class="mf-empty">'+
       '<b>소싱 후보에 등록된 소싱처가 없습니다.</b>'+
-      '<p>소싱 후보에서 상품명을 <b>'+esc(p.name)+'</b> 와 같게 저장하면, 그곳에 입력한 이미지·사입 단가·연간 판매량·1688 링크가 여기에 자동으로 나타납니다.</p>'+
+      '<p>소싱 후보에서 상품명을 <b>'+esc(p.name)+'</b> 와 같게 저장하면, 그곳에 입력한 이미지·사입 단가·연간 판매량·판매자 정보·1688 링크가 여기에 자동으로 나타납니다.</p>'+
       '<div class="mf-actions">'+
         '<button type="button" class="mf-add" data-action="mf-add">+ 소싱처 추가</button>'+
         '<button type="button" class="mf-go" data-action="open-manifest">소싱 후보 열기 ↗</button>'+
@@ -1919,6 +1929,13 @@ function renderProduct(p){
           (m.link ? '<a class="go" href="'+esc(m.link)+'" target="_blank" rel="noopener">열기 ↗</a>' : '<span class="go go-disabled">열기 ↗</span>')+
         '</div>'+
         '<button type="button" class="mf-del" data-action="mf-delete" data-mf-id="'+esc(m.id)+'" title="소싱 후보에서 삭제">✕</button>'+
+        '<div class="src-seller-row">'+
+          '<div class="src-seller-field"><input type="text" inputmode="decimal" class="mf-in mf-in-sm" data-mf-field="sellerYears" data-mf-id="'+esc(m.id)+'" value="'+esc(m.sellerYears||'')+'" placeholder="-"><div class="u-sub">입점 연차</div></div>'+
+          '<div class="src-seller-field"><input type="text" inputmode="decimal" class="mf-in mf-in-sm" data-mf-field="sellerRating" data-mf-id="'+esc(m.id)+'" value="'+esc(m.sellerRating||'')+'" placeholder="-"><div class="u-sub">별점</div></div>'+
+          '<div class="src-seller-field src-seller-grade"><select class="mf-in mf-in-sm" data-mf-field="sellerGrade" data-mf-id="'+esc(m.id)+'">'+
+            ['','실력공장','실력공급업체','실력플래그십점','실력전문판매점'].map(function(g){ return '<option value="'+g+'"'+(m.sellerGrade===g?' selected':'')+'>'+(g||'등급 선택 안함')+'</option>'; }).join('')+
+          '</select><div class="u-sub">실력상가 등급</div></div>'+
+        '</div>'+
       '</div>';
     });
     html += '</div>';
@@ -1927,7 +1944,7 @@ function renderProduct(p){
       '<button type="button" class="mf-go" data-action="open-manifest">소싱 후보에서 자세히 편집 ↗</button>'+
     '</div>';
   }
-  html += '<div class="save-hint" style="margin-top:10px;">※ 여기서 고친 <b>이미지·단가·연간 판매량·1688 링크</b>는 <b>소싱 후보</b>에도 그대로 반영되며, 다른 기기에서도 똑같이 보입니다. 옵션·판매가·마진 등 자세한 항목은 소싱 후보에서 편집하세요.</div>';
+  html += '<div class="save-hint" style="margin-top:10px;">※ 여기서 고친 <b>이미지·단가·연간 판매량·판매자 정보(입점 연차·별점·실력상가 등급)·1688 링크</b>는 <b>소싱 후보</b>에도 그대로 반영되며, 다른 기기에서도 똑같이 보입니다. 옵션·판매가·마진 등 자세한 항목은 소싱 후보에서 편집하세요.</div>';
   html += '</div>';
 
   // pointer to the interactive category fee table (replaces the old static screenshot)
