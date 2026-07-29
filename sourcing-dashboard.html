@@ -853,6 +853,15 @@ function runManifestSync(){
 }
 
 /* 서버(소싱 후보와 같은 저장소)의 최신 내용을 받아온다 */
+function parseManifestText(text){
+  var raw = JSON.parse(text || '{}');
+  if(Array.isArray(raw)) return { items: raw, folderKeywords: {}, hiddenFolders: [] };
+  return {
+    items: Array.isArray(raw.items) ? raw.items : [],
+    folderKeywords: (raw.folderKeywords && typeof raw.folderKeywords === 'object') ? raw.folderKeywords : {},
+    hiddenFolders: Array.isArray(raw.hiddenFolders) ? raw.hiddenFolders : []
+  };
+}
 function fetchManifestPayload(){
   return fetch(MANIFEST_WORKER_URL, {
     headers: { 'Accept': 'application/vnd.github+json' }, cache: 'no-store'
@@ -861,14 +870,18 @@ function fetchManifestPayload(){
     if(!res.ok) throw new Error('읽기 실패 ' + res.status);
     return res.json().then(function(d){
       manifestSha = d.sha || null;
+      /* GitHub Contents API는 ~1MB가 넘는 파일은 content를 비워서("encoding":"none") 돌려준다.
+         이 경우 download_url(raw.githubusercontent.com)로 직접 받아온다. */
+      if(!d.content && d.size > 0 && d.download_url){
+        return fetch(d.download_url + (d.download_url.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now(), { cache: 'no-store' })
+          .then(function(rawRes){
+            if(!rawRes.ok) throw new Error('원본 데이터를 불러오지 못했습니다 (raw fetch 실패, HTTP ' + rawRes.status + ')');
+            return rawRes.text();
+          })
+          .then(parseManifestText);
+      }
       var text = decodeURIComponent(escape(atob(String(d.content || '').replace(/\n/g, ''))));
-      var raw = JSON.parse(text || '{}');
-      if(Array.isArray(raw)) return { items: raw, folderKeywords: {}, hiddenFolders: [] };
-      return {
-        items: Array.isArray(raw.items) ? raw.items : [],
-        folderKeywords: (raw.folderKeywords && typeof raw.folderKeywords === 'object') ? raw.folderKeywords : {},
-        hiddenFolders: Array.isArray(raw.hiddenFolders) ? raw.hiddenFolders : []
-      };
+      return parseManifestText(text);
     });
   });
 }

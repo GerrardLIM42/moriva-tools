@@ -1683,7 +1683,16 @@
     if(!res.ok) throw new Error(githubErrorDetail(res.status));
     const data = await res.json();
     githubSha = data.sha;
-    const content = b64ToUtf8(data.content);
+    let content;
+    if(!data.content && data.size > 0 && data.download_url){
+      // GitHub Contents API omits inline content for files over ~1MB (encoding:"none").
+      // Fall back to fetching the raw file directly, which has no such size limit.
+      const rawRes = await fetch(data.download_url + (data.download_url.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now(), { cache: 'no-store' });
+      if(!rawRes.ok) throw new Error('원본 데이터를 불러오지 못했습니다 (raw fetch 실패, HTTP ' + rawRes.status + ')');
+      content = await rawRes.text();
+    }else{
+      content = b64ToUtf8(data.content);
+    }
     try{
       const parsed = JSON.parse(content || '[]');
       return parseStoredPayload(parsed);
