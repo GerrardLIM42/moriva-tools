@@ -874,6 +874,13 @@ function fetchManifestPayload(){
 }
 
 function doPushManifest(payload, retried){
+  /* 2차 안전장치: 이미 저장된 파일(manifestSha 존재)이 있는데 이번에 올릴 내용이
+     통째로 비어 있으면 실수로 전체 삭제하는 사고이므로 올리지 않는다. */
+  if(manifestSha && (!payload.items || payload.items.length === 0)){
+    mfSay('안전을 위해 저장을 건너뛰었습니다 (전체 삭제 시도 감지)', true);
+    console.error('doPushManifest aborted: refusing to push empty items over existing data');
+    return Promise.resolve();
+  }
   var body = {
     message: 'update sourcing data from dashboard (' + new Date().toISOString() + ')',
     content: mfB64Encode(JSON.stringify(payload, null, 2))
