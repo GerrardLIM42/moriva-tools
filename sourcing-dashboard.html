@@ -2062,6 +2062,15 @@ mainContentEl.addEventListener('input', function(e){
   persistEdits(currentProductRef);
 });
 
+var sidebarRefreshTimer = null;
+function scheduleSidebarRefresh(){
+  if(sidebarRefreshTimer) clearTimeout(sidebarRefreshTimer);
+  sidebarRefreshTimer = setTimeout(function(){
+    sidebarRefreshTimer = null;
+    renderSidebar();
+  }, 400);
+}
+
 function patchAfterEdit(p, path){
   var note = getNote(p);
   var root = mainContentEl;
@@ -2131,7 +2140,7 @@ function patchAfterEdit(p, path){
     }
   }
 
-  renderSidebar();
+  scheduleSidebarRefresh();
 }
 
 mainContentEl.addEventListener('input', function(e){
