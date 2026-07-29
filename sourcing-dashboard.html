@@ -1467,7 +1467,7 @@ function marginBadge(rate){
   return {cls:'badge-low', label:fmtPct(rate)};
 }
 
-var state = { view:'dashboard', sort:'default', query:'', selected: null };
+var state = { view:'dashboard', sort:'default', query:'', selected: null, showHidden:false };
 var currentProductRef = null;
 
 // ---------------- sidebar ----------------
@@ -1590,13 +1590,16 @@ function renderSidebar(){
 
 // ---------------- dashboard view ----------------
 function renderDashboard(){
-  var totalSearch = products.reduce(function(s,p){ return s + (p.monthly_search||0); }, 0);
-  var margins = products.map(bestScenario).filter(Boolean);
+  var hiddenCount = products.filter(function(p){ return getNote(p).hidden; }).length;
+  var visibleProducts = state.showHidden ? products : products.filter(function(p){ return !getNote(p).hidden; });
+
+  var totalSearch = visibleProducts.reduce(function(s,p){ return s + (p.monthly_search||0); }, 0);
+  var margins = visibleProducts.map(bestScenario).filter(Boolean);
   var avgMargin = margins.length ? margins.reduce(function(s,m){return s+(m.margin_rate||0);},0)/margins.length : 0;
   var topProfit = margins.length ? Math.max.apply(null, margins.map(function(m){return m.net_profit||0;})) : 0;
-  var interested = products.filter(function(p){ return getNote(p).status === '소싱중'; }).length;
+  var interested = visibleProducts.filter(function(p){ return getNote(p).status === '소싱중'; }).length;
 
-  var rows = products.map(function(p){
+  var rows = visibleProducts.map(function(p){
     var best = bestScenario(p);
     var c1688 = cheapest1688(p);
     var badge = marginBadge(best ? best.margin_rate : null);
@@ -1605,17 +1608,19 @@ function renderDashboard(){
   });
 
   var html = '';
-  html += '<div class="topbar"><div><h1>전체 소싱 요약 대시보드</h1><div class="sub">18개 상품의 시장조사 · 판매가 시뮬레이션 · 1688 소싱 현황을 한눈에 확인하세요.</div></div>'+
+  html += '<div class="topbar"><div><h1>전체 소싱 요약 대시보드</h1><div class="sub">'+visibleProducts.length+'개 상품의 시장조사 · 판매가 시뮬레이션 · 1688 소싱 현황을 한눈에 확인하세요.</div></div>'+
     '<div class="date-tag">MORIVA Rocket Growth</div></div>';
 
   html += '<div class="stat-grid">'+
-    '<div class="stat-card"><div class="label">등록 상품 수</div><div class="value">'+products.length+'<small> 개</small></div></div>'+
+    '<div class="stat-card"><div class="label">등록 상품 수</div><div class="value">'+visibleProducts.length+'<small> 개</small></div></div>'+
     '<div class="stat-card"><div class="label">합산 월간 검색량</div><div class="value">'+fmtNum(totalSearch)+'<small> 회</small></div></div>'+
     '<div class="stat-card"><div class="label">평균 원가대비 수익률</div><div class="value">'+fmtPct(avgMargin)+'</div></div>'+
-    '<div class="stat-card"><div class="label">소싱중 상태</div><div class="value">'+interested+'<small> / '+products.length+'</small></div></div>'+
+    '<div class="stat-card"><div class="label">소싱중 상태</div><div class="value">'+interested+'<small> / '+visibleProducts.length+'</small></div></div>'+
   '</div>';
 
-  html += '<div class="section-title"><span class="num">1</span>상품별 비교표 <span style="font-weight:500; text-transform:none; letter-spacing:0; font-size:11px; color:var(--sub); margin-left:4px;">(열 제목 클릭 시 정렬)</span></div>';
+  html += '<div class="section-title"><span class="num">1</span>상품별 비교표 <span style="font-weight:500; text-transform:none; letter-spacing:0; font-size:11px; color:var(--sub); margin-left:4px;">(열 제목 클릭 시 정렬)</span>'+
+    (hiddenCount ? '<button type="button" id="toggleHiddenBtn" class="autofill-btn" style="margin-left:10px; text-transform:none; letter-spacing:0;">'+(state.showHidden ? '숨김 상품 다시 숨기기' : '숨김 상품 보기 ('+hiddenCount+')')+'</button>' : '')+
+    '</div>';
   html += '<div class="table-wrap"><table id="dashTable"><thead><tr>'+
     '<th data-key="name">상품명</th>'+
     '<th class="num" data-key="search">월 검색량</th>'+
@@ -1643,6 +1648,14 @@ function renderDashboard(){
   html += '<div class="footer-note">MORIVA 소싱 보고서 원본 엑셀 데이터를 기반으로 자동 생성되었습니다. 각 상품을 클릭하면 상세 리포트를 볼 수 있습니다.</div>';
 
   document.getElementById('mainContent').innerHTML = html;
+
+  var toggleHiddenBtn = document.getElementById('toggleHiddenBtn');
+  if(toggleHiddenBtn){
+    toggleHiddenBtn.addEventListener('click', function(){
+      state.showHidden = !state.showHidden;
+      renderDashboard();
+    });
+  }
 
   Array.prototype.forEach.call(document.querySelectorAll('#dashTable tbody tr'), function(tr){
     tr.addEventListener('click', function(){

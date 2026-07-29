@@ -515,6 +515,7 @@
     display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height:38px; }
   .rep-note{ font-size:10.5px; color:var(--jade); font-weight:600; }
   .rep-note b{ font-weight:800; }
+  .yearly-sales-tag{ font-size:10.5px; color:var(--mist); font-weight:600; }
   .cny-price{ font-family:'JetBrains Mono',monospace; font-size:13.5px; font-weight:700; color:var(--rust);
     display:flex; align-items:baseline; gap:6px; flex-wrap:wrap; }
   .cny-price .cny-unit{ font-size:10.5px; font-weight:600; color:var(--mist); font-family:'Pretendard Variable',sans-serif; }
@@ -3234,6 +3235,7 @@
         <div class="card-name">${escapeHtml(it.name)}</div>
         ${hasMultiOptions ? `<div class="rep-note">${it.repOptionId ? '📌 대표 옵션 직접 지정 중' : '🏆 최고 마진 옵션 표시 중'}: <b>${escapeHtml(rep.name)}</b></div>` : ''}
         <div class="cny-price">¥${(rep.cny||0).toFixed(2)}<span class="cny-unit">/ 개당 위안화 단가${it.isBundle ? ` · 묶음 ${it.bundleQty}개` : ''}</span></div>
+        ${it.yearlySales ? `<div class="yearly-sales-tag">📈 연간 판매량 ${escapeHtml(formatQtyText(it.yearlySales))}</div>` : ''}
         <div class="ledger">
           <div class="row"><span>수입원가 (관부가세·물류 포함)</span><span>${won(c.impTotal)}</span></div>
           <div class="row"><span>판매·운영비 (수수료 ${c.feePct.toFixed(1)}%+물류+광고+반품+포장)</span><span>${won(c.sellTotal)}</span></div>
