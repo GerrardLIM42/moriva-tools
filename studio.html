@@ -574,6 +574,18 @@ function showNotice(message) {
   toastTimer = setTimeout(function () { host.innerHTML = ""; }, 3200);
 }
 
+/* fetch()가 응답을 받기도 전에 실패하면 브라우저는 원인을 알려주지 않고
+   그냥 "Failed to fetch" 라는 문구만 던진다. 인터넷 연결이 끊겼거나,
+   회사 네트워크·VPN·보안 프로그램이 OpenAI 서버 접속을 막았거나,
+   요청 중간에 연결이 끊긴 경우 모두 이 메시지로 나타난다.
+   사용자에게는 원인을 짐작할 수 있는 한국어 안내로 바꿔서 보여준다. */
+function friendlyErr(err, fallback) {
+  if (err && err.name === "TypeError" && /fetch/i.test(err.message || "")) {
+    return "OpenAI 서버에 연결하지 못했습니다. 인터넷 연결, 회사 VPN/보안 프로그램의 api.openai.com 차단 여부를 확인한 뒤 다시 시도해주세요.";
+  }
+  return (err && err.message) || fallback;
+}
+
 /* ── 글자 크기 ── */
 function applyFontScale(scale) {
   $("scope").className = "studio-scope font-scale-" + scale;
@@ -700,7 +712,7 @@ function addFiles(bucket, files) {
   }).catch(function (err) {
     state.processing = null;
     renderUploadCards();
-    showNotice(err.message || "이미지를 처리하지 못했습니다.");
+    showNotice(friendlyErr(err, "이미지를 처리하지 못했습니다."));
   });
 }
 
@@ -1061,7 +1073,7 @@ $("generateButton").addEventListener("click", function () {
     if (el) el.scrollIntoView({ behavior:"smooth", block:"start" });
     scheduleDraftSave();
   }).catch(function (err) {
-    showNotice(err.message || "이미지 분석 중 오류가 발생했습니다.");
+    showNotice(friendlyErr(err, "이미지 분석 중 오류가 발생했습니다."));
   }).finally(function () {
     state.generating = false;
     updateControls();
@@ -1143,7 +1155,7 @@ function generateAll(type) {
   chain.then(function () {
     showNotice((type === "thumbnail" ? "썸네일" : "상세페이지") + " 전체 이미지 " + completed + "장을 만들었습니다.");
   }).catch(function (err) {
-    showNotice(completed + "장 생성 후 중단: " + (err.message || "이미지 생성 오류"));
+    showNotice(completed + "장 생성 후 중단: " + friendlyErr(err, "이미지 생성 오류"));
   }).finally(function () {
     state.batchProgress = null;
     renderOutput();
@@ -1166,7 +1178,7 @@ function generateOne(type, index) {
     showNotice("이미지를 만들었습니다. ‘제작 이미지’ 탭에서 확인하세요.");
     scheduleDraftSave();
   }).catch(function (err) {
-    showNotice(err.message || "이미지 생성 중 오류가 발생했습니다.");
+    showNotice(friendlyErr(err, "이미지 생성 중 오류가 발생했습니다."));
   }).finally(function () {
     state.galleryLoading = null;
     renderOutput();
@@ -1193,7 +1205,7 @@ function editGalleryImage(type, index) {
     showNotice("수정 요청을 반영한 새 이미지를 만들었습니다.");
     scheduleDraftSave();
   }).catch(function (err) {
-    showNotice(err.message || "이미지 수정 중 오류가 발생했습니다.");
+    showNotice(friendlyErr(err, "이미지 수정 중 오류가 발생했습니다."));
   }).finally(function () {
     state.galleryLoading = null;
     renderOutput();
