@@ -830,8 +830,16 @@ function runManifestSync(){
   return fetchManifestPayload()
     .then(function(server){
       /* 서버를 못 읽었으면 이 브라우저 사본을 기준으로 삼는다 */
+      var beforeCount = (server && Array.isArray(server.items)) ? server.items.length : 0;
       var base = (server && Array.isArray(server.items)) ? server : readManifestPayload();
       applies.forEach(function(fn){ try{ fn(base); }catch(e){} });
+      /* 안전장치: 방금 전까지 여러 건 있던 항목이 이번 병합 결과 통째로 비어버리면
+         실수로 전체 삭제해 올리는 사고를 막기 위해 저장을 건너뛴다. */
+      if(beforeCount >= 5 && base.items.length === 0){
+        mfSay('안전을 위해 저장을 건너뛰었습니다 (데이터가 비정상적으로 사라진 것을 감지)', true);
+        console.error('runManifestSync aborted: merge would wipe ' + beforeCount + ' items to 0');
+        return;
+      }
       saveLocalManifest(base);
       return doPushManifest(base, false).then(function(){
         if(typeof currentProductRef !== 'undefined' && currentProductRef){
