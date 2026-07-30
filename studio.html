@@ -550,6 +550,7 @@ body { background:#f4f6f7; }
    ══════════════════════════════════════════════════════════ */
 
 var MAX_IMAGES = 20;
+var DETAIL_PAGE_WIDTH = 780; // 쿠팡 상세페이지 권장 작업 폭. OpenAI 이미지 API는 이 폭을 직접 생성할 수 없어(1024/1536 고정 사이즈만 지원) 생성 후 이 폭으로 다시 축소한다.
 var MAX_REVIEW_TEXT = 12000;
 
 var BUCKETS = {
@@ -1240,6 +1241,29 @@ function dataUrlToBlob(dataUrl) {
   return { blob: new Blob([bytes], { type: mime }), ext: mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg" };
 }
 
+/* OpenAI 이미지 API는 1024x1024 / 1024x1536 / 1536x1024 같은 고정 사이즈만 만들 수 있어서,
+   상세페이지 실제 작업 폭인 780px는 API가 직접 만들지 못한다. 생성이 끝난 뒤 이 함수로
+   가로 폭을 780px로 다시 줄여, 실제로 쿠팡에 올리는 폭과 화면에 보이는 스펙이 일치하게 한다. */
+function resizeDataUrlToWidth(dataUrl, targetWidth) {
+  return new Promise(function (resolve, reject) {
+    var img = new Image();
+    img.onload = function () {
+      if (img.width <= targetWidth) { resolve(dataUrl); return; }
+      var ratio = targetWidth / img.width;
+      var w = targetWidth;
+      var h = Math.max(1, Math.round(img.height * ratio));
+      var canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      var ctx = canvas.getContext("2d");
+      if (!ctx) { reject(new Error("이미지 크기를 조정하지 못했습니다.")); return; }
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL("image/webp", 0.92));
+    };
+    img.onerror = function () { reject(new Error("생성된 이미지를 읽지 못했습니다.")); };
+    img.src = dataUrl;
+  });
+}
+
 function requestGeneratedImage(prompt, format, referenceDataUrls, size, attachMain) {
   var key = getApiKey();
   if (!key) return Promise.reject(new Error("먼저 API 키를 등록해주세요."));
@@ -1276,7 +1300,9 @@ function requestGeneratedImage(prompt, format, referenceDataUrls, size, attachMa
       }
       var b64 = p.data && p.data[0] && p.data[0].b64_json;
       if (!b64) throw new Error("생성된 이미지를 읽지 못했습니다.");
-      return "data:image/webp;base64," + b64;
+      var raw = "data:image/webp;base64," + b64;
+      if (format === "detail") return resizeDataUrlToWidth(raw, DETAIL_PAGE_WIDTH);
+      return raw;
     });
   });
 }
@@ -1475,7 +1501,7 @@ function stitchSelectedDetails() {
       im.src = state.generatedDetails[i];
     });
   })).then(function (loaded) {
-    var width = 780;
+    var width = DETAIL_PAGE_WIDTH;
     var heights = loaded.map(function (im) { return Math.round(im.height * (width / im.width)); });
     var totalHeight = heights.reduce(function (s, h) { return s + h; }, 0);
     if (totalHeight > 30000) { showNotice("선택한 이미지가 너무 깁니다. 일부 섹션만 선택해 나누어 저장해주세요."); return; }
