@@ -164,11 +164,12 @@
         <button id="keyBtn" class="resetbtn">적용</button>
       </div>
       <div class="keysaverow">
-        <label><input type="checkbox" id="saveKey"> 이 기기에 키 저장 (다음에 자동 적용)</label>
+        <label><input type="checkbox" id="saveKey" checked> 이 기기에 키 저장 (다음에 자동 적용)</label>
         <button id="delKeyBtn" class="delkey" style="display:none">저장된 키 삭제</button>
       </div>
       <div class="keynote" id="keynote">
-        키는 이 페이지 안(메모리)에만 잠시 보관되고 어디에도 저장·전송되지 않으며, 새로고침하면 사라집니다.
+        위 체크박스가 켜진 상태로 "적용"을 누르면 이 브라우저에만 키가 저장되어 다음에 다시 열어도 자동으로 채워집니다.
+        체크를 끄고 적용하면 이 페이지를 여는 동안만 기억되고 새로고침하면 사라집니다. 키는 서버로 전송되지 않습니다.
         키가 없으면 오프라인 모드로 동작합니다 — 품목 검색과 가이드북 표준 표시사항 안내는 키 없이도 전부 사용 가능합니다.
         <span id="keyIssue">Gemini 키 발급: aistudio.google.com/apikey (무료 사용량 제공)</span>
       </div>
