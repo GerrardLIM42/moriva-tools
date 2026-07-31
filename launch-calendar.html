@@ -1296,17 +1296,21 @@ function renderSettingsView(area){
     const isPrimary = isPrimaryOption(p, o.id);
     const dates = o.reviewDates || [];
     const sum = dates.reduce((a,rd)=>a+Number(rd.qty||0),0);
-    const rowsHtml = dates.map(rd=>reviewDateRowHtml(rd.dayIndex, rd.qty)).join('');
+    const rowsHtml = dates.map(rd=>reviewDateRowHtml(rd.dayIndex, rd.qty, o.id)).join('');
     const reviewSection = isPrimary
       ? `<div class="field"><label>리뷰작업 시작일 (D+n, "기본값 적용" 기준일)</label><input type="number" id="ostart_${o.id}" value="${o.reviewStartDayIndex}" style="max-width:120px;"></div>
         <div class="field">
-          <label>리뷰 진행일 목록 (합계 ${sum}개) — 원하는 날짜를 자유롭게 추가/삭제하세요</label>
+          <label>리뷰 진행일 목록 (합계 <span id="revsum_${o.id}">${sum}</span>개) — 원하는 날짜를 자유롭게 추가/삭제하세요</label>
           <div class="revdate-list" id="revdates_${o.id}">${rowsHtml}</div>
-          <div class="toolbar" style="margin-top:6px;margin-bottom:0;">
+          <div class="toolbar" style="margin-top:6px;margin-bottom:0;flex-wrap:wrap;">
             <button class="btn" type="button" onclick="addReviewDateRow('${o.id}')">+ 리뷰 진행일 추가</button>
             <button class="btn" type="button" onclick="applyDefaultScheduleForOption('${p.id}','${o.id}')">기본값(4-7-11-16-22) 적용</button>
           </div>
-        </div>`
+          <div class="toolbar" style="margin-top:6px;margin-bottom:0;align-items:center;flex-wrap:wrap;">
+            <span style="font-size:12px;color:var(--sub);">총 <input type="number" id="revtotal_${o.id}" value="60" style="width:64px;padding:3px 6px;display:inline-block;">개를 <input type="number" id="revspan_${o.id}" value="5" min="1" style="width:44px;padding:3px 6px;display:inline-block;">일간 점진적으로 상승시켜 분배</span>
+            <button class="btn primary" type="button" onclick="applyGraduatedScheduleForOption('${p.id}','${o.id}')">자동 분배 적용</button>
+          </div>
+          <div style="font-size:11px;color:var(--sub);margin-top:2px;">자동 분배는 시작일부터 매일 늘어나는 수량으로 위 목록을 새로 채웁니다(합계가 입력한 총 개수와 정확히 일치). 수동으로 직접 입력해도 되고, 그 경우 위 "합계"가 그대로 배정되는 추가 수량이 됩니다.</div>`
       : `<div style="font-size:11.5px;color:var(--sub);background:#f5f6fa;border-radius:6px;padding:8px 10px;">이 옵션은 주력 옵션이 아니라 리뷰작업이 적용되지 않습니다. 자연판매량만 기록됩니다.</div>`;
     return `<div class="opt-manage-card" style="${isPrimary?'border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset;':''}">
       <div class="opt-head">
@@ -1369,28 +1373,69 @@ function saveSettings(pid){
   renderAll();
 }
 /* Renders one editable "리뷰 진행일" row: a D+n day input + quantity input + remove button */
-function reviewDateRowHtml(dayIndex, qty){
+function reviewDateRowHtml(dayIndex, qty, optionId){
   return `<div class="revdate-row">
-    <span>D+</span><input type="number" class="rd-day" value="${dayIndex}">
-    <span>일차 ·</span><input type="number" class="rd-qty" value="${qty}" placeholder="수량">
+    <span>D+</span><input type="number" class="rd-day" value="${dayIndex}" oninput="updateReviewSum('${optionId}')">
+    <span>일차 ·</span><input type="number" class="rd-qty" value="${qty}" placeholder="수량" oninput="updateReviewSum('${optionId}')">
     <span>개</span>
-    <button type="button" class="btn danger" onclick="this.closest('.revdate-row').remove()">✕</button>
+    <button type="button" class="btn danger" onclick="this.closest('.revdate-row').remove();updateReviewSum('${optionId}')">✕</button>
   </div>`;
+}
+/* 리뷰 진행일 목록의 "합계" 표시를 지금 화면에 입력된 값 기준으로 즉시 갱신한다.
+   수동으로 직접 입력하는 경우, 이 합계가 그대로 배정되는 추가 수량이 된다. */
+function updateReviewSum(optionId){
+  const list = document.getElementById('revdates_'+optionId);
+  const sumEl = document.getElementById('revsum_'+optionId);
+  if(!list || !sumEl) return;
+  const qtys = [...list.querySelectorAll('.rd-qty')].map(el=>Number(el.value)||0);
+  sumEl.textContent = qtys.reduce((a,b)=>a+b,0);
 }
 function addReviewDateRow(optionId){
   const list = document.getElementById('revdates_'+optionId);
   if(!list) return;
   const existingDays = [...list.querySelectorAll('.rd-day')].map(el=>Number(el.value)||0);
   const nextDay = existingDays.length ? Math.max(...existingDays)+1 : DEFAULT_REVIEW_START;
-  list.insertAdjacentHTML('beforeend', reviewDateRowHtml(nextDay, 0));
+  list.insertAdjacentHTML('beforeend', reviewDateRowHtml(nextDay, 0, optionId));
+  updateReviewSum(optionId);
 }
 function applyDefaultScheduleForOption(pid, optionId){
   const list = document.getElementById('revdates_'+optionId);
   const startEl = document.getElementById('ostart_'+optionId);
   const startDay = startEl ? (Number(startEl.value)||DEFAULT_REVIEW_START) : DEFAULT_REVIEW_START;
   if(list){
-    list.innerHTML = defaultReviewDates(startDay).map(rd=>reviewDateRowHtml(rd.dayIndex, rd.qty)).join('');
+    list.innerHTML = defaultReviewDates(startDay).map(rd=>reviewDateRowHtml(rd.dayIndex, rd.qty, optionId)).join('');
+    updateReviewSum(optionId);
   }
+}
+/* 총 개수를 지정한 일수에 걸쳐 "점진적으로 상승"하는 정수 수량으로 나눈다.
+   가중치를 1,2,3...일수로 두어(뒤로 갈수록 비중이 커짐) 비례 배분한 뒤,
+   소수점 오차는 나머지가 큰 날짜부터 하나씩 채워 합계가 정확히 total이 되게 맞춘다. */
+function distributeReviewSchedule(total, days){
+  total = Math.max(0, Math.round(Number(total)||0));
+  days = Math.max(1, Math.round(Number(days)||0));
+  const weights = Array.from({length:days}, (_,i)=>i+1);
+  const weightSum = weights.reduce((a,b)=>a+b,0);
+  const raw = weights.map(w=> total*w/weightSum);
+  const qty = raw.map(Math.floor);
+  let remainder = total - qty.reduce((a,b)=>a+b,0);
+  const order = raw.map((r,i)=>({i, frac:r-qty[i]})).sort((a,b)=>b.frac-a.frac);
+  for(let k=0;k<remainder && k<order.length;k++){ qty[order[k].i]++; }
+  return qty;
+}
+/* "자동 분배 적용" 버튼: 총 배정 개수를 입력한 일수에 걸쳐 점진적으로 늘어나는
+   수량으로 나눠 리뷰 진행일 목록을 새로 채운다(합계는 입력한 총 개수와 정확히 일치). */
+function applyGraduatedScheduleForOption(pid, optionId){
+  const list = document.getElementById('revdates_'+optionId);
+  const startEl = document.getElementById('ostart_'+optionId);
+  const totalEl = document.getElementById('revtotal_'+optionId);
+  const spanEl = document.getElementById('revspan_'+optionId);
+  if(!list) return;
+  const startDay = startEl ? (Number(startEl.value)||DEFAULT_REVIEW_START) : DEFAULT_REVIEW_START;
+  const total = totalEl ? Number(totalEl.value)||0 : 0;
+  const span = spanEl ? Math.max(1, Number(spanEl.value)||1) : 5;
+  const qtys = distributeReviewSchedule(total, span);
+  list.innerHTML = qtys.map((qty,idx)=>reviewDateRowHtml(startDay+idx, qty, optionId)).join('');
+  updateReviewSum(optionId);
 }
 function saveOptionSettings(pid){
   const p = getProduct(pid);
