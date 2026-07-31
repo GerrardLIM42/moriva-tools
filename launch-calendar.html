@@ -1407,13 +1407,19 @@ function applyDefaultScheduleForOption(pid, optionId){
     updateReviewSum(optionId);
   }
 }
+/* 하루하루의 "가중치" — 단순히 1,2,3...으로 늘리면 매일 증가폭이 똑같아
+   기계적인 등차 배분이 된다. 대신 하루씩 지날수록 증가폭 자체가 커지는
+   2차 곡선(0.5*i²+1.5*i+2)을 쓴다 — 이 식은 기존 "기본값(4-7-11-16-22)"과
+   정확히 같은 모양이라 5일로 나누면 그 값이 그대로 나온다.
+   처음엔 완만하게(3~4개) 시작해서 뒤로 갈수록 점점 더 크게 뛰는 흐름이 된다. */
+function reviewScheduleWeight(i){ return 0.5*i*i + 1.5*i + 2; }
 /* 총 개수를 지정한 일수에 걸쳐 "점진적으로 상승"하는 정수 수량으로 나눈다.
-   가중치를 1,2,3...일수로 두어(뒤로 갈수록 비중이 커짐) 비례 배분한 뒤,
-   소수점 오차는 나머지가 큰 날짜부터 하나씩 채워 합계가 정확히 total이 되게 맞춘다. */
+   위 가중치로 비례 배분한 뒤, 소수점 오차는 나머지가 큰 날짜부터 하나씩
+   채워 합계가 정확히 total이 되게 맞춘다. */
 function distributeReviewSchedule(total, days){
   total = Math.max(0, Math.round(Number(total)||0));
   days = Math.max(1, Math.round(Number(days)||0));
-  const weights = Array.from({length:days}, (_,i)=>i+1);
+  const weights = Array.from({length:days}, (_,i)=>reviewScheduleWeight(i+1));
   const weightSum = weights.reduce((a,b)=>a+b,0);
   const raw = weights.map(w=> total*w/weightSum);
   const qty = raw.map(Math.floor);
