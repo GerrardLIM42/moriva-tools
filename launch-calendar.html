@@ -1656,8 +1656,8 @@ function ordBase(round){
 function ordRatioSum(round){
   return Object.values(round.rows||{}).reduce((s,r)=> s + (Number(r.ratio)||0), 0);
 }
-/* 한 옵션의 계산 결과. adj가 null이면 "비율수량을 10개 단위로 반올림"한 자동값을 쓴다. */
-function ordCalc(round, oid){
+/* 한 옵션의 계산 결과(박스 반올림 전). adj가 null이면 "비율수량을 10개 단위로 반올림"한 자동값을 쓴다. */
+function ordCalcSingle(round, oid){
   const r = ordRow(round, oid);
   const total = ordBase(round);
   const ratio = Number(r.ratio)||0;
@@ -1667,15 +1667,59 @@ function ordCalc(round, oid){
   const extra = Number(r.extra)||0;
   const box = Number(r.boxSize)||0;
   const pre = adj + extra;
-  const finalQty = (box>0 && pre>0) ? ceilStep(pre, box) : pre;
-  return { ratio, ratioQty, adj, auto, extra, box, pre, finalQty };
+  return { oid, ratio, ratioQty, adj, auto, extra, box, pre };
+}
+/* 이 차수의 모든 옵션을 함께 박스 단위로 반올림한다.
+   옵션마다 따로 올림(ceil)하면 옵션 수가 늘어날수록 오차가 쌓여
+   최종 합계가 총 주문수량보다 크게 부풀어 오르는 문제가 있었다
+   (예: 2옵션 × 박스 108개면 최대 214개까지 초과 가능).
+   그래서 먼저 각 옵션을 박스 배수로 내림(floor)한 뒤, 전체 합계가
+   목표치(박스 반올림 전 합계 — 추가분 포함 시 총 주문수량과 일치)에
+   가장 가까워지도록 박스를 하나씩 채워 넣는 방식으로 바꿨다. */
+function ordCalcAll(round, options){
+  const base = options.map(o=>ordCalcSingle(round, o.id));
+  const target = base.reduce((s,b)=>s+b.pre,0);
+  const boxCount = base.map(b => (b.box>0 && b.pre>0) ? Math.floor(b.pre/b.box) : null);
+  function totalOf(){
+    return base.reduce((s,b,i)=> s + (boxCount[i]===null ? b.pre : boxCount[i]*b.box), 0);
+  }
+  let cur = totalOf(), guard = 0;
+  while(cur < target && guard < 5000){
+    guard++;
+    let bestI = -1, bestDiff = Infinity;
+    for(let i=0;i<base.length;i++){
+      if(boxCount[i]===null) continue;
+      const diff = Math.abs((cur+base[i].box) - target);
+      if(diff < bestDiff){ bestDiff = diff; bestI = i; }
+    }
+    if(bestI===-1) break;
+    const nextTotal = cur + base[bestI].box;
+    if(Math.abs(nextTotal-target) >= Math.abs(cur-target)) break; /* 더 가까워지지 않으면 중단 */
+    boxCount[bestI]++;
+    cur = nextTotal;
+  }
+  return base.map((b,i)=> Object.assign({}, b, {
+    finalQty: boxCount[i]===null ? b.pre : boxCount[i]*b.box
+  }));
+}
+/* 옵션 하나의 계산 결과(최종 주문 수량 포함).
+   options(같은 차수의 전체 옵션 배열)를 넘기면 다른 옵션들과 함께
+   박스를 배분해 finalQty를 구하고, 넘기지 않으면 단독으로 올림 계산한다. */
+function ordCalc(round, oid, options){
+  if(options && options.length){
+    const hit = ordCalcAll(round, options).find(x=>x.oid===oid);
+    if(hit) return hit;
+  }
+  const b = ordCalcSingle(round, oid);
+  const finalQty = (b.box>0 && b.pre>0) ? ceilStep(b.pre, b.box) : b.pre;
+  return Object.assign({}, b, { finalQty });
 }
 function ordRoundTotal(p, round){
-  return p.options.reduce((s,o)=> s + ordCalc(round, o.id).finalQty, 0);
+  return ordCalcAll(round, p.options).reduce((s,c)=> s + c.finalQty, 0);
 }
 /* 옵션별 총 입고(모든 차수 최종 주문 합) */
 function ordReceived(p, oid){
-  return (p.orders||[]).reduce((s,rd)=> s + ordCalc(rd, oid).finalQty, 0);
+  return (p.orders||[]).reduce((s,rd)=> s + ordCalc(rd, oid, p.options).finalQty, 0);
 }
 /* 옵션별 누적 판매 = 일별 기록표의 리뷰 판매 + 자연 판매 */
 function ordSold(p, oid){
@@ -1808,7 +1852,7 @@ function resetOrderAdj(pid, rid, oid){
 function stepOrderAdj(pid, rid, oid, delta){
   const p = getProduct(pid); if(!p) return;
   const round = (p.orders||[]).find(r=>r.id===rid); if(!round) return;
-  const cur = ordCalc(round, oid).adj;
+  const cur = ordCalc(round, oid, p.options).adj;
   ordRow(round, oid).adj = Math.max(0, cur + delta);
   saveState(); renderView();
 }
@@ -1826,8 +1870,9 @@ function renderOrdersView(area){
   /* ── 차수별 발주 계산표 ── */
   let roundsHtml = p.orders.map((rd, ri)=>{
     const maxRatio = Math.max(1, ...p.options.map(o=>Number(ordRow(rd,o.id).ratio)||0));
-    const rows = p.options.map(o=>{
-      const c = ordCalc(rd, o.id);
+    const rdCalcs = ordCalcAll(rd, p.options);
+    const rows = p.options.map((o,oi)=>{
+      const c = rdCalcs[oi];
       const isPri = p.primaryOptionId===o.id;
       const barW = Math.round((c.ratio/maxRatio)*100);
       return `<tr>
