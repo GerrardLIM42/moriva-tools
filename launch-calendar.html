@@ -1307,7 +1307,7 @@ function renderSettingsView(area){
             <button class="btn" type="button" onclick="applyDefaultScheduleForOption('${p.id}','${o.id}')">기본값(4-7-11-16-22) 적용</button>
           </div>
           <div class="toolbar" style="margin-top:6px;margin-bottom:0;align-items:center;flex-wrap:wrap;">
-            <span style="font-size:12px;color:var(--sub);">총 <input type="number" id="revtotal_${o.id}" value="60" style="width:64px;padding:3px 6px;display:inline-block;">개를 <input type="number" id="revspan_${o.id}" value="5" min="1" style="width:44px;padding:3px 6px;display:inline-block;">일간 점진적으로 상승시켜 분배</span>
+            <span style="font-size:12px;color:var(--sub);">총 <input type="number" id="revtotal_${o.id}" value="${o.autoDistTotal!==undefined&&o.autoDistTotal!==null?o.autoDistTotal:60}" style="width:64px;padding:3px 6px;display:inline-block;">개를 <input type="number" id="revspan_${o.id}" value="${o.autoDistSpan!==undefined&&o.autoDistSpan!==null?o.autoDistSpan:5}" min="1" style="width:44px;padding:3px 6px;display:inline-block;">일간 점진적으로 상승시켜 분배</span>
             <button class="btn primary" type="button" onclick="applyGraduatedScheduleForOption('${p.id}','${o.id}')">자동 분배 적용</button>
           </div>
           <div style="font-size:11px;color:var(--sub);margin-top:2px;">자동 분배는 시작일부터 매일 늘어나는 수량으로 위 목록을 새로 채웁니다(합계가 입력한 총 개수와 정확히 일치). 수동으로 직접 입력해도 되고, 그 경우 위 "합계"가 그대로 배정되는 추가 수량이 됩니다.</div>`
@@ -1452,6 +1452,10 @@ function saveOptionSettings(pid){
     o.color = document.getElementById('oname_color_'+o.id).value || o.color;
     const startEl = document.getElementById('ostart_'+o.id);
     if(startEl) o.reviewStartDayIndex = Number(startEl.value)||0;
+    const totalEl = document.getElementById('revtotal_'+o.id);
+    if(totalEl) o.autoDistTotal = Number(totalEl.value)||0;
+    const spanEl = document.getElementById('revspan_'+o.id);
+    if(spanEl) o.autoDistSpan = Math.max(1, Number(spanEl.value)||1);
     const list = document.getElementById('revdates_'+o.id);
     if(list){
       const days = [...list.querySelectorAll('.rd-day')].map(el=>Number(el.value));
