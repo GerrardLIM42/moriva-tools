@@ -631,6 +631,17 @@ function dayAgg(day, field){
 function getTotalSales(day){
   return dayAgg(day,'reviewActual') + dayAgg(day,'naturalSales');
 }
+/* end 날짜부터 거꾸로, 하루 자연판매량(전체옵션 합)이 10개 이상인 날이
+   며칠 연속으로 이어지고 있는지 센다. 하루라도 10개 미만이면 멈춘다. */
+function naturalSalesStreak(product, end){
+  let streak = 0;
+  for(let i=end; i>=0; i--){
+    const d = product.days[i];
+    const nat = d ? dayAgg(d,'naturalSales') : 0;
+    if(nat>=10) streak++; else break;
+  }
+  return streak;
+}
 
 /* ---------------- Cascade schedule shift ---------------- */
 /* Keeps everything before fromDayIndex untouched. delta>0 inserts blank/wait days
@@ -774,7 +785,17 @@ function renderSummary(){
   }
   const thumbHtml = p.image ? `<img class="prod-thumb" src="${p.image}">` : `<span class="dot" style="background:${p.color};width:36px;height:36px;border-radius:10px;display:inline-block;"></span>`;
   const optChips = p.options.map(o=>`<span class="option-tag" style="background:${o.color}22;color:${o.color};">${escHtml(o.name)}</span>`).join('');
-  const html = `<div class="card" style="display:flex;align-items:center;gap:12px;margin-bottom:12px;padding:12px 16px;">
+  /* 2차 추가발주 알림: 자연판매량(전체옵션 합)이 10개 이상으로 5일 이상 이어지면 표시.
+     "오늘" 기준 날짜가 아직 기록되지 않았다면 마지막으로 기록된 날짜를 기준으로 본다. */
+  const streakEnd = todayIdx<0 ? -1 : Math.min(todayIdx, p.maxDayIndex);
+  const natStreak = streakEnd>=0 ? naturalSalesStreak(p, streakEnd) : 0;
+  const secondOrderAlert = natStreak>=5;
+  const alertHtml = secondOrderAlert ? `<div class="card" style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:12px 16px;border:1.5px solid #d97706;background:#fff7ed;">
+    <span style="font-size:20px;">⚠️</span>
+    <div><b style="color:#b45309;">2차 추가발주 검토 시점입니다</b>
+    <div style="font-size:12.5px;color:var(--sub);margin-top:2px;">자연판매량이 하루 10개 이상으로 <b>${natStreak}일째</b> 이어지고 있습니다. "1688 발주 계산" 탭에서 2차 발주를 준비하세요.</div></div>
+  </div>` : '';
+  const html = alertHtml + `<div class="card" style="display:flex;align-items:center;gap:12px;margin-bottom:12px;padding:12px 16px;">
     ${thumbHtml}
     <div><div style="font-weight:800;font-size:15px;">${escHtml(p.name)} ${optChips}</div>
     <div style="font-size:12px;color:var(--sub);">런칭일 ${p.launchDate}</div></div>
@@ -787,6 +808,14 @@ function renderSummary(){
     <div class="stat"><div class="label">누적 자연판매량 (전체옵션)</div><div class="value">${cumNatural.toLocaleString()}</div></div>
   </div>`;
   area.innerHTML = html;
+  /* 같은 날짜에 대해서는 한 번만 팝업으로 알린다(입력할 때마다 계속 뜨지 않도록). */
+  if(secondOrderAlert && p.secondOrderAlertAckedEnd !== streakEnd){
+    p.secondOrderAlertAckedEnd = streakEnd;
+    saveState();
+    setTimeout(function(){
+      alert('📦 2차 추가발주 검토 시점입니다\n\n"'+p.name+'"의 자연판매량이 하루 10개 이상으로 '+natStreak+'일째 이어지고 있습니다.\n"1688 발주 계산" 탭에서 2차 발주를 준비해 주세요.');
+    }, 0);
+  }
 }
 
 /* ---------------- Rendering: View tabs ---------------- */
