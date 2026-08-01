@@ -1171,10 +1171,27 @@ function renderAllTableView(area){
 /* ---------------- Compare View (multi-product / multi-option analysis) ---------------- */
 let compareSelected = null; // Set of "productId::optionId" keys
 let compareChartViews = null, compareChartSales = null;
+let compareDateMode = 'day'; // 'day' = D+일차 기준(런칭일 정렬), 'date' = 실제 달력 날짜 기준
 function allOptionEntries(){
   const list = [];
   state.products.forEach(p=> p.options.forEach(o=> list.push({p, o, key:p.id+'::'+o.id})));
   return list;
+}
+function setCompareDateMode(mode){
+  compareDateMode = mode;
+  renderCompareView(document.getElementById('viewArea'));
+}
+/* 실제 날짜 기준일 때 쓸 전체 날짜 범위 — 선택된 제품들의 런칭일~마지막 기록일을 모두 아우른다 */
+function compareDateRange(selectedEntries){
+  let minDate=null, maxDate=null;
+  selectedEntries.forEach(e=>{
+    const p=e.p;
+    const start = parseDate(p.launchDate);
+    const end = addDays(start, p.maxDayIndex);
+    if(!minDate || start<minDate) minDate=start;
+    if(!maxDate || end>maxDate) maxDate=end;
+  });
+  return {minDate, maxDate};
 }
 function renderCompareView(area){
   const all = allOptionEntries();
@@ -1191,7 +1208,28 @@ function renderCompareView(area){
   const selectedProductIds = [...new Set(selectedEntries.map(e=>e.p.id))];
   const selectedProducts = selectedProductIds.map(id=>getProduct(id));
   const maxDay = Math.max(0, ...selectedEntries.map(e=>e.p.maxDayIndex), 0);
-  const labels = []; for(let i=0;i<=maxDay;i++) labels.push('D+'+i);
+  const useDateMode = compareDateMode==='date';
+  let labels, dateList=null;
+  if(useDateMode && selectedEntries.length>0){
+    const {minDate, maxDate} = compareDateRange(selectedEntries);
+    dateList = [];
+    for(let cur=new Date(minDate); cur<=maxDate; cur=addDays(cur,1)) dateList.push(formatDate(cur));
+    labels = dateList;
+  } else {
+    labels = []; for(let i=0;i<=maxDay;i++) labels.push('D+'+i);
+  }
+  /* 라벨(날짜 모드일 땐 실제 날짜, 아닐 땐 D+i)을 각 제품의 dayIndex로 변환 */
+  function dayIndexFor(product, labelIdx){
+    return useDateMode ? diffDays(parseDate(dateList[labelIdx]), parseDate(product.launchDate)) : labelIdx;
+  }
+  const dateModeToggleHtml = `<div class="card" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <div style="font-weight:700;font-size:13px;">보기 기준</div>
+    <div class="viewtabs" style="margin:0;">
+      <button class="${!useDateMode?'active':''}" onclick="setCompareDateMode('day')">D+일차 기준</button>
+      <button class="${useDateMode?'active':''}" onclick="setCompareDateMode('date')">실제 날짜 기준</button>
+    </div>
+    <div style="font-size:11.5px;color:var(--sub);">${useDateMode? '선택한 제품들의 런칭일이 달라도 실제 달력 날짜에 맞춰 나란히 비교합니다.' : '각 제품의 런칭일을 0일차로 맞춰, 런칭 후 며칠째인지 기준으로 비교합니다.'}</div>
+  </div>`;
 
   let rows = '';
   selectedEntries.forEach(e=>{
@@ -1219,7 +1257,7 @@ function renderCompareView(area){
   });
   if(selectedEntries.length===0){ rows = `<tr><td colspan="7" class="empty">비교할 제품/옵션을 위에서 선택하세요.</td></tr>`; }
 
-  area.innerHTML = `<div class="card">
+  area.innerHTML = dateModeToggleHtml + `<div class="card">
     <div style="font-weight:700;font-size:13px;margin-bottom:8px;">비교할 제품(옵션) 선택</div>
     <div class="compare-picklist">${picks}</div>
   </div>
@@ -1235,27 +1273,36 @@ function renderCompareView(area){
   if(compareChartViews) compareChartViews.destroy();
   if(compareChartSales) compareChartSales.destroy();
   if(selectedEntries.length>0){
+    const viewsTitle = useDateMode ? '제품별 28일 조회수 비교 (실제 날짜 기준, 조회수는 제품 단위)' : '제품별 28일 조회수 비교 (D+일차 기준, 조회수는 제품 단위)';
+    const salesTitle = useDateMode ? '제품/옵션별 총판매량 비교 (실제 날짜 기준)' : '제품/옵션별 총판매량 비교 (D+일차 기준)';
     compareChartViews = new Chart(document.getElementById('compareChartViews'), {
       type:'line',
       data:{ labels, datasets: selectedProducts.map(p=>({
         label: p.name + ' (조회수)',
-        data: Array.from({length:maxDay+1}, (_,i)=> (p.days[i] && p.days[i].views28!==null && p.days[i].views28!==undefined && p.days[i].views28!=='') ? Number(p.days[i].views28) : null),
+        data: labels.map((_, li)=>{
+          const di = dayIndexFor(p, li);
+          if(di<0 || di>p.maxDayIndex) return null;
+          const d = p.days[di];
+          return (d && d.views28!==null && d.views28!==undefined && d.views28!=='') ? Number(d.views28) : null;
+        }),
         borderColor: p.color, backgroundColor: p.color, tension:.25, spanGaps:true
       })) },
-      options:{ responsive:true, plugins:{ title:{display:true,text:'제품별 28일 조회수 비교 (D+일차 기준, 조회수는 제품 단위)'} } }
+      options:{ responsive:true, plugins:{ title:{display:true,text:viewsTitle} } }
     });
     compareChartSales = new Chart(document.getElementById('compareChartSales'), {
       type:'bar',
       data:{ labels, datasets: selectedEntries.map(e=>({
         label: optionLabel(e.p,e.o),
-        data: Array.from({length:maxDay+1}, (_,i)=>{
-          const d = e.p.days[i]; if(!d) return 0;
+        data: labels.map((_, li)=>{
+          const di = dayIndexFor(e.p, li);
+          if(di<0 || di>e.p.maxDayIndex) return 0;
+          const d = e.p.days[di]; if(!d) return 0;
           const od = d.opt[e.o.id] || blankOptDay();
           return (Number(od.reviewActual)||0)+(Number(od.naturalSales)||0);
         }),
         backgroundColor: e.o.color
       })) },
-      options:{ responsive:true, plugins:{ title:{display:true,text:'제품/옵션별 총판매량 비교 (D+일차 기준)'} } }
+      options:{ responsive:true, plugins:{ title:{display:true,text:salesTitle} } }
     });
   }
 }
