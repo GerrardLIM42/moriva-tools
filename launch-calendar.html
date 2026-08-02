@@ -2085,117 +2085,139 @@ function palletLayerSvg(calc){
     ${spare}
     ${boxes}
     ${dims}
-    <text x="${total/2}" y="${total-4}" text-anchor="middle" font-size="8.5" fill="#6b7280">위에서 본 모습 (오버행 없음)</text>
   </svg>`;
 }
 /* 옆에서 본 모습(측면도) — 팔레트 높이 위로 박스가 몇 단 쌓이는지, 1700mm 한도까지
-   얼마나 여유가 남는지를 세로 막대로 보여준다. */
+   얼마나 여유가 남는지를 보여주는 동시에, 박스 열이 팔레트(1100mm) 폭 전체를
+   채우지 못할 때 좌우로 남는 바닥 공간이 실제 폭 비율로 드러나도록 그린다. */
 function palletSideSvg(calc){
   if(!calc || calc.layers<=0){
     return `<div class="empty" style="padding:16px;font-size:12px;">박스 크기를 입력하면 측면도가 표시됩니다.</div>`;
   }
-  const chartH = 200, pad = 14, barW = 90;
-  const scale = chartH/PALLET_MAX_HEIGHT_MM;
-  const x0 = pad+20;
-  const palletPx = calc.palletHeight*scale;
-  const boxPx = calc.boxH*scale;
-  const yFloor = pad+chartH; // 바닥(0mm) 위치
+  const chartH = 178, padTop = 32;
+  const scaleV = chartH/PALLET_MAX_HEIGHT_MM;
+  const baseW = 128, padX = 46;
+  const scaleH = baseW/PALLET_BASE_MM;
+  const boxW = Math.max(3, calc.usedW*scaleH);
+  const marginPx = Math.max(0, (baseW-boxW)/2);
+  const x0 = padX, xBoxStart = x0+marginPx, xBoxEnd = xBoxStart+boxW, x1 = x0+baseW;
+  const yFloor = padTop+chartH;
+  const palletPx = calc.palletHeight*scaleV;
+  const boxPx = calc.boxH*scaleV;
   let layerRects = '';
   for(let i=0;i<calc.layers;i++){
     const y = yFloor - palletPx - (i+1)*boxPx;
-    layerRects += `<rect x="${x0}" y="${y.toFixed(1)}" width="${barW}" height="${Math.max(0,boxPx-1.2).toFixed(1)}" fill="#e9edf7" stroke="#4a5b8c" stroke-width="1"/>`;
+    layerRects += `<rect x="${xBoxStart.toFixed(1)}" y="${y.toFixed(1)}" width="${boxW.toFixed(1)}" height="${Math.max(0,boxPx-1.2).toFixed(1)}" fill="#e9edf7" stroke="#4a5b8c" stroke-width="1"/>`;
   }
   const palletY = yFloor - palletPx;
-  const maxLineY = yFloor - PALLET_MAX_HEIGHT_MM*scale;
-  const usedTopY = yFloor - calc.usedHeight*scale;
-  const total = pad*2+chartH;
-  return `<svg viewBox="0 0 ${x0+barW+60} ${total}" width="230" height="200" style="background:#fafbfe;border-radius:8px;">
-    <line x1="${x0-6}" y1="${maxLineY.toFixed(1)}" x2="${x0+barW+6}" y2="${maxLineY.toFixed(1)}" stroke="#c0392b" stroke-width="1.5" stroke-dasharray="4,3"/>
-    <text x="${x0+barW+10}" y="${(maxLineY+3).toFixed(1)}" font-size="9" fill="#c0392b">최대 1700mm</text>
-    <rect x="${x0}" y="${palletY.toFixed(1)}" width="${barW}" height="${palletPx.toFixed(1)}" fill="#c9a227" stroke="#9a6d00" stroke-width="1"/>
-    <text x="${x0-10}" y="${(palletY+palletPx/2+3).toFixed(1)}" font-size="8.5" fill="#9a6d00" text-anchor="end">팔레트</text>
+  const maxLineY = yFloor - PALLET_MAX_HEIGHT_MM*scaleV;
+  const usedTopY = yFloor - calc.usedHeight*scaleV;
+  const markY = palletY - 9;
+  let marginMarks = '';
+  if(marginPx>3){
+    const halfSpare = Math.round(calc.spareW/2);
+    marginMarks += `<line x1="${x0}" y1="${markY.toFixed(1)}" x2="${xBoxStart.toFixed(1)}" y2="${markY.toFixed(1)}" stroke="#c9a227" stroke-width="1"/>
+      <line x1="${x0}" y1="${(markY-3).toFixed(1)}" x2="${x0}" y2="${(markY+3).toFixed(1)}" stroke="#c9a227" stroke-width="1"/>
+      <line x1="${xBoxStart.toFixed(1)}" y1="${(markY-3).toFixed(1)}" x2="${xBoxStart.toFixed(1)}" y2="${(markY+3).toFixed(1)}" stroke="#c9a227" stroke-width="1"/>
+      <line x1="${xBoxEnd.toFixed(1)}" y1="${markY.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${markY.toFixed(1)}" stroke="#c9a227" stroke-width="1"/>
+      <line x1="${xBoxEnd.toFixed(1)}" y1="${(markY-3).toFixed(1)}" x2="${xBoxEnd.toFixed(1)}" y2="${(markY+3).toFixed(1)}" stroke="#c9a227" stroke-width="1"/>
+      <line x1="${x1.toFixed(1)}" y1="${(markY-3).toFixed(1)}" x2="${x1.toFixed(1)}" y2="${(markY+3).toFixed(1)}" stroke="#c9a227" stroke-width="1"/>`;
+    if(marginPx>15){
+      marginMarks += `<text x="${(x0+marginPx/2).toFixed(1)}" y="${(markY-4).toFixed(1)}" font-size="7" fill="#9a6d00" text-anchor="middle">여유 ${fmtC(halfSpare)}</text>
+        <text x="${(xBoxEnd+marginPx/2).toFixed(1)}" y="${(markY-4).toFixed(1)}" font-size="7" fill="#9a6d00" text-anchor="middle">여유 ${fmtC(halfSpare)}</text>`;
+    }
+  }
+  const viewW = x1 + 64, viewH = padTop+chartH+16;
+  return `<svg viewBox="0 0 ${viewW.toFixed(0)} ${viewH.toFixed(0)}" width="230" height="200" style="background:#fafbfe;border-radius:8px;">
+    <line x1="${x0-6}" y1="${maxLineY.toFixed(1)}" x2="${(xBoxEnd+6).toFixed(1)}" y2="${maxLineY.toFixed(1)}" stroke="#c0392b" stroke-width="1.5" stroke-dasharray="4,3"/>
+    <text x="${(xBoxEnd+10).toFixed(1)}" y="${(maxLineY+3).toFixed(1)}" font-size="9" fill="#c0392b">최대 1700mm</text>
+    <rect x="${x0}" y="${palletY.toFixed(1)}" width="${baseW}" height="${palletPx.toFixed(1)}" fill="#c9a227" stroke="#9a6d00" stroke-width="1"/>
+    <text x="${x0-8}" y="${(palletY+palletPx/2+3).toFixed(1)}" font-size="8" fill="#9a6d00" text-anchor="end">팔레트</text>
+    ${marginMarks}
     ${layerRects}
-    <text x="${x0+barW/2}" y="${(yFloor+12).toFixed(1)}" font-size="9" fill="#6b7280" text-anchor="middle">${calc.layers}단 적재</text>
-    <line x1="${x0+barW+6}" y1="${usedTopY.toFixed(1)}" x2="${x0+barW+6}" y2="${maxLineY.toFixed(1)}" stroke="#1f7a4d" stroke-width="1.5"/>
-    <text x="${x0+barW+10}" y="${((usedTopY+maxLineY)/2+3).toFixed(1)}" font-size="9" fill="#1f7a4d">여유 ${fmtC(calc.spareHeight)}mm</text>
-    <line x1="${x0-6}" y1="${yFloor}" x2="${x0+barW+6}" y2="${yFloor}" stroke="#9ca3af" stroke-width="1"/>
+    <text x="${(xBoxStart+boxW/2).toFixed(1)}" y="${(yFloor+13).toFixed(1)}" font-size="9" fill="#6b7280" text-anchor="middle">${calc.layers}단 적재</text>
+    <line x1="${(xBoxEnd+6).toFixed(1)}" y1="${usedTopY.toFixed(1)}" x2="${(xBoxEnd+6).toFixed(1)}" y2="${maxLineY.toFixed(1)}" stroke="#1f7a4d" stroke-width="1.5"/>
+    <text x="${(xBoxEnd+10).toFixed(1)}" y="${((usedTopY+maxLineY)/2+3).toFixed(1)}" font-size="9" fill="#1f7a4d">여유 ${fmtC(calc.spareHeight)}mm</text>
+    <line x1="${x0}" y1="${yFloor}" x2="${x1}" y2="${yFloor}" stroke="#9ca3af" stroke-width="1"/>
   </svg>`;
 }
-/* 3차원처럼 보이는 등각(isometric) 적재도 — 팔레트(아래, 황토색)와
-   박스가 쌓인 덩어리(위, 파란색)를 하나의 입체 블록으로 그리고,
-   윗면에는 열×행 격자선을, 옆면에는 단수 구분선을 넣어 "몇 개가 몇 단으로
-   쌓였는지"를 한눈에 보여준다. */
+/* 3차원처럼 보이는 등각(isometric) 적재도 — 팔레트는 실제 1100×1100mm 전체
+   footprint으로 그리고, 박스 더미는 그 중앙에 실제 크기 그대로 배치해
+   박스 열이 팔레트 폭을 다 채우지 못할 때 앞/뒤/좌/우로 남는 팔레트 바닥이
+   시각적으로 그대로 드러나도록 한다. 윗면에는 열×행 격자선을, 옆면에는
+   단수 구분선을 넣어 "몇 개가 몇 단으로 쌓였는지"를 한눈에 보여준다. */
 function palletIsoSvg(calc){
   if(!calc || calc.perLayer<=0 || calc.layers<=0){
     return `<div class="empty" style="padding:16px;font-size:12px;">박스 크기를 입력하면 3D 적재도가 표시됩니다.</div>`;
   }
+  const BASE = PALLET_BASE_MM;
   const W = calc.usedW, D = calc.usedD, PH = calc.palletHeight, BH = calc.layers*calc.boxH;
+  const offX = (BASE-W)/2, offY = (BASE-D)/2; // 박스 더미를 팔레트 중앙에 배치
   const COS = 0.866, SIN = 0.5;
-  const pad = 20;
-  /* 투영 후 도형의 실제 가로/세로 범위: 가로는 좌우로 D*COS ~ W*COS만큼,
-     세로는 위로 (PH+BH)만큼, 아래로 (W+D)*SIN만큼 뻗어나간다. */
-  const horiz = (W+D)*COS, vert = (PH+BH) + (W+D)*SIN;
+  const pad = 22;
+  /* 팔레트 전체(BASE×BASE) 기준으로 투영 범위를 계산해, 박스 더미 주변
+     사방으로 남는 팔레트 바닥까지 모두 화면 안에 들어오게 한다. */
+  const horiz = BASE*2*COS, vert = (PH+BH) + BASE*2*SIN;
   const scale = Math.min(150/horiz, 190/vert);
-  const originX = pad + D*COS*scale;   // 가장 왼쪽 지점(x=0,y=D)이 pad 위치에 오도록
-  const originY = pad + (PH+BH)*scale; // 가장 위쪽 지점(x=0,y=0,z=최상단)이 pad 위치에 오도록
+  const originX = pad + BASE*COS*scale;
+  const originY = pad + (PH+BH)*scale;
   function proj(x,y,z){
     return [ (originX + (x-y)*COS*scale).toFixed(1), (originY + (x+y)*SIN*scale - z*scale).toFixed(1) ];
   }
   function poly(pts, fill, stroke){
     return `<polygon points="${pts.map(p=>proj(p[0],p[1],p[2]).join(',')).join(' ')}" fill="${fill}" stroke="${stroke}" stroke-width="1" stroke-linejoin="round"/>`;
   }
-  function block(z0, z1, topFill, rightFill, leftFill){
+  function block(x0,x1,y0,y1,z0,z1, topFill, rightFill, frontFill){
     let s = '';
-    s += poly([[0,0,z1],[W,0,z1],[W,D,z1],[0,D,z1]], topFill, '#33415c');   // 윗면
-    s += poly([[W,0,z0],[W,0,z1],[W,D,z1],[W,D,z0]], rightFill, '#33415c'); // 오른쪽 옆면 (x=W)
-    s += poly([[0,D,z0],[W,D,z0],[W,D,z1],[0,D,z1]], leftFill, '#33415c'); // 왼쪽 옆면 (y=D)
+    s += poly([[x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1]], topFill, '#33415c');    // 윗면
+    s += poly([[x1,y0,z0],[x1,y0,z1],[x1,y1,z1],[x1,y1,z0]], rightFill, '#33415c');  // 오른쪽 옆면 (x=x1)
+    s += poly([[x0,y1,z0],[x1,y1,z0],[x1,y1,z1],[x0,y1,z1]], frontFill, '#33415c');  // 앞쪽 옆면 (y=y1)
     return s;
   }
-  /* 바닥 그림자(입체감을 위한 옅은 타원) */
-  const shadowC = proj(W/2, D/2, 0);
-  const shadowRx = (W*COS*scale*0.62).toFixed(1), shadowRy = (Math.max(6, shadowRx*0.32)).toFixed(1);
+  /* 바닥 그림자(입체감을 위한 옅은 타원) — 팔레트 전체 기준 */
+  const shadowC = proj(BASE/2, BASE/2, 0);
+  const shadowRx = (BASE*COS*scale*0.6).toFixed(1), shadowRy = Math.max(6, shadowRx*0.3).toFixed(1);
   const shadow = `<ellipse cx="${shadowC[0]}" cy="${(Number(shadowC[1])+3).toFixed(1)}" rx="${shadowRx}" ry="${shadowRy}" fill="#000" opacity="0.10"/>`;
   let svg = '';
-  svg += block(0, PH, '#e8d69a', '#c9a227', '#b8911f'); // 팔레트
-  svg += block(PH, PH+BH, '#d7e0f5', '#8fa3d6', '#7690c9'); // 박스 더미
-  /* 윗면 격자선(열×행) */
+  svg += block(0,BASE, 0,BASE, 0,PH, '#e8d69a','#c9a227','#b8911f');         // 팔레트(전체 1100×1100)
+  svg += block(offX,offX+W, offY,offY+D, PH,PH+BH, '#d7e0f5','#8fa3d6','#7690c9'); // 박스 더미(팔레트 중앙)
+  /* 윗면 격자선(열×행) — 박스 더미 영역에만 */
   let grid = '';
   for(let c=1;c<calc.cols;c++){
-    const x = c*calc.footprintW;
-    const p1 = proj(x,0,PH+BH), p2 = proj(x,D,PH+BH);
+    const x = offX + c*calc.footprintW;
+    const p1 = proj(x,offY,PH+BH), p2 = proj(x,offY+D,PH+BH);
     grid += `<line x1="${p1[0]}" y1="${p1[1]}" x2="${p2[0]}" y2="${p2[1]}" stroke="#5a6ea8" stroke-width="0.6" opacity="0.7"/>`;
   }
   for(let r=1;r<calc.rows;r++){
-    const y = r*calc.footprintD;
-    const p1 = proj(0,y,PH+BH), p2 = proj(W,y,PH+BH);
+    const y = offY + r*calc.footprintD;
+    const p1 = proj(offX,y,PH+BH), p2 = proj(offX+W,y,PH+BH);
     grid += `<line x1="${p1[0]}" y1="${p1[1]}" x2="${p2[0]}" y2="${p2[1]}" stroke="#5a6ea8" stroke-width="0.6" opacity="0.7"/>`;
   }
-  /* 옆면(오른쪽, x=W): 단수 구분선(가로) + 개별 박스가 드러나도록 행 구분선(세로) */
+  /* 옆면(오른쪽, x=offX+W): 단수 구분선(가로) + 행 구분선(세로) */
   for(let i=1;i<calc.layers;i++){
     const z = PH+i*calc.boxH;
-    const p1 = proj(W,0,z), p2 = proj(W,D,z);
+    const p1 = proj(offX+W,offY,z), p2 = proj(offX+W,offY+D,z);
     grid += `<line x1="${p1[0]}" y1="${p1[1]}" x2="${p2[0]}" y2="${p2[1]}" stroke="#5a6ea8" stroke-width="0.6" opacity="0.7"/>`;
   }
   for(let r=1;r<calc.rows;r++){
-    const y = r*calc.footprintD;
-    const p1 = proj(W,y,PH), p2 = proj(W,y,PH+BH);
+    const y = offY + r*calc.footprintD;
+    const p1 = proj(offX+W,y,PH), p2 = proj(offX+W,y,PH+BH);
     grid += `<line x1="${p1[0]}" y1="${p1[1]}" x2="${p2[0]}" y2="${p2[1]}" stroke="#5a6ea8" stroke-width="0.6" opacity="0.7"/>`;
   }
-  /* 옆면(왼쪽, y=D): 단수 구분선(가로) + 열 구분선(세로) */
+  /* 옆면(앞쪽, y=offY+D): 단수 구분선(가로) + 열 구분선(세로) */
   for(let i=1;i<calc.layers;i++){
     const z = PH+i*calc.boxH;
-    const p1 = proj(0,D,z), p2 = proj(W,D,z);
+    const p1 = proj(offX,offY+D,z), p2 = proj(offX+W,offY+D,z);
     grid += `<line x1="${p1[0]}" y1="${p1[1]}" x2="${p2[0]}" y2="${p2[1]}" stroke="#5a6ea8" stroke-width="0.6" opacity="0.7"/>`;
   }
   for(let c=1;c<calc.cols;c++){
-    const x = c*calc.footprintW;
-    const p1 = proj(x,D,PH), p2 = proj(x,D,PH+BH);
+    const x = offX + c*calc.footprintW;
+    const p1 = proj(x,offY+D,PH), p2 = proj(x,offY+D,PH+BH);
     grid += `<line x1="${p1[0]}" y1="${p1[1]}" x2="${p2[0]}" y2="${p2[1]}" stroke="#5a6ea8" stroke-width="0.6" opacity="0.7"/>`;
   }
   const viewW = pad*2 + horiz*scale, viewH = pad*2 + vert*scale;
-  return `<svg viewBox="0 0 ${viewW.toFixed(0)} ${viewH.toFixed(0)}" width="210" height="200" style="background:#fafbfe;border-radius:8px;">
+  return `<svg viewBox="0 0 ${viewW.toFixed(0)} ${viewH.toFixed(0)}" width="220" height="200" style="background:#fafbfe;border-radius:8px;">
     ${shadow}${svg}${grid}
-    <text x="${(viewW/2).toFixed(0)}" y="${(viewH-4).toFixed(0)}" text-anchor="middle" font-size="9" fill="#6b7280">3D 적재 모습(개략도)</text>
   </svg>`;
 }
 function setPalletHeight(pid, value){
@@ -2314,34 +2336,57 @@ function renderOrdersView(area){
     else if(calc && calc.tooTall) warn = `<div class="ord-basehint" style="color:var(--danger);">⚠ 팔레트 높이(${fmtC(palletHeight)}mm)를 빼면 남는 높이(${fmtC(PALLET_MAX_HEIGHT_MM-palletHeight)}mm)에 이 박스가 1단도 쌓이지 않습니다.</div>`;
     const unitsPerBox = ordLastBox(p, o.id);
     const totalUnits = calc ? calc.totalBoxes*unitsPerBox : 0;
+    const dimLabel = (label, key, id, nextId, prevId) => `<label style="display:flex;flex-direction:column;gap:3px;font-size:11.5px;color:var(--sub);">${label}
+        <input id="${id}" class="ord-in" style="width:96px;text-align:left;" inputmode="numeric" value="${o[key]||''}" placeholder="0"
+          onchange="updOptionBoxDim('${p.id}','${o.id}','${key}',this.value)"
+          onkeydown="${nextId?`if(event.key==='Tab'&&!event.shiftKey){event.preventDefault();updOptionBoxDim('${p.id}','${o.id}','${key}',this.value,'${nextId}');}`:''}${prevId?`${nextId?'else ':''}if(event.key==='Tab'&&event.shiftKey){event.preventDefault();updOptionBoxDim('${p.id}','${o.id}','${key}',this.value,'${prevId}');}`:''}"></label>`;
+    const idw = `boxdim_${o.id}_w`, idd = `boxdim_${o.id}_d`, idh = `boxdim_${o.id}_h`;
     return `<div class="card" style="margin-bottom:10px;">
-      <div class="ord-head" style="margin-bottom:8px;">
+      <div class="ord-head" style="margin-bottom:10px;">
         <b>${p.primaryOptionId===o.id?'<span class="ord-pri">★</span> ':''}${escHtml(o.name)}</b>
-        <label>박스 가로(mm) <input id="boxdim_${o.id}_w" class="ord-in" style="max-width:80px;" inputmode="numeric" value="${o.boxDimW||''}" placeholder="0"
-          onchange="updOptionBoxDim('${p.id}','${o.id}','boxDimW',this.value)"
-          onkeydown="if(event.key==='Tab'&&!event.shiftKey){event.preventDefault();updOptionBoxDim('${p.id}','${o.id}','boxDimW',this.value,'boxdim_${o.id}_d');}"></label>
-        <label>세로(mm) <input id="boxdim_${o.id}_d" class="ord-in" style="max-width:80px;" inputmode="numeric" value="${o.boxDimD||''}" placeholder="0"
-          onchange="updOptionBoxDim('${p.id}','${o.id}','boxDimD',this.value)"
-          onkeydown="if(event.key==='Tab'&&!event.shiftKey){event.preventDefault();updOptionBoxDim('${p.id}','${o.id}','boxDimD',this.value,'boxdim_${o.id}_h');}else if(event.key==='Tab'&&event.shiftKey){event.preventDefault();updOptionBoxDim('${p.id}','${o.id}','boxDimD',this.value,'boxdim_${o.id}_w');}"></label>
-        <label>높이(mm) <input id="boxdim_${o.id}_h" class="ord-in" style="max-width:80px;" inputmode="numeric" value="${o.boxDimH||''}" placeholder="0"
-          onchange="updOptionBoxDim('${p.id}','${o.id}','boxDimH',this.value)"
-          onkeydown="if(event.key==='Tab'&&event.shiftKey){event.preventDefault();updOptionBoxDim('${p.id}','${o.id}','boxDimH',this.value,'boxdim_${o.id}_d');}"></label>
+        <span class="ord-basehint">팔레트 ${fmtC(PALLET_BASE_MM)}×${fmtC(PALLET_BASE_MM)}×${fmtC(palletHeight)}mm</span>
+        ${calc?`<span class="ord-basehint">박스 ${fmtC(calc.boxW)}×${fmtC(calc.boxD)}×${fmtC(calc.boxH)}mm</span>`:''}
+        ${calc?`<span style="margin-left:auto;font-weight:700;font-size:13px;color:${calc.tooWide?'var(--danger)':'#1f7a4d'};">${calc.tooWide?'⚠ 오버행 발생':'✓ 오버행 없음'}</span>`:''}
       </div>
       ${warn}
-      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;">
-        ${palletLayerSvg(calc)}
-        ${palletSideSvg(calc)}
-        ${palletIsoSvg(calc)}
-        ${calc ? `<div class="card" style="flex:1;min-width:230px;font-size:12.5px;line-height:1.9;background:#f8f9fc;box-shadow:none;padding:10px 12px;margin:0;">
-          <div style="font-weight:700;font-size:13px;margin-bottom:4px;">📋 적재 요약</div>
-          <div>팔레트 규격: <b>1100×1100mm</b> (높이 ${fmtC(calc.palletHeight)}mm)</div>
-          <div>박스 규격: <b>${fmtC(calc.boxW)}×${fmtC(calc.boxD)}×${fmtC(calc.boxH)}mm</b></div>
-          <div>1단 배치: <b>${calc.cols}×${calc.rows}</b>${calc.rotated?' (90도 회전 배치)':''} = <b>${calc.perLayer}박스</b></div>
-          <div>회전 배치 시: <b>${calc.perLayerAlt}박스</b>${calc.perLayerAlt===calc.perLayer?' (동일)':(calc.perLayerAlt>calc.perLayer?' (현재보다 적음)':' (현재보다 많음→ 이미 최적)')}</div>
-          <div>단수: <b>${calc.layers}단</b> (팔레트 ${fmtC(calc.palletHeight)}+박스 ${calc.layers}×${fmtC(calc.boxH)}=${fmtC(calc.usedHeight)}mm)</div>
-          <div>오버행: <b style="color:${calc.tooWide?'var(--danger)':'#1f7a4d'};">${calc.tooWide?'⚠ 발생':'✓ 없음'}</b></div>
-          <div>여유 공간: 가로 <b>${fmtC(calc.spareW)}mm</b> · 세로 <b>${fmtC(calc.spareD)}mm</b> · 높이 <b>${fmtC(calc.spareHeight)}mm</b></div>
-          <div style="font-size:15px;margin-top:6px;border-top:1px solid #e5e7eb;padding-top:6px;">파렛트당 <b style="color:#9a6d00;">${fmtC(calc.totalBoxes)}박스</b>${unitsPerBox>0?` · 상품 <b style="color:#9a6d00;">${fmtC(totalUnits)}개</b>`:''}</div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start;">
+        <div style="display:flex;flex-direction:column;gap:9px;min-width:104px;padding-top:2px;">
+          ${dimLabel('가로(mm)','boxDimW',idw,idd,null)}
+          ${dimLabel('세로(mm)','boxDimD',idd,idh,idw)}
+          ${dimLabel('높이(mm)','boxDimH',idh,null,idd)}
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:11px;color:var(--sub);margin-bottom:4px;"><b style="color:#2b3a67;">①</b> 바닥면 배치</div>
+          ${palletLayerSvg(calc)}
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:11px;color:var(--sub);margin-bottom:4px;"><b style="color:#2b3a67;">②</b> 옆면 적재 (좌우 여유 포함)</div>
+          ${palletSideSvg(calc)}
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:11px;color:var(--sub);margin-bottom:4px;"><b style="color:#2b3a67;">③</b> 3차원 보기 (사방 여유 포함)</div>
+          ${palletIsoSvg(calc)}
+        </div>
+        ${calc ? `<div class="card" style="flex:1;min-width:220px;font-size:12px;line-height:1.85;background:#f8f9fc;box-shadow:none;padding:12px 14px;margin:0;">
+          <div style="font-weight:700;font-size:13px;margin-bottom:6px;">📋 적재 요약</div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">팔레트 규격</span><b>${fmtC(PALLET_BASE_MM)}×${fmtC(PALLET_BASE_MM)}mm</b></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">팔레트 높이</span><b>${fmtC(calc.palletHeight)}mm</b></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">박스 규격</span><b>${fmtC(calc.boxW)}×${fmtC(calc.boxD)}×${fmtC(calc.boxH)}mm</b></div>
+          <div style="height:5px;"></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">1단 배치</span><b>${calc.cols}×${calc.rows} = ${calc.perLayer}박스${calc.rotated?' (회전)':''}</b></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">회전 배치 시</span><b>${calc.perLayerAlt}박스${calc.perLayerAlt===calc.perLayer?' (동일)':''}</b></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">적재 단수</span><b>${calc.layers}단</b></div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;"><span style="color:var(--sub);">팔레트당 수량</span><b style="color:#9a6d00;font-size:14.5px;">${fmtC(calc.totalBoxes)}박스</b></div>
+          ${unitsPerBox>0?`<div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">상품 환산 수량</span><b style="color:#9a6d00;">${fmtC(totalUnits)}개</b></div>`:''}
+          <div style="border-top:1px solid #e5e7eb;margin-top:5px;padding-top:5px;"></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">박스 적재 높이</span><b>${fmtC(calc.layers*calc.boxH)}mm</b></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">총 적재 높이</span><b>${fmtC(calc.usedHeight)}mm</b></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">1700mm까지 여유</span><b>${fmtC(calc.spareHeight)}mm</b></div>
+          <div style="margin-top:8px;padding:8px 10px;background:#eef7ef;border-radius:8px;">
+            <div style="font-size:10.5px;color:#1f7a4d;">남는 바닥 공간</div>
+            <div style="font-weight:700;font-size:13px;color:#1f7a4d;">가로 ${fmtC(calc.spareW)}mm · 세로 ${fmtC(calc.spareD)}mm</div>
+            <div style="font-size:10px;color:#4a8f63;margin-top:2px;">${calc.tooWide?'⚠ 팔레트 밖으로 돌출됨':'팔레트 밖으로 돌출되는 부분 없음'}</div>
+          </div>
         </div>` : ''}
       </div>
     </div>`;
