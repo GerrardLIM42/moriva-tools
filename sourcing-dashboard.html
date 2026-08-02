@@ -393,6 +393,8 @@ input.ef[type=number]{-moz-appearance:textfield;}
 
 .sc-field{margin-top:6px; border-top:1px dashed var(--line); padding-top:6px;}
 .sc-field label{display:block; font-size:11px; color:var(--sub); font-weight:600; margin-bottom:3px;}
+.sc-auto-tag{display:inline-block; font-weight:700; font-size:9.5px; color:var(--green); background:rgba(46,157,90,0.12); border-radius:100px; padding:1px 7px; margin-left:2px;}
+.sc-auto-tag.custom{color:#9a6d00; background:rgba(154,109,0,0.12);}
 .sc-inputrow{display:flex; align-items:center; gap:6px;}
 .ef-price-lg{font-size:19px; font-weight:800; color:var(--navy); padding:4px 6px; width:100%;}
 .ef-sc{width:90px; font-size:12.5px; font-weight:700;}
@@ -1056,9 +1058,9 @@ function blankProduct(){
     sheet: 'custom-' + Date.now() + '-' + Math.floor(Math.random()*1000),
     name: '새 상품',
     monthly_search: null,
-    competitors: [0,1,2,3].map(function(){ return {name:'', sub:'', price:null, views_28d:null, buyers_28d:null, image:null}; }),
+    competitors: [0,1,2,3].map(function(){ return {name:'', sub:'', price:null, views_28d:null, buyers_28d:null, reviews:null, image:null}; }),
     lowest_price: null, avg_price: null,
-    pricing: [0,1].map(function(){ return {sell_price:null, china_cost:null, purchase_cost:null, growth_cost:null, growth_tier:null, coupang_fee:null, vat:null, net_profit:null, profit_rate:null, margin_rate:null}; }),
+    pricing: [0,1].map(function(){ return {sell_price:null, china_cost:null, purchase_cost:null, growth_cost:null, growth_tier:null, coupang_fee:null, vat:null, net_profit:null, profit_rate:null, margin_rate:null, sell_auto:true, fee_auto:true}; }),
     target_sourcing_price: null,
     sourcing_1688: [],
     related_keywords: [],
@@ -1072,9 +1074,9 @@ function fullSnapshotCustom(p){
     sheet: p.sheet,
     name: p.name,
     monthly_search: p.monthly_search,
-    competitors: (p.competitors||[]).map(function(c){ return {name:c.name, sub:c.sub, price:c.price, views_28d:c.views_28d, buyers_28d:c.buyers_28d, image:c.image||null}; }),
+    competitors: (p.competitors||[]).map(function(c){ return {name:c.name, sub:c.sub, price:c.price, views_28d:c.views_28d, buyers_28d:c.buyers_28d, reviews:c.reviews, image:c.image||null}; }),
     lowest_price: p.lowest_price, avg_price: p.avg_price,
-    pricing: (p.pricing||[]).map(function(s){ return {sell_price:s.sell_price, china_cost:s.china_cost, purchase_cost:s.purchase_cost, growth_cost:s.growth_cost, growth_tier:s.growth_tier, coupang_fee:s.coupang_fee, vat:s.vat, net_profit:s.net_profit, profit_rate:s.profit_rate, margin_rate:s.margin_rate}; }),
+    pricing: (p.pricing||[]).map(function(s){ return {sell_price:s.sell_price, china_cost:s.china_cost, purchase_cost:s.purchase_cost, growth_cost:s.growth_cost, growth_tier:s.growth_tier, coupang_fee:s.coupang_fee, vat:s.vat, net_profit:s.net_profit, profit_rate:s.profit_rate, margin_rate:s.margin_rate, sell_auto:s.sell_auto!==false, fee_auto:s.fee_auto!==false}; }),
     target_sourcing_price: p.target_sourcing_price,
     sourcing_1688: (p.sourcing_1688||[]).map(function(s){ return {unit_price:s.unit_price, yearly_sales:s.yearly_sales, url:s.url, options:s.options}; }),
     related_keywords: (p.related_keywords||[]).slice(),
@@ -1095,6 +1097,10 @@ function createNewProduct(){
 function n(v){ v = parseFloat(v); return isNaN(v) ? 0 : v; }
 
 function recomputePricingRow(s){
+  // 쿠팡수수료: 사용자가 직접 값을 고치지 않은 이상(fee_auto!==false), 판매가×11.55%로 항상 자동 계산한다.
+  if(s.fee_auto !== false){
+    s.coupang_fee = s.sell_price ? Math.round(n(s.sell_price) * 0.1155) : null;
+  }
   var sell = n(s.sell_price), purchase = n(s.purchase_cost), growth = n(s.growth_cost), fee = n(s.coupang_fee);
   var vat = (sell - purchase - growth - fee) * 0.1;
   var net = sell - purchase - growth - fee - vat;
@@ -1108,6 +1114,12 @@ function recomputeCompetitorStats(p){
     .filter(function(v){ return typeof v === 'number' && !isNaN(v); });
   p.lowest_price = prices.length ? Math.min.apply(null, prices) : null;
   p.avg_price = prices.length ? (prices.reduce(function(a,b){ return a+b; }, 0) / prices.length) : null;
+  // 목표 판매가 시뮬레이션: 사용자가 직접 판매가를 고치지 않은 시나리오는
+  // 1번째=최저가, 2번째=평균가 기준으로 항상 자동으로 채운다.
+  if(p.pricing){
+    if(p.pricing[0] && p.pricing[0].sell_auto !== false) p.pricing[0].sell_price = p.lowest_price;
+    if(p.pricing[1] && p.pricing[1].sell_auto !== false) p.pricing[1].sell_price = p.avg_price;
+  }
 }
 function recomputeAll(p){
   recomputeCompetitorStats(p);
@@ -1139,8 +1151,8 @@ function snapshotProduct(p){
   return {
     name: p.name,
     monthly_search: p.monthly_search,
-    competitors: (p.competitors||[]).map(function(c){ return {name:c.name, sub:c.sub, price:c.price, views_28d:c.views_28d, buyers_28d:c.buyers_28d}; }),
-    pricing: (p.pricing||[]).map(function(s){ return {sell_price:s.sell_price, china_cost:s.china_cost, purchase_cost:s.purchase_cost, growth_cost:s.growth_cost, growth_tier:s.growth_tier, coupang_fee:s.coupang_fee}; }),
+    competitors: (p.competitors||[]).map(function(c){ return {name:c.name, sub:c.sub, price:c.price, views_28d:c.views_28d, buyers_28d:c.buyers_28d, reviews:c.reviews}; }),
+    pricing: (p.pricing||[]).map(function(s){ return {sell_price:s.sell_price, china_cost:s.china_cost, purchase_cost:s.purchase_cost, growth_cost:s.growth_cost, growth_tier:s.growth_tier, coupang_fee:s.coupang_fee, sell_auto:s.sell_auto!==false, fee_auto:s.fee_auto!==false}; }),
     sourcing_1688: (p.sourcing_1688||[]).map(function(s){ return {unit_price:s.unit_price, yearly_sales:s.yearly_sales, url:s.url, options:s.options}; }),
     related_keywords: (p.related_keywords||[]).slice()
   };
@@ -1905,6 +1917,7 @@ function renderProduct(p){
           '<div class="cc-price-row">'+ef('competitors.'+idx+'.price', c.price, {cls:'ef-cc-price'})+'<span class="cc-unit">원</span></div>'+
           '<div class="cc-views-row">28일 조회수 '+ef('competitors.'+idx+'.views_28d', c.views_28d, {cls:'ef-cc-views'})+'</div>'+
           '<div class="cc-views-row">월 구매수(이상) '+ef('competitors.'+idx+'.buyers_28d', c.buyers_28d, {cls:'ef-cc-views'})+'<span class="cc-unit">명</span></div>'+
+          '<div class="cc-views-row">리뷰수 '+ef('competitors.'+idx+'.reviews', c.reviews, {cls:'ef-cc-views'})+'<span class="cc-unit">개</span></div>'+
         '</div></div>';
     }).join('') +
   '</div>'+
@@ -1912,7 +1925,7 @@ function renderProduct(p){
     '<div class="range-box"><div class="l">최저가 (자동)</div><div class="v" id="lowestPriceVal">'+fmtWon(p.lowest_price)+'</div></div>'+
     '<div class="range-box"><div class="l">평균가 (자동)</div><div class="v" id="avgPriceVal">'+fmtWon(p.avg_price)+'</div></div>'+
   '</div>'+
-  '<div class="save-hint" style="margin-top:10px;">※ 상품명·가격·조회수·구매수를 직접 클릭해 수정할 수 있어요. 최저가/평균가는 위 가격을 기준으로 자동 계산됩니다. 이미지 위에 마우스를 올려 연필 아이콘을 클릭하면 파일 업로드, 이미지 주소(URL), 붙여넣기(Ctrl+V)로 실제 이미지를 등록할 수 있어요.</div>'+
+  '<div class="save-hint" style="margin-top:10px;">※ 상품명·가격·조회수·구매수·리뷰수를 직접 클릭해 수정할 수 있어요. 최저가/평균가는 위 가격을 기준으로 자동 계산되고, 아래 목표 판매가 시뮬레이션에도 자동으로 반영됩니다. 이미지 위에 마우스를 올려 연필 아이콘을 클릭하면 파일 업로드, 이미지 주소(URL), 붙여넣기(Ctrl+V)로 실제 이미지를 등록할 수 있어요.</div>'+
   '</div>';
 
   // 2. pricing scenarios
@@ -1920,9 +1933,11 @@ function renderProduct(p){
   html += '<div class="card"><div class="scenario-grid">'+
     (p.pricing||[]).map(function(s, idx){
       var isBest = best && s===best;
+      var sellAutoLabel = s.sell_auto===false ? '직접입력' : (idx===0 ? '자동: 최저가' : '자동: 평균가');
+      var feeAutoLabel = s.fee_auto===false ? '직접입력' : '자동: 판매가×11.55%';
       return '<div class="scenario'+(isBest?' best':'')+'" data-scenario-idx="'+idx+'">'+
         '<span class="tag'+(isBest?'':' tag-hidden')+'">추천</span>'+
-        '<div class="sc-field sc-price"><label>판매가</label><div class="sc-inputrow">'+ef('pricing.'+idx+'.sell_price', s.sell_price, {cls:'ef-price-lg'})+'<span class="cc-unit">원</span></div></div>'+
+        '<div class="sc-field sc-price"><label>판매가 <span class="sc-auto-tag'+(s.sell_auto===false?' custom':'')+'">'+sellAutoLabel+'</span></label><div class="sc-inputrow">'+ef('pricing.'+idx+'.sell_price', s.sell_price, {cls:'ef-price-lg'})+'<span class="cc-unit">원</span></div></div>'+
         '<div class="row hl"><span>순수익</span><b class="val-net">'+fmtWon(s.net_profit)+'</b></div>'+
         '<div class="row"><span>매입가 대비 수익률</span><b class="val-profit-rate">'+fmtPct(s.profit_rate)+'</b></div>'+
         '<div class="sc-100-row"><button type="button" class="autofill-btn sc-100-btn" data-action="autofill-china-100" data-idx="'+idx+'" title="판매가 기준, 매입가 대비 수익률이 100%가 되도록 중국원가·매입가를 자동으로 역산합니다">수익률 100% → 중국원가 역산</button></div>'+
@@ -1935,14 +1950,14 @@ function renderProduct(p){
             GROWTH_TIERS.map(function(t){ return '<option value="'+t.key+'"'+((s.growth_tier||'custom')===t.key?' selected':'')+'>'+t.label+(t.fee!==null?' · '+fmtNum(t.fee)+'원':'')+'</option>'; }).join('')+
           '</select>'+
           '<div class="sc-inputrow">'+ef('pricing.'+idx+'.growth_cost', s.growth_cost, {cls:'ef-sc'})+'<span class="cc-unit">원</span></div></div>'+
-        '<div class="sc-field"><label>쿠팡수수료(원)</label><div class="sc-inputrow">'+ef('pricing.'+idx+'.coupang_fee', s.coupang_fee, {cls:'ef-sc'})+
-          '<button type="button" class="autofill-btn" data-action="autofill-fee" data-idx="'+idx+'" title="판매가 × 11.55%로 자동 계산">11.55%</button></div></div>'+
+        '<div class="sc-field"><label>쿠팡수수료(원) <span class="sc-auto-tag'+(s.fee_auto===false?' custom':'')+'">'+feeAutoLabel+'</span></label><div class="sc-inputrow">'+ef('pricing.'+idx+'.coupang_fee', s.coupang_fee, {cls:'ef-sc'})+
+          '<button type="button" class="autofill-btn" data-action="autofill-fee" data-idx="'+idx+'" title="판매가 × 11.55%로 다시 자동 계산하도록 되돌립니다">11.55%로 재계산</button></div></div>'+
         '<div class="row"><span>부가세 (자동)</span><b class="val-vat">'+fmtWon(s.vat)+'</b></div>'+
       '</div>';
     }).join('') +
   '</div>'+
   (p.target_sourcing_price ? '<div class="range-row"><div class="range-box"><div class="l">목표 소싱가 (1688 위안, 참고용)</div><div class="v">'+fmtYuan(p.target_sourcing_price)+'</div></div></div>' : '')+
-  '<div class="save-hint" style="margin-top:10px;">※ 판매가·중국원가·매입가·그로스비용·쿠팡수수료를 직접 입력하면 부가세·순수익·수익률이 자동으로 재계산됩니다. (부가세 = (판매가－매입가－그로스비용－수수료)×10%) 그로스비용은 박스 규격을 선택하면 해당 규격의 로켓그로스 물류비로 자동 입력되고, 직접 값을 수정하면 "직접입력"으로 바뀝니다.</div>'+
+  '<div class="save-hint" style="margin-top:10px;">※ 판매가는 처음엔 최저가·평균가를 기준으로 자동 채워지고, 위 경쟁사 가격을 수정하면 함께 갱신됩니다. 쿠팡수수료는 판매가×11.55%로 항상 자동 계산되며, 판매가나 수수료를 직접 입력하면 그 항목은 "직접입력"으로 바뀌어 더 이상 자동으로 덮어쓰지 않습니다. 중국원가·매입가·그로스비용을 입력하면 부가세·순수익·수익률이 자동으로 재계산됩니다. (부가세 = (판매가－매입가－그로스비용－수수료)×10%) 그로스비용은 박스 규격을 선택하면 해당 규격의 로켓그로스 물류비로 자동 입력되고, 직접 값을 수정하면 "직접입력"으로 바뀝니다.</div>'+
   '</div>';
 
   // 3. 1688 소싱처 — 소싱 후보에 등록한 내용을 그대로 사용한다(읽기 전용).
@@ -2214,6 +2229,49 @@ function scheduleSidebarRefresh(){
   }, 400);
 }
 
+// 목표 판매가 시뮬레이션 카드들을 최신 계산값으로 다시 그린다(입력 중인 칸은 건드리지 않음).
+function refreshScenarioCards(p){
+  var root = mainContentEl;
+  var best = bestScenario(p);
+  Array.prototype.forEach.call(root.querySelectorAll('.scenario'), function(el){
+    var idx = el.getAttribute('data-scenario-idx');
+    var s = p.pricing[idx];
+    var isBest = !!best && s === best;
+    el.classList.toggle('best', isBest);
+    var tag = el.querySelector('.tag'); if(tag) tag.classList.toggle('tag-hidden', !isBest);
+    var netEl = el.querySelector('.val-net'); if(netEl) netEl.textContent = fmtWon(s.net_profit);
+    var prEl = el.querySelector('.val-profit-rate'); if(prEl) prEl.textContent = fmtPct(s.profit_rate);
+    var mrEl = el.querySelector('.val-margin-rate'); if(mrEl) mrEl.textContent = fmtPct(s.margin_rate);
+    var vatEl = el.querySelector('.val-vat'); if(vatEl) vatEl.textContent = fmtWon(s.vat);
+    var tierSel = el.querySelector('.sc-tier-select'); if(tierSel) tierSel.value = s.growth_tier || 'custom';
+    // 판매가/수수료가 자동으로 바뀐 경우, 지금 그 칸에 타이핑 중이 아닐 때만 표시값을 갱신한다.
+    var priceEl = el.querySelector('[data-path$=".sell_price"]');
+    if(priceEl && document.activeElement !== priceEl){
+      priceEl.value = (s.sell_price===null||s.sell_price===undefined) ? '' : formatWithCommas(String(s.sell_price));
+    }
+    var feeEl = el.querySelector('[data-path$=".coupang_fee"]');
+    if(feeEl && document.activeElement !== feeEl){
+      feeEl.value = (s.coupang_fee===null||s.coupang_fee===undefined) ? '' : formatWithCommas(String(s.coupang_fee));
+    }
+    var sellTagEl = el.querySelector('.sc-price .sc-auto-tag');
+    if(sellTagEl){
+      var sellAuto = s.sell_auto !== false;
+      sellTagEl.textContent = sellAuto ? (idx==0 ? '자동: 최저가' : '자동: 평균가') : '직접입력';
+      sellTagEl.classList.toggle('custom', !sellAuto);
+    }
+    var feeTagEl = el.querySelector('.sc-field:not(.sc-price) .sc-auto-tag');
+    // 그로스비용/쿠팡수수료 두 sc-field 중 쿠팡수수료 쪽만 auto-tag를 갖고 있어 위 셀렉터로 충분하다
+    if(feeTagEl){
+      var feeAuto = s.fee_auto !== false;
+      feeTagEl.textContent = feeAuto ? '자동: 판매가×11.55%' : '직접입력';
+      feeTagEl.classList.toggle('custom', !feeAuto);
+    }
+  });
+  var badge = marginBadge(best ? best.margin_rate : null);
+  var hn = root.querySelector('#hdrNetProfit'); if(hn) hn.textContent = best ? fmtWon(best.net_profit) : '-';
+  var hb = root.querySelector('#hdrMarginBadge'); if(hb) hb.textContent = badge.label;
+}
+
 function patchAfterEdit(p, path){
   var note = getNote(p);
   var root = mainContentEl;
@@ -2233,6 +2291,9 @@ function patchAfterEdit(p, path){
     Array.prototype.forEach.call(root.querySelectorAll('.src-thumb-wrap:not(.has-custom) img.src-thumb'), function(img){
       img.src = repSrc; img.style.visibility = '';
     });
+    // 최저가/평균가가 바뀌면 자동 모드인 판매가 시나리오도 함께 바뀌므로 시뮬레이션 카드도 새로고침한다
+    (p.pricing||[]).forEach(recomputePricingRow);
+    refreshScenarioCards(p);
   }
 
   if(path.indexOf('pricing.') === 0){
@@ -2241,23 +2302,18 @@ function patchAfterEdit(p, path){
       var gs = p.pricing[growthEdit[1]];
       if(gs) gs.growth_tier = 'custom';
     }
+    var priceEdit = path.match(/^pricing\.(\d+)\.sell_price$/);
+    if(priceEdit){
+      var ps = p.pricing[priceEdit[1]];
+      if(ps) ps.sell_auto = false;
+    }
+    var feeEdit = path.match(/^pricing\.(\d+)\.coupang_fee$/);
+    if(feeEdit){
+      var fs = p.pricing[feeEdit[1]];
+      if(fs) fs.fee_auto = false;
+    }
     (p.pricing||[]).forEach(recomputePricingRow);
-    var best = bestScenario(p);
-    Array.prototype.forEach.call(root.querySelectorAll('.scenario'), function(el){
-      var idx = el.getAttribute('data-scenario-idx');
-      var s = p.pricing[idx];
-      var isBest = !!best && s === best;
-      el.classList.toggle('best', isBest);
-      var tag = el.querySelector('.tag'); if(tag) tag.classList.toggle('tag-hidden', !isBest);
-      var netEl = el.querySelector('.val-net'); if(netEl) netEl.textContent = fmtWon(s.net_profit);
-      var prEl = el.querySelector('.val-profit-rate'); if(prEl) prEl.textContent = fmtPct(s.profit_rate);
-      var mrEl = el.querySelector('.val-margin-rate'); if(mrEl) mrEl.textContent = fmtPct(s.margin_rate);
-      var vatEl = el.querySelector('.val-vat'); if(vatEl) vatEl.textContent = fmtWon(s.vat);
-      var tierSel = el.querySelector('.sc-tier-select'); if(tierSel) tierSel.value = s.growth_tier || 'custom';
-    });
-    var badge = marginBadge(best ? best.margin_rate : null);
-    var hn = root.querySelector('#hdrNetProfit'); if(hn) hn.textContent = best ? fmtWon(best.net_profit) : '-';
-    var hb = root.querySelector('#hdrMarginBadge'); if(hb) hb.textContent = badge.label;
+    refreshScenarioCards(p);
   }
 
   if(path.indexOf('sourcing_1688.') === 0){
@@ -2317,6 +2373,7 @@ mainContentEl.addEventListener('click', function(e){
     s.purchase_cost = Math.round(n(s.china_cost) * 300);
   } else if(action === 'autofill-fee'){
     var s2 = p.pricing[idx];
+    s2.fee_auto = true;
     s2.coupang_fee = Math.round(n(s2.sell_price) * 0.1155);
   } else if(action === 'autofill-china-100'){
     // 판매가·그로스비용·쿠팡수수료 기준으로, 매입가 대비 수익률이 정확히 100%가 되도록

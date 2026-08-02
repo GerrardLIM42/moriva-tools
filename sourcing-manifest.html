@@ -824,14 +824,10 @@
       <div class="fsec">
         <div class="fsec-head"><span class="ico">📦</span><span class="ttl">기본 정보</span></div>
         <div class="form-grid">
-          <div class="field full">
-            <label>상품명</label>
-            <input type="text" id="f-name" placeholder="예: 강아지 쿨매트 50x70" required />
-          </div>
           <div class="field half">
             <label>폴더 (상품군)</label>
             <select id="f-folder-select"></select>
-            <span class="hint">같은 폴더를 선택한 상품끼리 비교됩니다</span>
+            <span class="hint">같은 폴더를 선택한 상품끼리 비교되고, 폴더명이 상품명으로 표시되며 소싱 대시보드의 상품과 매칭하는 데도 쓰입니다</span>
           </div>
           <div class="field half" id="new-folder-field" style="display:none;">
             <label>새 폴더 이름</label>
@@ -3570,7 +3566,6 @@
       const it = items.find(x => x.id === id);
       if(!it) return;
       panelTitle.textContent = '소싱 항목 수정';
-      $('#f-name').value = it.name;
       fillFolderSelect(it.folder);
       $('#f-folder-new').value = '';
       $('#f-link').value = it.link;
@@ -3767,9 +3762,10 @@
   function readFormItem(){
     const options = buildFinalOptions();
     const primary = options[0];
+    const folderVal = getFolderValue();
     return {
-      name: $('#f-name').value.trim(),
-      folder: getFolderValue(),
+      name: folderVal,
+      folder: folderVal,
       link: $('#f-link').value.trim(),
       yearlySales: $('#f-yearly-sales').value.replace(/,/g, '').trim(),
       sellerYears: $('#f-seller-years').value.trim(),
@@ -3819,8 +3815,8 @@
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const draft = readFormItem();
-    if(!draft.name || !draft.sell){
-      showToast('상품명과 옵션 1의 판매가는 필수입니다.');
+    if(!draft.folder || !draft.sell){
+      showToast('폴더(상품군)와 옵션 1의 판매가는 필수입니다.');
       return;
     }
     if(editingId){
