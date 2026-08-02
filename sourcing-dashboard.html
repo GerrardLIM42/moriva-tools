@@ -1241,7 +1241,11 @@ function loadNotes(){
   try{ return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); }catch(e){ return {}; }
 }
 function saveNotes(obj){
-  try{ localStorage.setItem(STORE_KEY, JSON.stringify(obj)); }catch(e){}
+  try{
+    localStorage.setItem(STORE_KEY, JSON.stringify(obj));
+  }catch(e){
+    alert('저장 공간이 가득 차서 방금 바꾼 내용(이미지 등)이 저장되지 못했어요. 다른 상품의 이미지를 몇 개 정리한 뒤 다시 시도해주세요.');
+  }
 }
 var notes = loadNotes(); // { productName: {status, memo} }
 
@@ -1389,6 +1393,32 @@ function getRepSrc(p, note){
   return repSrc;
 }
 
+// 이미지를 저장하기 전에 축소·재압축해서 저장공간(localStorage)을 아낀다.
+// 특히 경쟁사 이미지처럼 여러 장을 계속 저장하는 경우, 무압축 원본 사진(파일 선택·붙여넣기)은
+// 브라우저 저장공간 한도를 금방 채워서 "새로고침하거나 다른 페이지 갔다 오면 마지막에 넣은
+// 이미지가 사라지는" 문제(저장 실패가 조용히 무시됨)를 일으킨다.
+function downscaleImageDataUrl(dataUrl, callback){
+  if(!/^data:image\//.test(dataUrl)){ callback(dataUrl); return; } // http(s) 링크는 그대로 둔다
+  var img = new Image();
+  img.onload = function(){
+    try{
+      var maxDim = 640;
+      var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+      var scale = Math.min(1, maxDim / Math.max(w, h));
+      var cw = Math.max(1, Math.round(w * scale)), ch = Math.max(1, Math.round(h * scale));
+      var canvas = document.createElement('canvas');
+      canvas.width = cw; canvas.height = ch;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, cw, ch);
+      var out = canvas.toDataURL('image/jpeg', 0.78);
+      // 압축 결과가 오히려 더 크면(이미 작은 이미지 등) 원본을 그대로 쓴다
+      callback(out.length < dataUrl.length ? out : dataUrl);
+    }catch(e){ callback(dataUrl); }
+  };
+  img.onerror = function(){ callback(dataUrl); };
+  img.src = dataUrl;
+}
+
 // ---------------- image editor modal (paste / URL / file upload) ----------------
 var imgModalEl = null;
 function closeImageEditor(){
@@ -1429,8 +1459,10 @@ function openImageEditor(opts){
   document.addEventListener('keydown', imgModalEscHandler);
 
   function applyResult(dataUrl){
-    opts.onSave(dataUrl);
-    closeImageEditor();
+    downscaleImageDataUrl(dataUrl, function(finalUrl){
+      opts.onSave(finalUrl);
+      closeImageEditor();
+    });
   }
 
   overlay.addEventListener('click', function(e){ if(e.target === overlay) closeImageEditor(); });
@@ -2557,6 +2589,40 @@ render();
 
 /* 화면을 연 뒤 서버의 최신 소싱처 내용을 확인해 반영한다 */
 refreshManifestFromServer();
+
+/* 예전에 압축 없이 저장된 원본 크기 이미지들을 한 번만 축소·재압축해서 저장공간을 확보한다.
+   저장공간(localStorage)이 거의 다 차 있으면 새 이미지를 저장할 때 조용히 실패해서
+   "새로고침하거나 다른 페이지 갔다 오면 마지막에 넣은 이미지가 사라지는" 문제가 생긴다. */
+(function compactExistingNoteImages(){
+  var FLAG_KEY = 'moriva_img_compact_v1_done';
+  if(localStorage.getItem(FLAG_KEY)) return;
+  var jobs = [];
+  Object.keys(notes).forEach(function(key){
+    var note = notes[key];
+    ['imgUrls','compImgUrls'].forEach(function(field){
+      if(!note[field]) return;
+      Object.keys(note[field]).forEach(function(idx){
+        var val = note[field][idx];
+        if(typeof val === 'string' && /^data:image\//.test(val) && val.length > 60000){
+          jobs.push({ note: note, field: field, idx: idx, val: val });
+        }
+      });
+    });
+  });
+  if(!jobs.length){ localStorage.setItem(FLAG_KEY, '1'); return; }
+  var remaining = jobs.length;
+  jobs.forEach(function(job){
+    downscaleImageDataUrl(job.val, function(out){
+      job.note[job.field][job.idx] = out;
+      remaining--;
+      if(remaining === 0){
+        saveNotes(notes);
+        localStorage.setItem(FLAG_KEY, '1');
+        try{ softRefresh(); }catch(e){}
+      }
+    });
+  });
+})();
 })();
 </script>
 <script src="./moriva-sync.js"></script>
