@@ -519,6 +519,7 @@
   .seller-info-tag{ display:flex; align-items:center; flex-wrap:wrap; gap:6px; font-size:10.5px; color:var(--mist); font-weight:600; }
   .seller-sub{ color:var(--mist); }
   .grade-badge{ display:inline-flex; align-items:center; gap:3px; color:#fff; font-weight:700; font-size:10.5px; padding:2.5px 7px 2.5px 6px; border-radius:5px; line-height:1.3; white-space:nowrap; }
+  .grade-badge-cn{ font-weight:800; letter-spacing:0.3px; }
   .star-rate{ display:inline-flex; align-items:center; gap:1px; }
   .star-rate .star-ico{ position:relative; display:inline-block; font-size:12.5px; line-height:1; color:#dcdcdc; }
   .star-rate .star-ico.full{ color:#f5a623; }
@@ -531,15 +532,20 @@
   .star-rate.interactive .star-ico:not(.full):hover{ color:#f7c164; }
   /* 실력상가 등급: 1688처럼 등급마다 다른 색의 배지. select는 투명하게 배지 위에 겹쳐서
      배지를 누르면 바로 등급을 고를 수 있다. */
-  .grade-picker{ position:relative; display:inline-block; vertical-align:middle; }
+  .grade-picker{ display:inline-flex; align-items:center; gap:10px; vertical-align:middle; }
+  .grade-picker-inner{ position:relative; display:inline-block; }
   .grade-picker-select{ position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; border:0; padding:0; margin:0; }
-  .grade-picker-face{ display:inline-flex; align-items:center; gap:5px; padding:7px 12px; border-radius:7px; font-size:12.5px; font-weight:700; white-space:nowrap; border:1px dashed var(--line); color:var(--mist); background:#fff; }
-  .grade-picker-face.has-grade{ border:none; color:#fff; }
-  .grade-badge.grade-factory, .grade-picker-face.has-grade.grade-factory{ background:linear-gradient(135deg,#f0564b,#dd332a); }
-  .grade-badge.grade-supplier, .grade-picker-face.has-grade.grade-supplier{ background:linear-gradient(135deg,#2b2456,#141024); color:#f4e2b8; }
-  .grade-badge.grade-flagship, .grade-picker-face.has-grade.grade-flagship{ background:linear-gradient(135deg,#8b4fd6,#5f2ea8); }
-  .grade-badge.grade-specialty, .grade-picker-face.has-grade.grade-specialty{ background:linear-gradient(135deg,#2bb894,#158f6f); }
+  .grade-picker-face{ display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:6px; font-size:12.5px; font-weight:700; white-space:nowrap; border:1px dashed var(--line); color:var(--mist); background:#fff; }
+  .grade-picker-face.has-grade{ border:1px solid rgba(0,0,0,0.15); color:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.18); }
+  /* 1688 실제 배지 톤에 가깝게: 실력공장(남색+금), 실력공급업체(청록), 실력플래그십점(적갈), 실력전문판매점(흰바탕+적테두리) */
+  .grade-badge.grade-factory, .grade-picker-face.has-grade.grade-factory{ background:linear-gradient(135deg,#2b2456,#14101f); color:#f4d99b; }
+  .grade-badge.grade-supplier, .grade-picker-face.has-grade.grade-supplier{ background:linear-gradient(135deg,#1a8a86,#0e5f5c); color:#fff; }
+  .grade-badge.grade-flagship, .grade-picker-face.has-grade.grade-flagship{ background:linear-gradient(135deg,#a5342a,#7a2019); color:#fff; }
+  .grade-badge.grade-specialty, .grade-picker-face.has-grade.grade-specialty{ background:#fff; color:#c62828; border:1.5px solid #c62828; }
   .grade-badge:not(.grade-factory):not(.grade-supplier):not(.grade-flagship):not(.grade-specialty){ background:linear-gradient(135deg,#f0564b,#dd332a); }
+  .grade-info-line{ font-size:11px; color:var(--sub); line-height:1.5; }
+  .grade-info-line b{ color:var(--ink); font-size:11.5px; }
+  .grade-info-line .grade-py{ font-style:italic; color:var(--mist); }
   .cny-price{ font-family:'JetBrains Mono',monospace; font-size:13.5px; font-weight:700; color:var(--rust);
     display:flex; align-items:baseline; gap:6px; flex-wrap:wrap; }
   .cny-price .cny-unit{ font-size:10.5px; font-weight:600; color:var(--mist); font-family:'Pretendard Variable',sans-serif; }
@@ -854,14 +860,17 @@
           <div class="field half">
             <label>실력상가 등급 <span style="font-weight:400;">(선택)</span></label>
             <div class="grade-picker">
-              <select id="f-seller-grade" class="grade-picker-select">
-                <option value="">선택 안 함</option>
-                <option value="실력공장">실력공장 — 자체 공장·생산설비 (OEM·ODM·대량발주)</option>
-                <option value="실력공급업체">실력공급업체 — 도매·무역업체 (소량·다품종·빠른출고)</option>
-                <option value="실력플래그십점">실력플래그십점 — 자체/독점 브랜드 (브랜드 완제품)</option>
-                <option value="실력전문판매점">실력전문판매점 — 브랜드 정식판매권 (정품 브랜드)</option>
-              </select>
-              <span id="f-seller-grade-preview" class="grade-picker-face">등급 선택 ▾</span>
+              <div class="grade-picker-inner">
+                <select id="f-seller-grade" class="grade-picker-select">
+                  <option value="">선택 안 함</option>
+                  <option value="실력공장">실력공장 — 자체 공장·생산설비 (OEM·ODM·대량발주)</option>
+                  <option value="실력공급업체">실력공급업체 — 도매·무역업체 (소량·다품종·빠른출고)</option>
+                  <option value="실력플래그십점">실력플래그십점 — 자체/독점 브랜드 (브랜드 완제품)</option>
+                  <option value="실력전문판매점">실력전문판매점 — 브랜드 정식판매권 (정품 브랜드)</option>
+                </select>
+                <span id="f-seller-grade-preview" class="grade-picker-face">등급 선택 ▾</span>
+              </div>
+              <span id="f-seller-grade-info" class="grade-info-line"></span>
             </div>
           </div>
           <div class="field">
@@ -1241,12 +1250,27 @@
     if(!m) return s;
     return Number(m[1]).toLocaleString('ko-KR') + m[2];
   }
-  // 실력상가 등급 배지: 1688 실제 등급 마크처럼 등급마다 다른 색의 스타일 로고로 보여준다
-  var GRADE_BADGE_ICON = '<svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><path d="M12 2 4 5v6c0 5 3.5 9 8 11 4.5-2 8-6 8-11V5l-8-3zm-1 14-4-4 1.4-1.4L11 13.2l5.6-5.6L18 9l-7 7z"/></svg>';
+  // 실력상가 등급 배지: 1688 실제 등급 마크처럼 등급마다 다른 색의 스타일 로고로 보여준다.
+  // 실력상가는 1688의 실제 인증 제도로, 4가지 등급의 정식 중국어 명칭이 따로 있다.
+  var GRADE_INFO = {
+    '실력공장':       { cn:'实力工厂',   py:'Shílì Gōngchǎng',    desc:'자체 공장·생산설비 (OEM·ODM·대량발주)' },
+    '실력공급업체':   { cn:'实力供应商', py:'Shílì Gōngyìngshāng', desc:'도매·무역업체 (소량·다품종·빠른출고)' },
+    '실력플래그십점': { cn:'品牌旗舰店', py:'Pǐnpái Qíjiàndiàn',  desc:'자체/독점 브랜드 (브랜드 완제품)' },
+    '실력전문판매점': { cn:'品牌专营店', py:'Pǐnpái Zhuānyíngdiàn', desc:'브랜드 정식판매권 (정품 브랜드)' }
+  };
   var GRADE_CLASS_MAP = { '실력공장':'grade-factory', '실력공급업체':'grade-supplier', '실력플래그십점':'grade-flagship', '실력전문판매점':'grade-specialty' };
   function gradeBadgeHtml(grade){
     if(!grade) return '';
-    return '<span class="grade-badge ' + (GRADE_CLASS_MAP[grade]||'') + '">' + GRADE_BADGE_ICON + '<span>' + escapeHtml(grade) + '</span></span>';
+    var info = GRADE_INFO[grade];
+    var label = info ? info.cn : grade;
+    return '<span class="grade-badge ' + (GRADE_CLASS_MAP[grade]||'') + '" title="' + escapeHtml(grade) + '"><b class="grade-badge-cn">' + escapeHtml(label) + '</b></span>';
+  }
+  // 배지 옆에 붙는 설명 텍스트: 중국어 정식명 · 병음 · 한글 등급명 — 설명
+  function gradeInfoLineHtml(grade){
+    if(!grade) return '';
+    var info = GRADE_INFO[grade];
+    if(!info) return '<b>' + escapeHtml(grade) + '</b>';
+    return '<b>' + escapeHtml(info.cn) + '</b> <span class="grade-py">' + escapeHtml(info.py) + '</span> · ' + escapeHtml(grade) + ' — ' + escapeHtml(info.desc);
   }
   // 판매자 별점: 0.5점 단위로 별을 채워서 보여준다 (읽기 전용 카드 표시용). 숫자 라벨 없이 채워진 별로만 표시한다.
   function starRatingHtml(value){
@@ -1294,14 +1318,18 @@
   function updateGradePreview(){
     var sel = $('#f-seller-grade');
     var preview = $('#f-seller-grade-preview');
+    var info = $('#f-seller-grade-info');
     if(!sel || !preview) return;
     var g = sel.value;
     if(g){
+      var gi = GRADE_INFO[g];
       preview.className = 'grade-picker-face has-grade ' + (GRADE_CLASS_MAP[g]||'');
-      preview.innerHTML = GRADE_BADGE_ICON + '<span>' + escapeHtml(g) + '</span>';
+      preview.innerHTML = '<b class="grade-badge-cn">' + escapeHtml(gi ? gi.cn : g) + '</b>';
+      if(info) info.innerHTML = gradeInfoLineHtml(g);
     } else {
       preview.className = 'grade-picker-face';
       preview.textContent = '등급 선택 ▾';
+      if(info) info.innerHTML = '';
     }
   }
   function escapeHtml(s){
