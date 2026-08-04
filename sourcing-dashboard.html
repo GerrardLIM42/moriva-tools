@@ -2200,6 +2200,20 @@ function renderProduct(p){
 
   var newKwInput = document.getElementById('newKeywordInput');
   if(newKwInput){
+    // 여러 줄(연관어 복사 결과 등)을 붙여넣으면, 한 줄짜리 input이 줄바꿈을 자동으로
+    // 공백으로 바꿔버리기 전에 클립보드 원본 텍스트를 직접 읽어서 줄 단위로 나눈다.
+    // (input.value에 반영되고 나면 이미 줄바꿈 정보가 사라져서 나눌 수 없다)
+    newKwInput.addEventListener('paste', function(e){
+      var text = e.clipboardData && e.clipboardData.getData('text/plain');
+      if(text && /\r?\n|,/.test(text)){
+        e.preventDefault();
+        if(addKeywordsToProduct(p, text)){
+          persistEdits(p);
+          renderProduct(p);
+        }
+      }
+      // 줄바꿈·쉼표가 없는 한 줄짜리 붙여넣기는 평소처럼 input에 그대로 들어가게 둔다
+    });
     newKwInput.addEventListener('keydown', function(e){
       if(e.key === 'Enter'){
         e.preventDefault();
