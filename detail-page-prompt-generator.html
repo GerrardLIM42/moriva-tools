@@ -164,6 +164,18 @@
   .mode-btn.active .d { color: var(--navy-200); }
   .mode-btn:not(.active) .t { color: var(--navy-600); }
   .mode-btn:not(.active) .d { color: #9aa2b1; }
+  .provider-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+  .provider-tab { flex: 1; min-width: 140px; border: 1px solid var(--navy-200); background: #fff; border-radius: 10px; padding: 10px 12px; text-align: left; cursor: pointer; }
+  .provider-tab.active { border-color: var(--navy-900); background: var(--navy-900); }
+  .provider-tab .t { font-size: 13px; font-weight: 700; display: block; color: var(--navy-800); }
+  .provider-tab.active .t { color: #fff; }
+  .model-chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .model-chip { border: 1px solid var(--navy-200); background: #fff; border-radius: 10px; padding: 8px 12px; text-align: left; cursor: pointer; min-width: 130px; }
+  .model-chip.active { border-color: var(--navy-900); background: var(--navy-900); }
+  .model-chip .t { font-size: 12.5px; font-weight: 700; display: block; color: var(--navy-800); }
+  .model-chip.active .t { color: #fff; }
+  .model-chip .d { font-size: 10.5px; display: block; margin-top: 2px; color: #9aa2b1; }
+  .model-chip.active .d { color: var(--navy-200); }
   .toolbar-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   .opt-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
   .opt-row input { flex: 1; }
@@ -227,7 +239,11 @@ const RESULT_TABS = [
   { key: "warnings", label: "확인 필요 정보 · 경고" },
 ];
 
-const LS_SETTINGS = "coupangStandalone.settings.v1";
+/* 이 앱의 모든 AI 도구가 공유하는 전역 설정 키. 여기서 저장하면 다른 도구(상품명 생성기 등)에서도
+   똑같이 적용된다 — 별도의 "AI 서비스 설정" 도구에서 한 번만 설정하면 된다. */
+const LS_PROVIDER = "moriva_provider";
+const LS_KEYS = "moriva_keys";
+const LS_MODELS = "moriva_models";
 const LS_RESULTS = "coupangStandalone.recentResults.v1";
 
 function formatSaleOptions(options) {
@@ -245,18 +261,41 @@ function uid() {
 /*  localStorage 헬퍼                                                       */
 /* ======================================================================= */
 
+/* AI 제공자별 설정 — 제공자마다 API 키와 마지막으로 고른 모델을 따로 기억한다. */
+const DEFAULT_SETTINGS = {
+  provider: "claude",
+  keys: { claude: "", openai: "", gemini: "" },
+  models: { claude: "claude-sonnet-5", openai: "gpt-5.4", gemini: "gemini-3.6-flash" },
+};
+
 function loadSettings() {
   try {
-    const raw = localStorage.getItem(LS_SETTINGS);
-    if (!raw) return { apiKey: "", model: "" };
-    const parsed = JSON.parse(raw);
-    return { apiKey: parsed.apiKey || "", model: parsed.model || "" };
+    const provider = localStorage.getItem(LS_PROVIDER);
+    const keys = JSON.parse(localStorage.getItem(LS_KEYS) || "{}");
+    const models = JSON.parse(localStorage.getItem(LS_MODELS) || "{}");
+    return {
+      provider: PROVIDERS[provider] ? provider : "claude",
+      keys: {
+        claude: keys.claude || "",
+        openai: keys.openai || "",
+        gemini: keys.gemini || "",
+      },
+      models: {
+        claude: models.claude || DEFAULT_SETTINGS.models.claude,
+        openai: models.openai || DEFAULT_SETTINGS.models.openai,
+        gemini: models.gemini || DEFAULT_SETTINGS.models.gemini,
+      },
+    };
   } catch {
-    return { apiKey: "", model: "" };
+    return JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
   }
 }
 function saveSettings(settings) {
-  localStorage.setItem(LS_SETTINGS, JSON.stringify(settings));
+  try {
+    localStorage.setItem(LS_PROVIDER, settings.provider);
+    localStorage.setItem(LS_KEYS, JSON.stringify(settings.keys));
+    localStorage.setItem(LS_MODELS, JSON.stringify(settings.models));
+  } catch {}
 }
 function loadRecentResults() {
   try {
@@ -386,45 +425,45 @@ async function processImageList(items, role) {
 }
 
 /* ======================================================================= */
-/*  Anthropic 직접 호출 (fetch 기반) + 구조화 출력 재시도                        */
+/*  AI 제공자 3사 직접 호출 (fetch 기반) + 구조화 출력 재시도                     */
+/*  - Claude(Anthropic), Gemini(Google)는 브라우저에서 직접 호출해도 CORS가        */
+/*    막히지 않아 별도 서버 없이 그대로 동작한다.                                  */
+/*  - ChatGPT(OpenAI)도 동일하게 fetch로 직접 호출한다. 계정/네트워크 환경에 따라   */
+/*    브라우저 직접 호출이 차단될 수 있는데, 그 경우 아래 catch에서 원인을 안내한다.  */
 /* ======================================================================= */
 
-const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
-
-async function callClaude({ apiKey, model, system, messages, tool, maxTokens }) {
-  const res = await fetch(ANTHROPIC_API_URL, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: maxTokens || 8000,
-      system,
-      tools: [tool],
-      tool_choice: { type: "tool", name: tool.name },
-      messages,
-    }),
-  });
-  let json;
-  try {
-    json = await res.json();
-  } catch {
-    throw new Error(`Claude API 응답을 해석할 수 없습니다 (HTTP ${res.status}).`);
-  }
-  if (!res.ok) {
-    const msg = (json && json.error && json.error.message) || `HTTP ${res.status}`;
-    throw new Error(`Claude API 호출 중 오류: ${msg}`);
-  }
-  return json;
-}
-
-function findToolUse(message, toolName) {
-  return (message.content || []).find((b) => b.type === "tool_use" && b.name === toolName);
-}
+const PROVIDERS = {
+  claude: {
+    label: "Claude (Anthropic)",
+    keyPlaceholder: "sk-ant-api03-…",
+    models: [
+      { id: "claude-opus-5", label: "Opus 5", desc: "가장 강력함 · 정밀 분석 추천" },
+      { id: "claude-sonnet-5", label: "Sonnet 5", desc: "균형 잡힌 기본값" },
+      { id: "claude-haiku-4-5-20251001", label: "Haiku 4.5", desc: "가장 빠르고 저렴" },
+    ],
+    help: '키 발급: <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com → API Keys</a>.',
+  },
+  gemini: {
+    label: "Gemini (Google)",
+    keyPlaceholder: "AIzaSy…",
+    models: [
+      { id: "gemini-3-pro-preview", label: "3 Pro", desc: "가장 강력함 · 정밀 분석 추천" },
+      { id: "gemini-3.6-flash", label: "3.6 Flash", desc: "균형 잡힌 기본값" },
+      { id: "gemini-flash-latest", label: "Flash (최신 자동)", desc: "항상 최신 Flash로 자동 연결" },
+    ],
+    help: '키 발급: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio → Get API key</a> (무료 사용량 제공).',
+  },
+  openai: {
+    label: "ChatGPT (OpenAI)",
+    keyPlaceholder: "sk-…",
+    models: [
+      { id: "gpt-5.5", label: "GPT-5.5", desc: "가장 강력함 · 정밀 분석 추천" },
+      { id: "gpt-5.4", label: "GPT-5.4", desc: "균형 잡힌 기본값" },
+      { id: "gpt-5.4-mini", label: "GPT-5.4 mini", desc: "가장 빠르고 저렴" },
+    ],
+    help: '키 발급: <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com → API keys</a>. ChatGPT Plus 구독과 별개로 API 크레딧 충전이 필요합니다. 계정/조직 설정에 따라 브라우저 직접 호출이 막혀 있으면 오류 메시지에 원인이 표시됩니다.',
+  },
+};
 
 function checkRequired(obj, requiredKeys) {
   const missing = [];
@@ -450,53 +489,132 @@ function toAnthropicContent(blocks) {
   );
 }
 
-async function runStructuredStep({ apiKey, model, system, userContent, tool, requiredKeys, maxTokens }) {
-  const baseMessages = [{ role: "user", content: toAnthropicContent(userContent) }];
-
-  const first = await callClaude({ apiKey, model, system, messages: baseMessages, tool, maxTokens });
-  const toolUse1 = findToolUse(first, tool.name);
-
-  if (toolUse1) {
-    const missing = checkRequired(toolUse1.input, requiredKeys);
-    if (missing.length === 0) return toolUse1.input;
-
-    const retryMessages = [
-      ...baseMessages,
-      { role: "assistant", content: first.content },
-      {
-        role: "user",
-        content: [
-          {
-            type: "tool_result",
-            tool_use_id: toolUse1.id,
-            is_error: true,
-            content: `제출한 값에 다음 필드가 빠져 있습니다: ${missing.join(", ")}. ${tool.name} 도구로 전체 필드를 채워 다시 제출해주세요.`,
-          },
-        ],
-      },
-    ];
-    return retryStructuredStep({ apiKey, model, system, tool, requiredKeys, maxTokens, retryMessages });
-  }
-
-  const retryMessages = [
-    ...baseMessages,
-    { role: "assistant", content: first.content },
-    { role: "user", content: `응답에 ${tool.name} 도구 호출이 포함되지 않았습니다. 반드시 해당 도구를 사용해 결과를 제출해주세요.` },
-  ];
-  return retryStructuredStep({ apiKey, model, system, tool, requiredKeys, maxTokens, retryMessages });
+function toOpenAIContent(blocks) {
+  return blocks.map((b) =>
+    b.type === "text"
+      ? { type: "text", text: b.text }
+      : { type: "image_url", image_url: { url: `data:${b.mediaType};base64,${b.base64}` } }
+  );
 }
 
-async function retryStructuredStep({ apiKey, model, system, tool, requiredKeys, maxTokens, retryMessages }) {
-  const second = await callClaude({ apiKey, model, system, messages: retryMessages, tool, maxTokens });
-  const toolUse2 = findToolUse(second, tool.name);
-  if (!toolUse2) {
-    throw new Error("AI가 올바른 형식의 응답을 반환하지 못했습니다. 잠시 후 다시 시도해주세요.");
+function toGeminiParts(blocks) {
+  return blocks.map((b) =>
+    b.type === "text" ? { text: b.text } : { inline_data: { mime_type: b.mediaType, data: b.base64 } }
+  );
+}
+
+/** Claude(Anthropic)에게 도구 호출을 강제해 구조화된 JSON을 받는다. */
+async function callClaudeTool({ apiKey, model, system, userContent, tool, maxTokens }) {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: maxTokens || 8000,
+      system,
+      tools: [tool],
+      tool_choice: { type: "tool", name: tool.name },
+      messages: [{ role: "user", content: toAnthropicContent(userContent) }],
+    }),
+  });
+  let json;
+  try { json = await res.json(); } catch { throw new Error(`Claude API 응답을 해석할 수 없습니다 (HTTP ${res.status}).`); }
+  if (!res.ok) throw new Error(`Claude API 호출 중 오류: ${(json && json.error && json.error.message) || res.status}`);
+  const toolUse = (json.content || []).find((b) => b.type === "tool_use" && b.name === tool.name);
+  if (!toolUse) throw new Error("Claude 응답에 도구 호출이 포함되지 않았습니다.");
+  return toolUse.input;
+}
+
+/** ChatGPT(OpenAI)에게 함수 호출을 강제해 구조화된 JSON을 받는다. */
+async function callOpenAITool({ apiKey, model, system, userContent, tool, maxTokens }) {
+  let res;
+  try {
+    res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model,
+        max_tokens: maxTokens || 8000,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: toOpenAIContent(userContent) },
+        ],
+        tools: [{ type: "function", function: { name: tool.name, description: tool.description, parameters: tool.input_schema } }],
+        tool_choice: { type: "function", function: { name: tool.name } },
+      }),
+    });
+  } catch (e) {
+    throw new Error("ChatGPT API 호출에 실패했습니다. 브라우저에서 OpenAI API로의 직접 호출이 네트워크/보안 정책으로 차단되었을 수 있습니다 (CORS). 이 경우 Claude 또는 Gemini를 사용해주세요.");
   }
-  const missing = checkRequired(toolUse2.input, requiredKeys);
-  if (missing.length > 0) {
-    throw new Error(`AI 응답이 예상한 데이터 형식과 일치하지 않습니다 (누락: ${missing.join(", ")}). 잠시 후 다시 시도해주세요.`);
+  let json;
+  try { json = await res.json(); } catch { throw new Error(`ChatGPT API 응답을 해석할 수 없습니다 (HTTP ${res.status}).`); }
+  if (!res.ok || json.error) throw new Error(`ChatGPT API 호출 중 오류: ${(json.error && json.error.message) || res.status}`);
+  const msg = json.choices && json.choices[0] && json.choices[0].message;
+  const call = msg && msg.tool_calls && msg.tool_calls[0];
+  if (!call) throw new Error("ChatGPT 응답에 도구 호출이 포함되지 않았습니다.");
+  try {
+    return JSON.parse(call.function.arguments);
+  } catch {
+    throw new Error("ChatGPT 응답을 구조화된 데이터로 해석할 수 없습니다.");
   }
-  return toolUse2.input;
+}
+
+/** Gemini(Google)에게 함수 호출을 강제해 구조화된 JSON을 받는다. */
+async function callGeminiTool({ apiKey, model, system, userContent, tool, maxTokens }) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: toGeminiParts(userContent) }],
+      systemInstruction: { parts: [{ text: system }] },
+      tools: [{ functionDeclarations: [{ name: tool.name, description: tool.description, parameters: tool.input_schema }] }],
+      toolConfig: { functionCallingConfig: { mode: "ANY", allowedFunctionNames: [tool.name] } },
+      generationConfig: { maxOutputTokens: maxTokens || 8000, temperature: 0.4 },
+    }),
+  });
+  let json;
+  try { json = await res.json(); } catch { throw new Error(`Gemini API 응답을 해석할 수 없습니다 (HTTP ${res.status}).`); }
+  if (json.error) throw new Error(`Gemini API 호출 중 오류: ${json.error.message || "알 수 없는 오류"}`);
+  const cand = json.candidates && json.candidates[0];
+  const part = cand && cand.content && (cand.content.parts || []).find((p) => p.functionCall);
+  if (!part) throw new Error("Gemini 응답에 도구 호출이 포함되지 않았습니다.");
+  return part.functionCall.args;
+}
+
+async function callProviderTool(params) {
+  if (params.provider === "openai") return callOpenAITool(params);
+  if (params.provider === "gemini") return callGeminiTool(params);
+  return callClaudeTool(params);
+}
+
+/** 제공자에 상관없이 동일하게: 첫 시도에서 필드가 누락되면 한 번 더 채워서 제출하도록 재시도한다. */
+async function runStructuredStep({ provider, apiKey, model, system, userContent, tool, requiredKeys, maxTokens }) {
+  let missingFields = "";
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const attemptSystem = attempt === 0
+      ? system
+      : `${system}\n\n[재시도] 이전 제출에서 다음 필드가 비어 있었습니다: ${missingFields}. 반드시 ${tool.name} 도구를 호출해 스키마의 모든 필드를 빠짐없이 채워 다시 제출하세요.`;
+    let result;
+    try {
+      result = await callProviderTool({ provider, apiKey, model, system: attemptSystem, userContent, tool, maxTokens });
+    } catch (e) {
+      if (attempt === 1) throw e;
+      missingFields = "전체 필드 (이전 호출 실패: " + (e.message || e) + ")";
+      continue;
+    }
+    const missing = checkRequired(result, requiredKeys);
+    if (missing.length === 0) return result;
+    if (attempt === 1) {
+      throw new Error(`AI 응답이 예상한 데이터 형식과 일치하지 않습니다 (누락: ${missing.join(", ")}). 잠시 후 다시 시도해주세요.`);
+    }
+    missingFields = missing.join(", ");
+  }
 }
 
 /* ======================================================================= */
@@ -1137,63 +1255,127 @@ function ModeToggle({ value, onChange, disabled }) {
 }
 
 function SettingsPanel({ settings, onSave, onClose }) {
+  const [provider, setProvider] = useState(settings.provider || "claude");
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [showKey, setShowKey] = useState(false);
-  const [modelInput, setModelInput] = useState(settings.model || "");
   const [notice, setNotice] = useState("");
 
-  const handleSave = () => {
-    const next = { apiKey: apiKeyInput.trim() || settings.apiKey, model: modelInput.trim() };
-    onSave(next);
+  const conf = PROVIDERS[provider];
+  const currentKey = settings.keys[provider] || "";
+  const currentModel = settings.models[provider] || conf.models[0].id;
+
+  const switchProvider = (p) => {
+    setProvider(p);
     setApiKeyInput("");
-    setNotice("저장했습니다. 이 브라우저의 localStorage에만 저장되며, 다음 분석 요청부터 바로 적용됩니다.");
+    setShowKey(false);
+    setNotice("");
   };
-  const handleClear = () => {
-    if (!window.confirm("저장된 API 키를 삭제할까요?")) return;
-    onSave({ apiKey: "", model: modelInput.trim() });
-    setNotice("저장된 API 키를 삭제했습니다.");
+
+  const handleSaveKey = () => {
+    const trimmed = apiKeyInput.trim();
+    if (!trimmed) return;
+    onSave({ ...settings, keys: { ...settings.keys, [provider]: trimmed } });
+    setApiKeyInput("");
+    setNotice(`${conf.label} 키를 저장했습니다. 이 브라우저의 localStorage에만 저장되며, 다음 분석 요청부터 바로 적용됩니다.`);
+  };
+  const handleClearKey = () => {
+    if (!window.confirm(`저장된 ${conf.label} API 키를 삭제할까요?`)) return;
+    onSave({ ...settings, keys: { ...settings.keys, [provider]: "" } });
+    setNotice(`저장된 ${conf.label} 키를 삭제했습니다.`);
+  };
+  const selectModel = (modelId) => {
+    onSave({ ...settings, models: { ...settings.models, [provider]: modelId } });
+  };
+  const useThisProvider = () => {
+    onSave({ ...settings, provider });
+    setNotice(`이제부터 ${conf.label}을(를) 사용합니다.`);
   };
 
   return (
     <div className="card" style={{ marginBottom: 4 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "var(--navy-900)" }}>API 키 설정</h3>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "var(--navy-900)" }}>AI 서비스 · API 키 설정</h3>
         <button type="button" className="btn" onClick={onClose} style={{ border: "none", padding: 4 }}>×</button>
       </div>
-      <div className="notice-box notice-info" style={{ marginBottom: 14 }}>
-        {settings.apiKey ? <>저장된 키 사용 중 ({maskKey(settings.apiKey)})</> : <span style={{ color: "#dc2626" }}>API 키가 설정되지 않았습니다. 아래에 입력해서 저장해주세요.</span>}
-      </div>
+      <p className="hint" style={{ marginBottom: 12 }}>
+        여기서 저장한 키·모델은 이 브라우저의 다른 AI 도구(상품명 생성기 등)에서도 그대로 적용됩니다.{" "}
+        <button type="button" className="btn" style={{ padding: "2px 8px", fontSize: 11 }}
+          onClick={() => window.parent.postMessage({ type: "moriva-go", id: "ai-settings" }, "*")}>
+          AI 서비스 설정 도구 열기
+        </button>
+      </p>
+
       <div className="stack-tight" style={{ marginBottom: 14 }}>
-        <label className="field-label">Anthropic API 키</label>
+        <label className="field-label">사용할 AI 서비스</label>
+        <div className="provider-tabs">
+          {Object.keys(PROVIDERS).map((key) => (
+            <button
+              key={key}
+              type="button"
+              className={"provider-tab" + (provider === key ? " active" : "")}
+              onClick={() => switchProvider(key)}
+            >
+              <span className="t">{PROVIDERS[key].label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="notice-box notice-info" style={{ marginBottom: 14 }}>
+        {currentKey
+          ? <>{conf.label} 저장된 키 사용 중 ({maskKey(currentKey)}) {provider !== settings.provider && <> · 현재 분석에는 <strong>{PROVIDERS[settings.provider].label}</strong> 사용 중</>}</>
+          : <span style={{ color: "#dc2626" }}>{conf.label} API 키가 설정되지 않았습니다. 아래에 입력해서 저장해주세요.</span>}
+      </div>
+
+      <div className="stack-tight" style={{ marginBottom: 14 }}>
+        <label className="field-label">{conf.label} API 키</label>
         <div style={{ display: "flex", gap: 8 }}>
           <input
             type={showKey ? "text" : "password"}
             value={apiKeyInput}
             onChange={(e) => setApiKeyInput(e.target.value)}
-            placeholder="sk-ant-..."
+            placeholder={conf.keyPlaceholder}
             autoComplete="off"
           />
           <button type="button" className="btn" onClick={() => setShowKey((v) => !v)} style={{ flexShrink: 0 }}>
             {showKey ? "숨기기" : "표시"}
           </button>
+          <button type="button" className="btn btn-primary" onClick={handleSaveKey} disabled={!apiKeyInput.trim()} style={{ flexShrink: 0 }}>저장</button>
         </div>
+        <p className="hint" dangerouslySetInnerHTML={{ __html: conf.help }} />
         <p className="hint">
-          이 키는 이 브라우저의 localStorage에만 저장되고, 매 분석 요청마다 브라우저에서 Anthropic API로 직접 전송됩니다.
-          서버를 거치지 않으므로 개인 기기에서 혼자 쓰는 용도로만 사용하세요.
+          이 키는 이 브라우저의 localStorage에만 저장되고, 매 분석 요청마다 브라우저에서 {conf.label} API로 직접 전송됩니다.
+          중간 서버를 거치지 않으므로 개인 기기에서 혼자 쓰는 용도로만 사용하세요.
         </p>
       </div>
+
       <div className="stack-tight" style={{ marginBottom: 14 }}>
-        <label className="field-label">모델 (선택 — 비워두면 claude-sonnet-5 사용)</label>
-        <input type="text" value={modelInput} onChange={(e) => setModelInput(e.target.value)} placeholder="claude-sonnet-5" />
+        <label className="field-label">모델 선택</label>
+        <div className="model-chip-row">
+          {conf.models.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              className={"model-chip" + (currentModel === m.id ? " active" : "")}
+              onClick={() => selectModel(m.id)}
+            >
+              <span className="t">{m.label}</span>
+              <span className="d">{m.desc}</span>
+            </button>
+          ))}
+        </div>
       </div>
+
       {notice && <p className="hint" style={{ color: "var(--navy-600)" }}>{notice}</p>}
       <div className="toolbar-row">
-        <button type="button" className="btn btn-primary" onClick={handleSave} disabled={!apiKeyInput.trim() && modelInput === (settings.model || "")}>저장</button>
-        {settings.apiKey && <button type="button" className="btn btn-danger" onClick={handleClear}>저장된 키 삭제</button>}
+        <button type="button" className="btn btn-primary" onClick={useThisProvider} disabled={provider === settings.provider}>
+          {provider === settings.provider ? `${conf.label} 사용 중` : `${conf.label}(으)로 전환`}
+        </button>
+        {currentKey && <button type="button" className="btn btn-danger" onClick={handleClearKey}>저장된 키 삭제</button>}
       </div>
       <p className="hint" style={{ marginTop: 12 }}>
-        이 파일은 브라우저에서 Anthropic API를 직접 호출하는 완전 독립형 버전입니다. API 키가 이 브라우저에 저장되고 요청마다 노출되므로,
-        본인만 사용하는 개인 기기에서만 사용하세요. 공용 컴퓨터나 공유 브라우저에서는 사용을 피하세요.
+        이 파일은 브라우저에서 Claude / Gemini / ChatGPT API를 직접 호출하는 완전 독립형 버전입니다. API 키가 이 브라우저에 저장되고 요청마다 노출되므로,
+        본인만 사용하는 개인 기기에서만 사용하세요. 공용 컴퓨터나 공유 브라우저에서는 사용을 피하세요. ChatGPT는 계정/네트워크 환경에 따라 브라우저 직접 호출이 차단될 수 있으며, 그 경우 오류 메시지에 원인이 표시됩니다.
       </p>
     </div>
   );
@@ -1278,7 +1460,7 @@ function ImageUploader({ title, description, roleBadgeLabel, roleBadgeClass, ite
   );
 }
 
-function ProductFactsForm({ value, onChange, productImages, apiKey, model }) {
+function ProductFactsForm({ value, onChange, productImages, provider, apiKey, model }) {
   const [autoLoading, setAutoLoading] = useState(false);
   const [autoNotice, setAutoNotice] = useState("");
   const [autoError, setAutoError] = useState("");
@@ -1303,7 +1485,7 @@ function ProductFactsForm({ value, onChange, productImages, apiKey, model }) {
       const labels = images.map((i) => i.label);
       const p = extractProductFactsFromImagesPrompt(labels);
       const extracted = await runStructuredStep({
-        apiKey, model, system: p.system,
+        provider, apiKey, model, system: p.system,
         userContent: [{ type: "text", text: p.instructionText }, ...imagesToBlocks(images)],
         tool: EXTRACT_TOOL, requiredKeys: EXTRACT_TOOL.input_schema.required, maxTokens: 2000,
       });
@@ -1334,7 +1516,7 @@ function ProductFactsForm({ value, onChange, productImages, apiKey, model }) {
     try {
       const p = extractReviewInsightsPrompt(reviewText);
       const insights = await runStructuredStep({
-        apiKey, model, system: p.system, userContent: [{ type: "text", text: p.instructionText }],
+        provider, apiKey, model, system: p.system, userContent: [{ type: "text", text: p.instructionText }],
         tool: REVIEW_TOOL, requiredKeys: REVIEW_TOOL.input_schema.required, maxTokens: 2000,
       });
       if (!insights.painPoints || insights.painPoints.length === 0) {
@@ -1719,12 +1901,14 @@ function App() {
 
   const updateStep = (key, patch) => setSteps((prev) => prev.map((s) => (s.key === key ? { ...s, ...patch } : s)));
 
-  const canAnalyze = !isRunning && benchmarkImages.length > 0 && productImages.length > 0 && facts.productName.trim().length > 0 && !!settings.apiKey;
+  const provider = settings.provider || "claude";
+  const apiKey = settings.keys[provider] || "";
+  const model = settings.models[provider] || PROVIDERS[provider].models[0].id;
 
-  const model = settings.model || "claude-sonnet-5";
+  const canAnalyze = !isRunning && benchmarkImages.length > 0 && productImages.length > 0 && facts.productName.trim().length > 0 && !!apiKey;
 
   const handleAnalyze = async () => {
-    if (!settings.apiKey) { setSettingsOpen(true); setPipelineError("먼저 API 키를 저장해주세요."); return; }
+    if (!apiKey) { setSettingsOpen(true); setPipelineError("먼저 API 키를 저장해주세요."); return; }
     setIsRunning(true);
     setPipelineError("");
     setSteps(initialSteps());
@@ -1748,7 +1932,7 @@ function App() {
       const benchLabels = benchProcessed.map((i) => i.label);
       const bp = benchmarkAnalysisPrompt(mode, benchLabels);
       const benchmark = await runStructuredStep({
-        apiKey: settings.apiKey, model, system: bp.system,
+        provider, apiKey, model, system: bp.system,
         userContent: [{ type: "text", text: bp.instructionText }, ...imagesToBlocks(benchProcessed)],
         tool: BENCHMARK_TOOL, requiredKeys: BENCHMARK_TOOL.input_schema.required, maxTokens: mode === "quick" ? 4000 : 6000,
       });
@@ -1763,7 +1947,7 @@ function App() {
       const prodLabels = prodProcessed.map((i) => i.label);
       const pp = productAnalysisPrompt(mode, facts, prodLabels);
       const product = await runStructuredStep({
-        apiKey: settings.apiKey, model, system: pp.system,
+        provider, apiKey, model, system: pp.system,
         userContent: [{ type: "text", text: pp.instructionText }, ...imagesToBlocks(prodProcessed)],
         tool: PRODUCT_TOOL, requiredKeys: PRODUCT_TOOL.input_schema.required, maxTokens: mode === "quick" ? 4000 : 6000,
       });
@@ -1773,7 +1957,7 @@ function App() {
       updateStep("strategy", { status: "running" });
       const sp = strategyPrompt(mode, facts, benchmark, product);
       const strategyResult = await runStructuredStep({
-        apiKey: settings.apiKey, model, system: sp.system, userContent: [{ type: "text", text: sp.instructionText }],
+        provider, apiKey, model, system: sp.system, userContent: [{ type: "text", text: sp.instructionText }],
         tool: STRATEGY_TOOL, requiredKeys: STRATEGY_TOOL.input_schema.required, maxTokens: mode === "quick" ? 4000 : 6000,
       });
       setStrategy(strategyResult);
@@ -1782,7 +1966,7 @@ function App() {
       updateStep("sections", { status: "running" });
       const secp = sectionsPrompt(mode, facts, benchmark, product, strategyResult, prodLabels);
       const sectionsResult = await runStructuredStep({
-        apiKey: settings.apiKey, model, system: secp.system,
+        provider, apiKey, model, system: secp.system,
         userContent: [{ type: "text", text: secp.instructionText }, ...imagesToBlocks(prodProcessed)],
         tool: SECTIONS_TOOL, requiredKeys: ["sections"], maxTokens: 16000,
       });
@@ -1792,7 +1976,7 @@ function App() {
       updateStep("factcheck", { status: "running" });
       const fcp = factCheckPrompt(facts, product, sectionsResult.sections);
       const factCheck = await runStructuredStep({
-        apiKey: settings.apiKey, model, system: fcp.system, userContent: [{ type: "text", text: fcp.instructionText }],
+        provider, apiKey, model, system: fcp.system, userContent: [{ type: "text", text: fcp.instructionText }],
         tool: FACTCHECK_TOOL, requiredKeys: FACTCHECK_TOOL.input_schema.required, maxTokens: 16000,
       });
       setSections(factCheck.correctedSections);
@@ -1864,7 +2048,7 @@ function App() {
         <div className="container header-inner">
           <div>
             <h1 className="title">쿠팡 상세페이지 프롬프트 생성기 <span className="badge badge-navy">독립형</span></h1>
-            <p className="subtitle">벤치마크와 내 제품 자료를 분석해 구성 · 한글 카피 · 이미지 생성 프롬프트를 만듭니다. 브라우저에서 Claude API를 직접 호출합니다.</p>
+            <p className="subtitle">벤치마크와 내 제품 자료를 분석해 구성 · 한글 카피 · 이미지 생성 프롬프트를 만듭니다. 브라우저에서 Claude · Gemini · ChatGPT API를 직접 호출합니다.</p>
           </div>
           <div className="header-actions">
             <ModeToggle value={mode} onChange={setMode} disabled={isRunning} />
@@ -1882,7 +2066,7 @@ function App() {
             roleBadgeLabel="벤치마크" roleBadgeClass="badge-navy" items={benchmarkImages} setItems={setBenchmarkImages} showSubRole={false} />
           <ImageUploader title="내 제품 이미지" description="정면, 측면, 포장, 구성품, 사용 장면 등 실제 제품 근거가 되는 이미지를 업로드하세요."
             roleBadgeLabel="실제 제품 근거 이미지" roleBadgeClass="badge-green" items={productImages} setItems={setProductImages} showSubRole={true} />
-          <ProductFactsForm value={facts} onChange={setFacts} productImages={productImages} apiKey={settings.apiKey} model={model} />
+          <ProductFactsForm value={facts} onChange={setFacts} productImages={productImages} provider={provider} apiKey={apiKey} model={model} />
 
           <div className="card">
             <button type="button" className="btn btn-primary btn-block" onClick={handleAnalyze} disabled={!canAnalyze}>
@@ -1890,7 +2074,7 @@ function App() {
             </button>
             {!canAnalyze && !isRunning && (
               <p className="hint" style={{ marginTop: 8 }}>
-                {!settings.apiKey ? "먼저 상단 'API 키 설정'에서 API 키를 저장해주세요." : "벤치마크 이미지 1장 이상, 제품 이미지 1장 이상, 제품명을 입력해야 분석을 시작할 수 있습니다."}
+                {!apiKey ? "먼저 상단 'API 키 설정'에서 API 키를 저장해주세요." : "벤치마크 이미지 1장 이상, 제품 이미지 1장 이상, 제품명을 입력해야 분석을 시작할 수 있습니다."}
               </p>
             )}
             {pipelineError && <p className="hint" style={{ color: "#dc2626", whiteSpace: "pre-wrap", marginTop: 8 }}>{pipelineError}</p>}
@@ -1925,7 +2109,7 @@ function App() {
 
       <footer className="app-footer">
         이 파일은 서버 없이 브라우저에서 단독으로 동작하는 독립형 버전입니다. API 키는 이 브라우저의 localStorage에만 저장되고,
-        분석 요청마다 Anthropic API로 직접 전송됩니다 (중간 서버 없음). 본인만 사용하는 개인 기기에서 사용하세요.
+        분석 요청마다 선택한 AI 서비스(Claude · Gemini · ChatGPT)의 API로 직접 전송됩니다 (중간 서버 없음). 본인만 사용하는 개인 기기에서 사용하세요.
       </footer>
     </div>
   );
