@@ -14,17 +14,19 @@
   }
   *{box-sizing:border-box;}
   body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Malgun Gothic",sans-serif;background:var(--bg);color:var(--text);}
-  .page{max-width:760px;margin:0 auto;padding:26px 20px 60px;}
+  .page{max-width:920px;margin:0 auto;padding:26px 20px 60px;}
   h1{font-size:20px;margin:0 0 4px;}
   .lead{color:var(--sub);font-size:13px;line-height:1.6;margin:0 0 20px;}
 
   .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:14px;}
   .token-row{display:flex;gap:8px;flex-wrap:wrap;}
   .token-row input{flex:1;min-width:220px;padding:9px 11px;border:1px solid var(--border);border-radius:9px;font-size:13px;font-family:inherit;background:#fff;color:var(--text);}
-  .token-row button{padding:9px 16px;border:none;border-radius:9px;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;}
+  .token-row button{padding:9px 14px;border:none;border-radius:9px;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;}
   .token-row button:hover{background:#0F1B2C;}
   .token-row button.ghost{background:#fff;border:1px solid var(--border);color:var(--sub);}
   .token-row button.ghost:hover{background:var(--bg);}
+  .token-row button.gold{background:var(--gold);color:#fff;}
+  .token-row button.gold:hover{background:#B9860F;}
   .status-line{margin-top:9px;font-size:12px;color:var(--sub);}
   .status-line.ok{color:var(--good);}
   .status-line.error{color:var(--danger);}
@@ -40,54 +42,133 @@
   .item-meta{display:flex;flex-wrap:wrap;gap:10px 14px;margin-top:8px;font-size:12px;color:#3E5266;}
   .item-toggle{font-size:11px;color:var(--sub);flex-shrink:0;}
 
-  .item-body{border-top:1px solid var(--border);padding:16px 17px;background:var(--bg);display:flex;flex-direction:column;gap:16px;}
+  .item-body{border-top:1px solid var(--border);padding:18px 17px 20px;background:var(--bg);display:flex;flex-direction:column;gap:18px;}
   .item-body a.plink{font-size:11.5px;color:var(--gold);font-weight:700;text-decoration:none;word-break:break-all;}
   .item-body a.plink:hover{text-decoration:underline;}
 
-  .stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
-  @media(min-width:520px){ .stat-grid{grid-template-columns:repeat(4,1fr);} }
-  .stat{background:#fff;border:1px solid var(--border);border-radius:9px;padding:9px 10px;}
-  .stat .l{font-size:10.5px;color:var(--sub);}
-  .stat .v{font-size:13.5px;font-weight:700;margin-top:2px;}
+  /* 상품 헤더 */
+  .p-header{display:flex;gap:14px;align-items:flex-start;}
+  .p-thumb{width:64px;height:64px;border-radius:10px;object-fit:cover;border:1px solid var(--border);background:#fff;flex-shrink:0;}
+  .p-ids{font-size:10.5px;color:var(--sub);margin-top:3px;}
+  .tag-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+  .tag{font-size:10.5px;background:#fff;border:1px solid var(--border);border-radius:20px;padding:3px 9px;color:#3E5266;}
+  .tag.low{color:var(--danger);border-color:var(--danger);}
+  .p-rating{margin-left:auto;text-align:right;flex-shrink:0;}
+  .p-rating .n{font-size:20px;font-weight:800;}
+  .p-rating .s{font-size:12px;color:var(--gold);letter-spacing:1px;}
 
-  .sec-label{font-size:11.5px;font-weight:700;color:var(--sub);margin-bottom:7px;}
+  .sec-label{font-size:11.5px;font-weight:700;color:var(--sub);margin-bottom:7px;text-transform:none;}
+
+  /* KPI / 카드 그리드 공통 */
+  .kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+  @media(min-width:640px){ .kpi-grid{grid-template-columns:repeat(5,1fr);} }
+  .kpi-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 11px;}
+  .kpi-card.accent{background:var(--accent);border-color:var(--accent);}
+  .kpi-card.accent span, .kpi-card.accent small{color:rgba(255,255,255,.65);}
+  .kpi-card.accent strong{color:#fff;}
+  .kpi-card.orange{background:#FBF1DC;border-color:#EBD9A8;}
+  .kpi-card span{display:block;font-size:10.5px;color:var(--sub);}
+  .kpi-card strong{display:block;font-size:15px;font-weight:800;margin-top:3px;}
+  .kpi-card small{display:block;font-size:10px;color:var(--sub);margin-top:3px;line-height:1.4;}
+
+  .forecast-grid{display:grid;grid-template-columns:1fr;gap:8px;}
+  @media(min-width:640px){ .forecast-grid{grid-template-columns:repeat(3,1fr);} }
+  .forecast-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 13px;}
+  .forecast-card span{display:block;font-size:10.5px;color:var(--sub);}
+  .forecast-card strong{display:block;font-size:15px;font-weight:800;margin-top:4px;}
+  .forecast-card strong.trend-up{color:var(--danger);}
+  .forecast-card strong.trend-down{color:var(--good);}
+  .forecast-card strong.trend-stable{color:var(--sub);}
+  .forecast-card small{display:block;font-size:10.5px;color:var(--sub);margin-top:4px;}
+
+  .insight-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+  @media(min-width:640px){ .insight-grid{grid-template-columns:repeat(4,1fr);} }
+  .insight-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 11px;}
+  .insight-card.positive{border-color:rgba(79,120,100,.4);background:rgba(79,120,100,.06);}
+  .insight-card.risk{border-color:rgba(184,69,58,.4);background:rgba(184,69,58,.06);}
+  .insight-card span{display:block;font-size:10.5px;color:var(--sub);}
+  .insight-card strong{display:block;font-size:14px;font-weight:800;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .insight-card small{display:block;font-size:10px;color:var(--sub);margin-top:3px;line-height:1.4;}
+
+  .warn-box{background:#FBF1DC;border:1px solid #EBD9A8;border-radius:9px;padding:9px 11px;font-size:11px;color:#8A6A1F;line-height:1.6;}
+
+  /* 상품 이미지 갤러리 */
+  .img-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:7px;}
+  .img-gallery a{display:block;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:#fff;aspect-ratio:1;}
+  .img-gallery img{width:100%;height:100%;object-fit:cover;display:block;}
+
+  /* 기간별 카운트 + 트렌드 */
+  .period-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px;}
+  @media(min-width:640px){ .period-grid{grid-template-columns:repeat(4,1fr);} }
+  .period-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:9px 10px;}
+  .period-card.partial{border-style:dashed;}
+  .period-card span{display:block;font-size:10.5px;color:var(--sub);}
+  .period-card strong{display:block;font-size:14px;font-weight:800;margin-top:3px;}
+  .period-card small{display:block;font-size:10px;color:var(--sub);margin-top:2px;}
+  .trend-wrap{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px;overflow-x:auto;}
+  .trend-wrap svg{display:block;min-width:480px;width:100%;height:auto;}
+  .trend-empty{font-size:11.5px;color:var(--sub);text-align:center;padding:20px 0;}
+
+  /* 옵션 도넛 */
+  .option-wrap{display:flex;gap:18px;align-items:center;flex-wrap:wrap;}
+  .donut{width:96px;height:96px;border-radius:50%;flex-shrink:0;display:grid;place-items:center;}
+  .donut .hole{width:56px;height:56px;border-radius:50%;background:var(--bg);display:grid;place-items:center;font-size:13px;font-weight:800;}
+  .option-legend{flex:1;min-width:160px;display:flex;flex-direction:column;gap:5px;}
+  .legend-row{display:flex;align-items:center;gap:7px;font-size:11.5px;}
+  .legend-row i{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
+  .legend-row span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#3E5266;}
+  .legend-row b{color:var(--text);}
+
+  /* 감성 */
+  .sentiment-bar{display:flex;height:10px;border-radius:6px;overflow:hidden;margin-bottom:8px;}
+  .sentiment-legend{display:flex;gap:14px;font-size:11.5px;flex-wrap:wrap;}
+  .sentiment-legend span{display:flex;align-items:center;gap:5px;}
+  .legend-dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
+  .topics{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+  .topic-chip{border-radius:20px;font-size:10.5px;padding:4px 9px;}
+  .topic-chip.pos{background:rgba(79,120,100,.12);color:var(--good);}
+  .topic-chip.neg{background:rgba(184,69,58,.12);color:var(--danger);}
+
+  /* 별점 분포 */
   .bar-row{display:flex;align-items:center;gap:8px;font-size:11.5px;margin-bottom:4px;}
   .bar-row .rk{width:26px;color:var(--sub);flex-shrink:0;}
   .bar-track{flex:1;height:7px;border-radius:4px;background:#E7E1D2;overflow:hidden;}
   .bar-fill{height:100%;background:var(--gold);}
   .bar-row .rn{width:70px;text-align:right;color:var(--sub);flex-shrink:0;}
 
-  .sentiment{display:flex;gap:12px;font-size:12px;}
-  .sentiment .pos{color:var(--good);} .sentiment .neu{color:var(--sub);} .sentiment .neg{color:var(--danger);}
+  /* 리뷰 표 */
+  .review-filter-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px;font-size:11.5px;color:var(--sub);}
+  .review-filter-row select{padding:5px 8px;border:1px solid var(--border);border-radius:7px;font-size:11.5px;font-family:inherit;background:#fff;}
+  .review-filter-row label{display:flex;align-items:center;gap:5px;cursor:pointer;}
+  .review-table-wrap{background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+  table.review-table{width:100%;border-collapse:collapse;font-size:11.5px;}
+  table.review-table th{text-align:left;padding:8px 10px;background:var(--bg);color:var(--sub);font-weight:700;font-size:10.5px;border-bottom:1px solid var(--border);white-space:nowrap;}
+  table.review-table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top;}
+  table.review-table tr:last-child td{border-bottom:none;}
+  table.review-table td.rt-date{white-space:nowrap;color:var(--sub);}
+  table.review-table td.rt-stars{white-space:nowrap;color:var(--gold);}
+  table.review-table td.rt-option{max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--sub);}
+  table.review-table td.rt-content strong{display:block;font-weight:700;margin-bottom:2px;}
+  table.review-table td.rt-content span{color:#3E5266;line-height:1.5;}
+  table.review-table td.rt-content span.empty{color:var(--sub);font-style:italic;}
 
-  .topics{display:flex;flex-wrap:wrap;gap:6px;}
-  .topic-chip{border-radius:20px;font-size:10.5px;padding:4px 9px;}
-  .topic-chip.pos{background:rgba(79,120,100,.12);color:var(--good);}
-  .topic-chip.neg{background:rgba(184,69,58,.12);color:var(--danger);}
-
-  .warn-box{background:#FBF1DC;border:1px solid #EBD9A8;border-radius:9px;padding:9px 11px;}
-  .warn-box p{margin:0 0 3px;font-size:11px;color:#8A6A1F;}
-
-  .review-list{display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto;}
-  .review{background:#fff;border:1px solid var(--border);border-radius:9px;padding:10px 11px;}
-  .review .rmeta{font-size:10.5px;color:var(--sub);display:flex;gap:8px;}
-  .review .rtitle{font-size:12px;font-weight:700;margin-top:4px;}
-  .review .rcontent{font-size:12px;color:#3E5266;margin-top:2px;line-height:1.5;}
+  .footnote{font-size:10.5px;color:var(--sub);line-height:1.6;border-top:1px dashed var(--border);padding-top:10px;}
 </style>
 </head>
 <body>
 <div class="page">
   <h1>분석 기록</h1>
-  <p class="lead">MORIVA 쿠팡 리뷰 분석기(크롬 확장 프로그램)에서 분석한 결과가 saas-starter 계정에 동기화되어 있으면 여기서도 확인할 수 있습니다.</p>
+  <p class="lead">MORIVA 쿠팡 리뷰 분석기(크롬 확장 프로그램)에서 분석한 결과가 동기화되어 있으면 대시보드에서 본 것과 동일하게 여기서도 확인할 수 있습니다.</p>
 
   <div class="card">
     <div class="token-row">
-      <input id="tokenInput" type="text" spellcheck="false" autocomplete="off" placeholder="사이트 설정 페이지의 연결 코드 붙여넣기">
+      <input id="tokenInput" type="text" spellcheck="false" autocomplete="off" placeholder="연결 코드 (아래 버튼으로 발급 또는 직접 붙여넣기)">
       <button id="saveBtn" type="button">저장하고 불러오기</button>
+      <button id="connectBtn" type="button" class="gold">새 연결 코드 발급</button>
       <button id="refreshBtn" type="button" class="ghost">새로고침</button>
     </div>
     <p id="statusLine" class="status-line">연결 코드가 없습니다.</p>
-    <p class="hint">saas-starter 사이트 → 설정 → "확장 프로그램 연결"에서 코드를 복사해 붙여넣으세요. 코드는 이 브라우저에만 저장됩니다.</p>
+    <p class="hint">"새 연결 코드 발급"을 누르면 코드가 자동으로 만들어져 저장됩니다. 그 코드를 복사해서 확장 프로그램 대시보드의 연결 코드 입력창에도 붙여넣으면, 분석할 때마다 결과가 자동으로 여기에 올라옵니다. 코드는 이 브라우저에만 저장됩니다.</p>
   </div>
 
   <div id="listWrap"></div>
@@ -96,14 +177,19 @@
 <script>
 "use strict";
 var API_BASE = "https://saas-starter-sandy.vercel.app/api/extension/analyses";
+var CONNECT_API = "https://saas-starter-sandy.vercel.app/api/extension/connect";
 var TOKEN_KEY = "moriva_ext_sync_token";
+var OPTION_COLORS = ["#071a36","#d7a319","#1d4f80","#5f7795","#b98709","#b8c1d2"];
+var PURCHASES_PER_REVIEW = 30;
 
 var tokenInput = document.getElementById("tokenInput");
 var saveBtn = document.getElementById("saveBtn");
+var connectBtn = document.getElementById("connectBtn");
 var refreshBtn = document.getElementById("refreshBtn");
 var statusLine = document.getElementById("statusLine");
 var listWrap = document.getElementById("listWrap");
 var openId = null;
+var filterState = {}; // itemId -> { rating: "all", hideEmpty: true }
 
 function loadToken() {
   try { return localStorage.getItem(TOKEN_KEY) || ""; } catch (e) { return ""; }
@@ -119,6 +205,28 @@ function fmtNum(n, digits) {
   if (n === null || n === undefined || Number.isNaN(n)) return "-";
   return Number(n).toLocaleString("ko-KR", { maximumFractionDigits: digits || 0, minimumFractionDigits: digits || 0 });
 }
+function fmtPercent(v, digits) {
+  if (v === null || v === undefined || Number.isNaN(v)) return "-";
+  return fmtNum(Number(v) * 100, digits === undefined ? 1 : digits) + "%";
+}
+function fmtSalesRange(low, high, prefix) {
+  var p = prefix === undefined ? "약 " : prefix;
+  var l = Math.max(0, Math.round(Number(low) || 0));
+  var h = Math.max(0, Math.round(Number(high) || 0));
+  return l === h ? (p + fmtNum(l) + "개") : (p + fmtNum(l) + "~" + fmtNum(h) + "개");
+}
+function fmtInterval(hours) {
+  var v = Number(hours) || 0;
+  if (v <= 0) return "-";
+  if (v >= 24) {
+    var days = Math.floor(v / 24);
+    var rem = Math.round(v % 24);
+    return days + "일 " + rem + "시간";
+  }
+  var wh = Math.floor(v);
+  var min = Math.round((v - wh) * 60);
+  return wh + "시간 " + min + "분";
+}
 function fmtDate(iso) {
   var d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
@@ -130,6 +238,12 @@ function stars(rating) {
 }
 function esc(s) {
   return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function hasContent(r) {
+  var t = String(r && r.content || "").trim().toLowerCase();
+  if (!t) return false;
+  var junk = ["x", "xx", "-", "--", ".", "...", "없음", "내용없음", "내용무", "무", "na", "n/a"];
+  return junk.indexOf(t) === -1;
 }
 
 function renderEmpty() {
@@ -156,7 +270,7 @@ function renderList(items) {
     html += '</div></div>';
     html += '<span class="item-toggle">' + (open ? "접기 ▲" : "상세보기 ▼") + '</span>';
     html += '</button>';
-    if (open) html += renderDetail(item, a);
+    if (open) html += renderDetail(item);
     html += '</div>';
     return html;
   }).join("");
@@ -168,24 +282,171 @@ function renderList(items) {
       renderList(window.__lastItems || []);
     });
   });
+
+  wireDetailControls();
 }
 
-function renderDetail(item, a) {
+function renderDetail(item) {
+  var a = (item.data && item.data.analysis) || {};
+  var p = (item.data && item.data.payload) || {};
+  var total = item.reviewCount || a.reviewCount || 0;
+
   var html = '<div class="item-body">';
   html += '<a class="plink" href="' + esc(item.productUrl) + '" target="_blank" rel="noopener">쿠팡 상품 페이지 열기 →</a>';
 
-  html += '<div class="stat-grid">';
-  html += statCard("리뷰 수", fmtNum(item.reviewCount) + "개");
-  html += statCard("평균 별점", fmtNum(item.averageRating, 1));
-  html += statCard("추정 일 판매량", (item.estimatedDailySales !== null && item.estimatedDailySales !== undefined) ? ("약 " + fmtNum(item.estimatedDailySales) + "개") : "-");
-  html += statCard("일평균 리뷰", a.reviewsPerDay ? (fmtNum(a.reviewsPerDay, 2) + "개/일") : "-");
+  // 상품 헤더
+  html += '<div class="p-header">';
+  if (p.productImageUrl) html += '<img class="p-thumb" src="' + esc(p.productImageUrl) + '" alt="" onerror="this.style.display=\'none\'">';
+  html += '<div style="flex:1;min-width:0;">';
+  html += '<div style="font-weight:700;font-size:13.5px;">' + esc(item.productTitle || p.productTitle || item.productUrl) + '</div>';
+  var ids = [];
+  if (p.ids && p.ids.productId) ids.push("productId " + p.ids.productId);
+  if (p.ids && p.ids.itemId) ids.push("itemId " + p.ids.itemId);
+  if (p.ids && p.ids.vendorItemId) ids.push("vendorItemId " + p.ids.vendorItemId);
+  if (ids.length) html += '<div class="p-ids">' + esc(ids.join(" · ")) + '</div>';
+  html += '<div class="tag-row">';
+  if (a.coverage !== undefined) html += '<span class="tag">페이지 리뷰 확인 ' + fmtPercent(a.coverage, 0) + '</span>';
+  if (a.confidence) html += '<span class="tag">선택 기간 신뢰도 ' + esc(a.confidence) + '</span>';
+  if (a.recognition) {
+    var low = (a.recognitionRate !== undefined && a.recognitionRate < 0.8) ? " low" : "";
+    html += '<span class="tag' + low + '">날짜 ' + fmtPercent(a.recognition.dateRate, 0) + ' · 별점 ' + fmtPercent(a.recognition.ratingRate, 0) + '</span>';
+  }
+  html += '</div></div>';
+  html += '<div class="p-rating"><div class="n">' + fmtNum(item.averageRating, 1) + '</div><div class="s">' + stars(item.averageRating) + '</div></div>';
   html += '</div>';
 
+  // KPI 5카드
+  var reviewsPerDay = a.reviewsPerDay || 0;
+  var rateMin = (a.reviewRateMin !== undefined) ? a.reviewRateMin : 2;
+  var rateMax = (a.reviewRateMax !== undefined) ? a.reviewRateMax : 5;
+  var fixedDailySales = reviewsPerDay * PURCHASES_PER_REVIEW;
+  var rateLow = rateMax ? reviewsPerDay / (rateMax / 100) : 0;
+  var rateHigh = rateMin ? reviewsPerDay / (rateMin / 100) : 0;
+  html += '<div><div class="sec-label">핵심 지표</div><div class="kpi-grid">';
+  html += '<div class="kpi-card accent"><span>분석 리뷰</span><strong>' + fmtNum(total) + '개</strong><small>공개 리뷰 ' + fmtNum(a.scannedReviews) + '개 확인</small></div>';
+  html += '<div class="kpi-card"><span>분석 기간</span><strong style="font-size:12px;">' + esc(a.firstDate || "-") + ' ~ ' + esc(a.lastDate || "-") + '</strong><small>' + esc(a.analysisPeriodLabel || "") + ' · 리뷰 분포 ' + fmtNum(a.elapsedDays) + '일</small></div>';
+  html += '<div class="kpi-card"><span>리뷰 발생 구간 일평균</span><strong>' + fmtNum(reviewsPerDay, 1) + '개</strong><small>' + fmtInterval(a.reviewIntervalHours) + '마다 리뷰 1개</small></div>';
+  html += '<div class="kpi-card orange"><span>기본 하루 판매량 · 30배 환산</span><strong>약 ' + fmtNum(fixedDailySales) + '개/일</strong><small>일평균 리뷰 ' + fmtNum(reviewsPerDay, 2) + '개 × ' + PURCHASES_PER_REVIEW + '</small></div>';
+  html += '<div class="kpi-card"><span>설정 리뷰율 하루 판매량</span><strong>' + fmtSalesRange(rateLow, rateHigh, "") + '/일</strong><small>일평균 리뷰 ÷ 리뷰율 ' + fmtNum(rateMin, 1) + '~' + fmtNum(rateMax, 1) + '%</small></div>';
+  html += '</div></div>';
+
+  // 판매 예측
+  if (a.salesForecast) {
+    var f = a.salesForecast;
+    var dirLabel = { up: "상승", down: "하락", stable: "보합" }[f.trendDirection] || "-";
+    var dirSym = { up: "▲", down: "▼", stable: "―" }[f.trendDirection] || "";
+    var changeText = (f.trendChangePercent === null || f.trendChangePercent === undefined)
+      ? "직전 7일 0건 → 리뷰 발생"
+      : "직전 7일 대비 " + (f.trendChangePercent >= 0 ? "+" : "") + fmtNum(f.trendChangePercent, 1) + "%";
+    function accText(period) { return period.exact ? "정확 집계" : "수집 범위 일부 · 최소 추정"; }
+    function rangePfx(period) { return period.exact ? "약 " : "최소 "; }
+    html += '<div><div class="sec-label">시차 반영 판매 예측</div><div class="forecast-grid">';
+    if (f.recent7) {
+      html += '<div class="forecast-card"><span>시차 반영 7일 예상 판매</span><strong>' + fmtSalesRange(f.recent7.estimatedSalesLow, f.recent7.estimatedSalesHigh, rangePfx(f.recent7)) + '</strong><small>' + esc(f.referenceDate || "") + '까지 리뷰 ' + fmtNum(f.recent7.reviewCount) + '개 · ' + accText(f.recent7) + '</small></div>';
+    }
+    if (f.recent30) {
+      html += '<div class="forecast-card"><span>시차 반영 30일 예상 판매</span><strong>' + fmtSalesRange(f.recent30.estimatedSalesLow, f.recent30.estimatedSalesHigh, rangePfx(f.recent30)) + '</strong><small>' + esc(f.referenceDate || "") + '까지 리뷰 ' + fmtNum(f.recent30.reviewCount) + '개 · ' + accText(f.recent30) + '</small></div>';
+    }
+    html += '<div class="forecast-card"><span>최근 판매 추세</span><strong class="trend-' + esc(f.trendDirection || "stable") + '">' + dirSym + ' ' + dirLabel + '</strong><small>' + changeText + ' · 시차 ' + fmtNum(f.reviewLagDays) + '일' + (f.trendExact ? "" : " · 부분 데이터") + '</small></div>';
+    html += '</div></div>';
+  }
+
+  // 인사이트 4카드
+  if (a.optionCounts || a.negativeTopics) {
+    var recentness = (a.daysSinceLastReview === null || a.daysSinceLastReview === undefined) ? "확인 불가" : (a.daysSinceLastReview === 0 ? "오늘" : fmtNum(a.daysSinceLastReview) + "일 전");
+    var riskTopic = (a.negativeTopics && a.negativeTopics[0] && a.negativeTopics[0].label) || "뚜렷한 반복 불만 없음";
+    var topOption = a.optionCounts && a.optionCounts[0];
+    var topOptionShare = (total && topOption) ? (topOption.count / total * 100) : 0;
+    var stale = a.daysSinceLastReview > (a.staleReviewDays || 21);
+    html += '<div><div class="sec-label">한눈에 보는 상품 신호</div><div class="insight-grid">';
+    html += '<div class="insight-card"><span>대표 옵션</span><strong title="' + esc(topOption ? topOption.label : "") + '">' + esc(topOption ? topOption.label : "옵션 정보 없음") + '</strong><small>' + (topOption ? ('리뷰 ' + fmtNum(topOption.count) + '개 · 비중 ' + fmtNum(topOptionShare, 1) + '%') : '수집된 옵션 정보가 없습니다.') + '</small></div>';
+    html += '<div class="insight-card' + (stale ? " risk" : "") + '"><span>마지막 리뷰</span><strong>' + recentness + '</strong><small>' + (a.lastDate === "-" || !a.lastDate ? "리뷰 작성일 없음" : (esc(a.lastDate) + " 작성" + (stale ? " · 오래된 리뷰 주의" : ""))) + '</small></div>';
+    html += '<div class="insight-card positive"><span>4~5점 고평점 비중</span><strong>' + fmtNum((a.highRatingRate || 0) * 100, 1) + '%</strong><small>선택 기간 평균 평점 ' + fmtNum(item.averageRating, 1) + '점</small></div>';
+    html += '<div class="insight-card' + ((a.negativeRatingRate || 0) >= 0.1 ? " risk" : "") + '"><span>1~2점 위험 신호</span><strong>' + fmtNum((a.negativeRatingRate || 0) * 100, 1) + '%</strong><small>주요 불만: ' + esc(riskTopic) + '</small></div>';
+    html += '</div></div>';
+  }
+
+  // 경고
+  if (a.warnings && a.warnings.length) {
+    html += '<div class="warn-box">' + a.warnings.map(function (w) { return '⚠ ' + esc(w); }).join('<br>') + '</div>';
+  }
+
+  // 상품 이미지 갤러리
+  var images = (p.productImages && p.productImages.length) ? p.productImages : (p.productImageUrl ? [{ url: p.productImageUrl, kind: "main" }] : []);
+  if (images.length) {
+    html += '<div><div class="sec-label">상품 페이지 이미지 (' + images.length + '개)</div><div class="img-gallery">';
+    images.slice(0, 60).forEach(function (img) {
+      html += '<a href="' + esc(img.url) + '" target="_blank" rel="noopener"><img src="' + esc(img.url) + '" loading="lazy" alt=""></a>';
+    });
+    html += '</div></div>';
+  }
+
+  // 기간별 카운트 + 트렌드
+  if (a.periodCounts && a.periodCounts.length) {
+    html += '<div><div class="sec-label">기간별 리뷰 수</div><div class="period-grid">';
+    a.periodCounts.forEach(function (period) {
+      html += '<div class="period-card ' + (period.exact ? "exact" : "partial") + '"><span>' + esc(period.label) + '</span><strong>' + (period.exact ? "" : "최소 ") + fmtNum(period.count) + '개</strong><small>' + (period.exact ? "정확 집계" : "수집 범위 일부") + '</small></div>';
+    });
+    html += '</div>';
+  }
+  var trendData = (a.dailyTrend && a.dailyTrend.length) ? a.dailyTrend : ((a.weeklyTrend && a.weeklyTrend.length) ? a.weeklyTrend : null);
+  html += '<div class="trend-wrap">' + renderTrendSvg(trendData) + '</div>';
+  if (a.periodCounts && a.periodCounts.length) html += '</div>';
+
+  // 옵션 비중 도넛
+  if (a.optionCounts && a.optionCounts.length && total) {
+    html += '<div><div class="sec-label">옵션별 리뷰 비중</div><div class="option-wrap">';
+    var top = a.optionCounts.slice(0, 5);
+    var cursor = 0;
+    var segs = top.map(function (o, i) {
+      var pct = o.count / total * 100;
+      var start = cursor; cursor += pct;
+      return OPTION_COLORS[i % OPTION_COLORS.length] + " " + start + "% " + cursor + "%";
+    });
+    if (cursor < 100) segs.push("#e8ebf1 " + cursor + "% 100%");
+    var centerPct = top.length ? fmtNum(top[0].count / total * 100, 0) : "0";
+    html += '<div class="donut" style="background:conic-gradient(' + segs.join(",") + ')"><div class="hole">' + centerPct + '%</div></div>';
+    html += '<div class="option-legend">';
+    top.forEach(function (o, i) {
+      html += '<div class="legend-row"><i style="background:' + OPTION_COLORS[i % OPTION_COLORS.length] + '"></i><span title="' + esc(o.label) + '">' + esc(o.label) + '</span><b>' + fmtNum(o.count / total * 100, 1) + '%</b></div>';
+    });
+    html += '</div></div></div>';
+  }
+
+  // 감성
+  if (a.sentimentCounts) {
+    var sc = a.sentimentCounts;
+    var st = Math.max(1, total);
+    html += '<div><div class="sec-label">리뷰 반응 분포</div>';
+    html += '<div class="sentiment-bar">';
+    html += '<span style="width:' + (sc.positive / st * 100) + '%;background:var(--good);"></span>';
+    html += '<span style="width:' + (sc.neutral / st * 100) + '%;background:var(--sub);"></span>';
+    html += '<span style="width:' + (sc.negative / st * 100) + '%;background:var(--danger);"></span>';
+    html += '</div>';
+    html += '<div class="sentiment-legend">';
+    html += '<span><i class="legend-dot" style="background:var(--good)"></i>긍정 <b>' + fmtNum(sc.positive / st * 100, 1) + '%</b></span>';
+    html += '<span><i class="legend-dot" style="background:var(--sub)"></i>중립 <b>' + fmtNum(sc.neutral / st * 100, 1) + '%</b></span>';
+    html += '<span><i class="legend-dot" style="background:var(--danger)"></i>부정 <b>' + fmtNum(sc.negative / st * 100, 1) + '%</b></span>';
+    html += '</div>';
+    if ((a.positiveTopics && a.positiveTopics.length) || (a.negativeTopics && a.negativeTopics.length)) {
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:4px;">';
+      html += '<div><div class="sec-label" style="margin-top:8px;">긍정 키워드</div><div class="topics">';
+      html += (a.positiveTopics && a.positiveTopics.length) ? a.positiveTopics.slice(0, 7).map(function (t) { return '<span class="topic-chip pos">' + esc(t.label) + ' · ' + t.count + '</span>'; }).join("") : '<span style="color:var(--sub);font-size:11px;">뚜렷한 언급 없음</span>';
+      html += '</div></div>';
+      html += '<div><div class="sec-label" style="margin-top:8px;">부정 키워드</div><div class="topics">';
+      html += (a.negativeTopics && a.negativeTopics.length) ? a.negativeTopics.slice(0, 7).map(function (t) { return '<span class="topic-chip neg">' + esc(t.label) + ' · ' + t.count + '</span>'; }).join("") : '<span style="color:var(--sub);font-size:11px;">뚜렷한 언급 없음</span>';
+      html += '</div></div>';
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  // 별점 분포
   if (a.starCounts && a.starCounts.length) {
-    html += '<div><div class="sec-label">별점 분포</div>';
-    var total = item.reviewCount || 1;
+    html += '<div><div class="sec-label">평점 구성</div>';
+    var starTotal = total || 1;
     a.starCounts.forEach(function (s) {
-      var pct = Math.round((s.count / total) * 100);
+      var pct = Math.round((s.count / starTotal) * 100);
       html += '<div class="bar-row"><span class="rk">' + s.rating + '점</span>';
       html += '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%"></div></div>';
       html += '<span class="rn">' + fmtNum(s.count) + '개 (' + pct + '%)</span></div>';
@@ -193,59 +454,116 @@ function renderDetail(item, a) {
     html += '</div>';
   }
 
-  if (a.sentimentCounts) {
-    html += '<div><div class="sec-label">감성 분석</div><div class="sentiment">';
-    html += '<span class="pos">긍정 ' + fmtNum(a.sentimentCounts.positive) + '</span>';
-    html += '<span class="neu">중립 ' + fmtNum(a.sentimentCounts.neutral) + '</span>';
-    html += '<span class="neg">부정 ' + fmtNum(a.sentimentCounts.negative) + '</span>';
-    html += '</div></div>';
-  }
-
-  if ((a.positiveTopics && a.positiveTopics.length) || (a.negativeTopics && a.negativeTopics.length)) {
-    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">';
-    if (a.positiveTopics && a.positiveTopics.length) {
-      html += '<div><div class="sec-label">긍정 키워드</div><div class="topics">';
-      a.positiveTopics.slice(0, 8).forEach(function (t) {
-        html += '<span class="topic-chip pos">' + esc(t.label) + ' ' + t.count + '</span>';
-      });
-      html += '</div></div>';
-    }
-    if (a.negativeTopics && a.negativeTopics.length) {
-      html += '<div><div class="sec-label">부정 키워드</div><div class="topics">';
-      a.negativeTopics.slice(0, 8).forEach(function (t) {
-        html += '<span class="topic-chip neg">' + esc(t.label) + ' ' + t.count + '</span>';
-      });
-      html += '</div></div>';
-    }
+  // 리뷰 표
+  var reviews = a.reviews || [];
+  if (reviews.length) {
+    if (!filterState[item.id]) filterState[item.id] = { rating: "all", hideEmpty: true };
+    html += '<div><div class="sec-label">수집 리뷰 미리보기</div>';
+    html += renderReviewTableBlock(item.id, reviews, filterState[item.id]);
     html += '</div>';
   }
 
-  if (a.warnings && a.warnings.length) {
-    html += '<div class="warn-box">';
-    a.warnings.forEach(function (w) { html += '<p>⚠ ' + esc(w) + '</p>'; });
-    html += '</div>';
-  }
-
-  if (a.reviews && a.reviews.length) {
-    html += '<div><div class="sec-label">리뷰 목록 (최근 ' + Math.min(20, a.reviews.length) + '개 표시)</div>';
-    html += '<div class="review-list">';
-    a.reviews.slice(0, 20).forEach(function (r) {
-      html += '<div class="review"><div class="rmeta"><span>' + stars(r.rating || 0) + '</span><span>' + esc(r.date) + '</span>';
-      if (r.option) html += '<span>· ' + esc(r.option) + '</span>';
-      html += '</div>';
-      if (r.title) html += '<div class="rtitle">' + esc(r.title) + '</div>';
-      if (r.content) html += '<div class="rcontent">' + esc(r.content) + '</div>';
-      html += '</div>';
-    });
-    html += '</div></div>';
-  }
+  html += '<p class="footnote">중요: 판매량은 실제 주문 데이터가 아니라 최근 리뷰 또는 사용자가 입력한 조회수와 가정 전환율을 이용한 추정 범위입니다.</p>';
 
   html += '</div>';
   return html;
 }
 
-function statCard(label, value) {
-  return '<div class="stat"><div class="l">' + esc(label) + '</div><div class="v">' + esc(value) + '</div></div>';
+function renderTrendSvg(data) {
+  if (!data || !data.length) return '<div class="trend-empty">일자별 리뷰 추이 데이터가 없습니다.</div>';
+  var width = 680, height = 200;
+  var margin = { top: 14, right: 14, bottom: 26, left: 30 };
+  var innerW = width - margin.left - margin.right;
+  var innerH = height - margin.top - margin.bottom;
+  var max = Math.max(1, Math.max.apply(null, data.map(function (d) { return d.count; })));
+  function X(i) { return margin.left + (data.length === 1 ? innerW / 2 : i * innerW / (data.length - 1)); }
+  function Y(v) { return margin.top + innerH - (v / max) * innerH; }
+  var line = data.map(function (d, i) { return (i ? "L" : "M") + X(i).toFixed(1) + "," + Y(d.count).toFixed(1); }).join(" ");
+  var bottom = margin.top + innerH;
+  var area = line + " L" + X(data.length - 1).toFixed(1) + "," + bottom + " L" + X(0).toFixed(1) + "," + bottom + " Z";
+  var dots = data.map(function (d, i) {
+    var isLast = i === data.length - 1;
+    return '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(d.count).toFixed(1) + '" r="' + (isLast ? 4 : 2.4) + '" fill="#C9961A"><title>' + esc(d.date) + ": " + d.count + "개</title></circle>";
+  }).join("");
+  var gridLines = [0, 0.25, 0.5, 0.75, 1].map(function (t) {
+    var y = margin.top + innerH * (1 - t);
+    return '<line x1="' + margin.left + '" y1="' + y.toFixed(1) + '" x2="' + (width - margin.right) + '" y2="' + y.toFixed(1) + '" stroke="#E7E1D2" stroke-width="1"/>';
+  }).join("");
+  var idxs = [0, Math.floor((data.length - 1) * 0.25), Math.floor((data.length - 1) * 0.5), Math.floor((data.length - 1) * 0.75), data.length - 1];
+  var seen = {};
+  var labels = idxs.filter(function (i) { if (seen[i]) return false; seen[i] = true; return true; }).map(function (i) {
+    return '<text x="' + X(i).toFixed(1) + '" y="' + (height - 8) + '" font-size="9" fill="#8B95A1" text-anchor="middle">' + esc(data[i].date.slice(5)) + '</text>';
+  }).join("");
+  return '<svg viewBox="0 0 ' + width + ' ' + height + '" xmlns="http://www.w3.org/2000/svg">' +
+    '<defs><linearGradient id="tg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#C9961A" stop-opacity="0.28"/><stop offset="100%" stop-color="#C9961A" stop-opacity="0.02"/></linearGradient></defs>' +
+    gridLines +
+    '<path d="' + area + '" fill="url(#tg)" stroke="none"/>' +
+    '<path d="' + line + '" fill="none" stroke="#C9961A" stroke-width="2"/>' +
+    dots + labels +
+    '</svg>';
+}
+
+function renderReviewTableBlock(itemId, reviews, state) {
+  var counts = { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 };
+  reviews.forEach(function (r) { var k = String(Math.round(r.rating || 0)); if (counts[k] !== undefined) counts[k]++; });
+  var filtered = reviews.filter(function (r) {
+    var ratingOk = state.rating === "all" || Math.round(r.rating || 0) === Number(state.rating);
+    return ratingOk && (!state.hideEmpty || hasContent(r));
+  });
+  var rows = filtered.slice().sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); }).slice(0, 20);
+
+  var html = '<div class="review-filter-row">';
+  html += '<span>별점별 리뷰 보기</span>';
+  html += '<select class="rf-rating" data-item="' + itemId + '">';
+  html += '<option value="all"' + (state.rating === "all" ? " selected" : "") + '>전체 (' + reviews.length + ')</option>';
+  [5, 4, 3, 2, 1].forEach(function (n) {
+    html += '<option value="' + n + '"' + (state.rating === String(n) ? " selected" : "") + '>' + n + '점 (' + counts[String(n)] + ')</option>';
+  });
+  html += '</select>';
+  html += '<label><input type="checkbox" class="rf-hide" data-item="' + itemId + '"' + (state.hideEmpty ? " checked" : "") + '> 내용 없는 리뷰 숨기기</label>';
+  html += '<span>조건 ' + filtered.length + '개 · ' + rows.length + '개 표시</span>';
+  html += '</div>';
+
+  html += '<div class="review-table-wrap"><table class="review-table"><thead><tr><th>작성일</th><th>평점</th><th>옵션</th><th>리뷰 내용</th></tr></thead><tbody>';
+  if (!rows.length) {
+    html += '<tr><td colspan="4" style="text-align:center;color:var(--sub);padding:16px;">선택한 조건에 맞는 리뷰가 없습니다.</td></tr>';
+  } else {
+    rows.forEach(function (r) {
+      html += '<tr>';
+      html += '<td class="rt-date">' + esc(r.date || "-") + '</td>';
+      html += '<td class="rt-stars">' + stars(r.rating || 0) + '</td>';
+      html += '<td class="rt-option">' + esc(r.option || r.itemName || "-") + '</td>';
+      html += '<td class="rt-content"><strong>' + esc(r.title || "제목 없음") + '</strong>';
+      if (hasContent(r)) {
+        var content = String(r.content || "");
+        html += '<span>' + esc(content.slice(0, 240)) + (content.length > 240 ? "…" : "") + '</span>';
+      } else {
+        html += '<span class="empty">작성 내용 없음</span>';
+      }
+      html += '</td></tr>';
+    });
+  }
+  html += '</tbody></table></div>';
+  return html;
+}
+
+function wireDetailControls() {
+  listWrap.querySelectorAll(".rf-rating").forEach(function (sel) {
+    sel.addEventListener("change", function () {
+      var id = sel.getAttribute("data-item");
+      if (!filterState[id]) filterState[id] = { rating: "all", hideEmpty: true };
+      filterState[id].rating = sel.value;
+      renderList(window.__lastItems || []);
+    });
+  });
+  listWrap.querySelectorAll(".rf-hide").forEach(function (chk) {
+    chk.addEventListener("change", function () {
+      var id = chk.getAttribute("data-item");
+      if (!filterState[id]) filterState[id] = { rating: "all", hideEmpty: true };
+      filterState[id].hideEmpty = chk.checked;
+      renderList(window.__lastItems || []);
+    });
+  });
 }
 
 function fetchAnalyses() {
@@ -286,6 +604,20 @@ saveBtn.addEventListener("click", function () {
   saveToken(tokenInput.value.trim());
   openId = null;
   fetchAnalyses();
+});
+connectBtn.addEventListener("click", function () {
+  setStatus("", "연결 코드 발급 중...");
+  fetch(CONNECT_API, { method: "POST" })
+    .then(function (res) { return res.json(); })
+    .then(function (data) {
+      if (!data || !data.ok || !data.token) { setStatus("error", "코드 발급에 실패했습니다."); return; }
+      saveToken(data.token);
+      tokenInput.value = data.token;
+      openId = null;
+      setStatus("ok", "새 연결 코드가 발급되었습니다. 이 코드를 복사해 확장 프로그램에도 붙여넣으세요.");
+      fetchAnalyses();
+    })
+    .catch(function () { setStatus("error", "코드 발급에 실패했습니다 (네트워크 확인)."); });
 });
 refreshBtn.addEventListener("click", fetchAnalyses);
 tokenInput.addEventListener("keydown", function (e) {
