@@ -21,6 +21,7 @@ window.MORIVA_TOOLS = [
     group: "상품 등록 · 판매",
     items: [
       { id: "studio",                 icon: "🎨", name: "스튜디오",            desc: "제품 사진을 분석해 썸네일·상세페이지 기획과 AI 이미지를 생성합니다.", badge: "NEW" },
+      { id: "detail-page-prompt-generator", icon: "🖋️", name: "상세페이지 프롬프트 생성기", desc: "벤치마크 상세페이지와 내 제품 이미지를 분석해 상세페이지 카피와 이미지 생성 프롬프트를 만듭니다 (Claude API 키 필요, 독립형).", badge: "NEW" },
       { id: "product-name-generator", icon: "🏷️", name: "상품명 생성기",      desc: "상위노출 상품명을 분석해 5단어 상품명 5가지를 제안합니다." },
       { id: "pricing-setter",         icon: "💰", name: "가격 세팅 도구",      desc: "최종소비자가 기준으로 판매가·할인·정상가를 자동 계산합니다." },
       { id: "preview-tool",           icon: "🛒", name: "상세페이지 미리보기", desc: "썸네일·상세페이지를 실제 쿠팡 화면처럼 미리 봅니다." },
