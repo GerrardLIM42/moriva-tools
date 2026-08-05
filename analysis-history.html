@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>분석 기록</title>
+<link rel="icon" type="image/png" href="./favicon.png">
+<link rel="apple-touch-icon" href="./favicon.png">
+<style>
+  :root{
+    --bg:#F6F3EC; --panel:#FFFDF8; --border:#DCD5C3; --text:#1B2A3D;
+    --sub:#8B95A1; --accent:#1B2A3D; --gold:#C9961A;
+    --danger:#B8453A; --good:#4F7864; --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Malgun Gothic",sans-serif;background:var(--bg);color:var(--text);}
+  .page{max-width:760px;margin:0 auto;padding:26px 20px 60px;}
+  h1{font-size:20px;margin:0 0 4px;}
+  .lead{color:var(--sub);font-size:13px;line-height:1.6;margin:0 0 20px;}
+
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:14px;}
+  .token-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .token-row input{flex:1;min-width:220px;padding:9px 11px;border:1px solid var(--border);border-radius:9px;font-size:13px;font-family:inherit;background:#fff;color:var(--text);}
+  .token-row button{padding:9px 16px;border:none;border-radius:9px;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;}
+  .token-row button:hover{background:#0F1B2C;}
+  .token-row button.ghost{background:#fff;border:1px solid var(--border);color:var(--sub);}
+  .token-row button.ghost:hover{background:var(--bg);}
+  .status-line{margin-top:9px;font-size:12px;color:var(--sub);}
+  .status-line.ok{color:var(--good);}
+  .status-line.error{color:var(--danger);}
+  .hint{margin-top:8px;font-size:11.5px;color:var(--sub);line-height:1.6;}
+
+  .empty{border:1px dashed var(--border);border-radius:var(--radius);padding:34px 20px;text-align:center;color:var(--sub);font-size:13px;line-height:1.7;}
+
+  .item{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;overflow:hidden;}
+  .item-head{width:100%;text-align:left;padding:15px 17px;background:none;border:none;cursor:pointer;display:flex;align-items:flex-start;gap:12px;font-family:inherit;color:var(--text);}
+  .item-head:hover{background:var(--bg);}
+  .item-title{font-size:13.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .item-date{font-size:11px;color:var(--sub);margin-top:2px;}
+  .item-meta{display:flex;flex-wrap:wrap;gap:10px 14px;margin-top:8px;font-size:12px;color:#3E5266;}
+  .item-toggle{font-size:11px;color:var(--sub);flex-shrink:0;}
+
+  .item-body{border-top:1px solid var(--border);padding:16px 17px;background:var(--bg);display:flex;flex-direction:column;gap:16px;}
+  .item-body a.plink{font-size:11.5px;color:var(--gold);font-weight:700;text-decoration:none;word-break:break-all;}
+  .item-body a.plink:hover{text-decoration:underline;}
+
+  .stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+  @media(min-width:520px){ .stat-grid{grid-template-columns:repeat(4,1fr);} }
+  .stat{background:#fff;border:1px solid var(--border);border-radius:9px;padding:9px 10px;}
+  .stat .l{font-size:10.5px;color:var(--sub);}
+  .stat .v{font-size:13.5px;font-weight:700;margin-top:2px;}
+
+  .sec-label{font-size:11.5px;font-weight:700;color:var(--sub);margin-bottom:7px;}
+  .bar-row{display:flex;align-items:center;gap:8px;font-size:11.5px;margin-bottom:4px;}
+  .bar-row .rk{width:26px;color:var(--sub);flex-shrink:0;}
+  .bar-track{flex:1;height:7px;border-radius:4px;background:#E7E1D2;overflow:hidden;}
+  .bar-fill{height:100%;background:var(--gold);}
+  .bar-row .rn{width:70px;text-align:right;color:var(--sub);flex-shrink:0;}
+
+  .sentiment{display:flex;gap:12px;font-size:12px;}
+  .sentiment .pos{color:var(--good);} .sentiment .neu{color:var(--sub);} .sentiment .neg{color:var(--danger);}
+
+  .topics{display:flex;flex-wrap:wrap;gap:6px;}
+  .topic-chip{border-radius:20px;font-size:10.5px;padding:4px 9px;}
+  .topic-chip.pos{background:rgba(79,120,100,.12);color:var(--good);}
+  .topic-chip.neg{background:rgba(184,69,58,.12);color:var(--danger);}
+
+  .warn-box{background:#FBF1DC;border:1px solid #EBD9A8;border-radius:9px;padding:9px 11px;}
+  .warn-box p{margin:0 0 3px;font-size:11px;color:#8A6A1F;}
+
+  .review-list{display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto;}
+  .review{background:#fff;border:1px solid var(--border);border-radius:9px;padding:10px 11px;}
+  .review .rmeta{font-size:10.5px;color:var(--sub);display:flex;gap:8px;}
+  .review .rtitle{font-size:12px;font-weight:700;margin-top:4px;}
+  .review .rcontent{font-size:12px;color:#3E5266;margin-top:2px;line-height:1.5;}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>분석 기록</h1>
+  <p class="lead">MORIVA 쿠팡 리뷰 분석기(크롬 확장 프로그램)에서 분석한 결과가 saas-starter 계정에 동기화되어 있으면 여기서도 확인할 수 있습니다.</p>
+
+  <div class="card">
+    <div class="token-row">
+      <input id="tokenInput" type="text" spellcheck="false" autocomplete="off" placeholder="사이트 설정 페이지의 연결 코드 붙여넣기">
+      <button id="saveBtn" type="button">저장하고 불러오기</button>
+      <button id="refreshBtn" type="button" class="ghost">새로고침</button>
+    </div>
+    <p id="statusLine" class="status-line">연결 코드가 없습니다.</p>
+    <p class="hint">saas-starter 사이트 → 설정 → "확장 프로그램 연결"에서 코드를 복사해 붙여넣으세요. 코드는 이 브라우저에만 저장됩니다.</p>
+  </div>
+
+  <div id="listWrap"></div>
+</div>
+
+<script>
+"use strict";
+var API_BASE = "https://saas-starter-sandy.vercel.app/api/extension/analyses";
+var TOKEN_KEY = "moriva_ext_sync_token";
+
+var tokenInput = document.getElementById("tokenInput");
+var saveBtn = document.getElementById("saveBtn");
+var refreshBtn = document.getElementById("refreshBtn");
+var statusLine = document.getElementById("statusLine");
+var listWrap = document.getElementById("listWrap");
+var openId = null;
+
+function loadToken() {
+  try { return localStorage.getItem(TOKEN_KEY) || ""; } catch (e) { return ""; }
+}
+function saveToken(v) {
+  try { localStorage.setItem(TOKEN_KEY, v); } catch (e) {}
+}
+function setStatus(kind, text) {
+  statusLine.textContent = text;
+  statusLine.className = "status-line" + (kind ? " " + kind : "");
+}
+function fmtNum(n, digits) {
+  if (n === null || n === undefined || Number.isNaN(n)) return "-";
+  return Number(n).toLocaleString("ko-KR", { maximumFractionDigits: digits || 0, minimumFractionDigits: digits || 0 });
+}
+function fmtDate(iso) {
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+function stars(rating) {
+  var r = Math.max(0, Math.min(5, Math.round(Number(rating) || 0)));
+  return "★".repeat(r) + "☆".repeat(5 - r);
+}
+function esc(s) {
+  return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function renderEmpty() {
+  listWrap.innerHTML = '<div class="empty">아직 동기화된 분석이 없습니다.<br>확장 프로그램에서 연결 코드를 등록하고 쿠팡 상품 리뷰를 분석하면 결과가 자동으로 여기에 올라옵니다.</div>';
+}
+
+function renderList(items) {
+  if (!items.length) { renderEmpty(); return; }
+  listWrap.innerHTML = items.map(function (item) {
+    var a = (item.data && item.data.analysis) || {};
+    var open = openId === item.id;
+    var html = '<div class="item" data-id="' + item.id + '">';
+    html += '<button type="button" class="item-head" data-toggle="' + item.id + '">';
+    html += '<div style="flex:1;min-width:0;">';
+    html += '<div class="item-title">' + esc(item.productTitle || item.productUrl) + '</div>';
+    html += '<div class="item-date">' + esc(fmtDate(item.analyzedAt)) + ' 분석됨</div>';
+    html += '<div class="item-meta">';
+    html += '<span>리뷰 ' + fmtNum(item.reviewCount) + '개</span>';
+    html += '<span>' + stars(item.averageRating) + ' ' + fmtNum(item.averageRating, 1) + '</span>';
+    if (item.estimatedDailySales !== null && item.estimatedDailySales !== undefined) {
+      html += '<span>추정 일판매 약 ' + fmtNum(item.estimatedDailySales) + '개</span>';
+    }
+    if (a.confidence) html += '<span style="color:var(--sub);">신뢰도 ' + esc(a.confidence) + '</span>';
+    html += '</div></div>';
+    html += '<span class="item-toggle">' + (open ? "접기 ▲" : "상세보기 ▼") + '</span>';
+    html += '</button>';
+    if (open) html += renderDetail(item, a);
+    html += '</div>';
+    return html;
+  }).join("");
+
+  listWrap.querySelectorAll("[data-toggle]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var id = btn.getAttribute("data-toggle");
+      openId = openId === id ? null : id;
+      renderList(window.__lastItems || []);
+    });
+  });
+}
+
+function renderDetail(item, a) {
+  var html = '<div class="item-body">';
+  html += '<a class="plink" href="' + esc(item.productUrl) + '" target="_blank" rel="noopener">쿠팡 상품 페이지 열기 →</a>';
+
+  html += '<div class="stat-grid">';
+  html += statCard("리뷰 수", fmtNum(item.reviewCount) + "개");
+  html += statCard("평균 별점", fmtNum(item.averageRating, 1));
+  html += statCard("추정 일 판매량", (item.estimatedDailySales !== null && item.estimatedDailySales !== undefined) ? ("약 " + fmtNum(item.estimatedDailySales) + "개") : "-");
+  html += statCard("일평균 리뷰", a.reviewsPerDay ? (fmtNum(a.reviewsPerDay, 2) + "개/일") : "-");
+  html += '</div>';
+
+  if (a.starCounts && a.starCounts.length) {
+    html += '<div><div class="sec-label">별점 분포</div>';
+    var total = item.reviewCount || 1;
+    a.starCounts.forEach(function (s) {
+      var pct = Math.round((s.count / total) * 100);
+      html += '<div class="bar-row"><span class="rk">' + s.rating + '점</span>';
+      html += '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%"></div></div>';
+      html += '<span class="rn">' + fmtNum(s.count) + '개 (' + pct + '%)</span></div>';
+    });
+    html += '</div>';
+  }
+
+  if (a.sentimentCounts) {
+    html += '<div><div class="sec-label">감성 분석</div><div class="sentiment">';
+    html += '<span class="pos">긍정 ' + fmtNum(a.sentimentCounts.positive) + '</span>';
+    html += '<span class="neu">중립 ' + fmtNum(a.sentimentCounts.neutral) + '</span>';
+    html += '<span class="neg">부정 ' + fmtNum(a.sentimentCounts.negative) + '</span>';
+    html += '</div></div>';
+  }
+
+  if ((a.positiveTopics && a.positiveTopics.length) || (a.negativeTopics && a.negativeTopics.length)) {
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">';
+    if (a.positiveTopics && a.positiveTopics.length) {
+      html += '<div><div class="sec-label">긍정 키워드</div><div class="topics">';
+      a.positiveTopics.slice(0, 8).forEach(function (t) {
+        html += '<span class="topic-chip pos">' + esc(t.label) + ' ' + t.count + '</span>';
+      });
+      html += '</div></div>';
+    }
+    if (a.negativeTopics && a.negativeTopics.length) {
+      html += '<div><div class="sec-label">부정 키워드</div><div class="topics">';
+      a.negativeTopics.slice(0, 8).forEach(function (t) {
+        html += '<span class="topic-chip neg">' + esc(t.label) + ' ' + t.count + '</span>';
+      });
+      html += '</div></div>';
+    }
+    html += '</div>';
+  }
+
+  if (a.warnings && a.warnings.length) {
+    html += '<div class="warn-box">';
+    a.warnings.forEach(function (w) { html += '<p>⚠ ' + esc(w) + '</p>'; });
+    html += '</div>';
+  }
+
+  if (a.reviews && a.reviews.length) {
+    html += '<div><div class="sec-label">리뷰 목록 (최근 ' + Math.min(20, a.reviews.length) + '개 표시)</div>';
+    html += '<div class="review-list">';
+    a.reviews.slice(0, 20).forEach(function (r) {
+      html += '<div class="review"><div class="rmeta"><span>' + stars(r.rating || 0) + '</span><span>' + esc(r.date) + '</span>';
+      if (r.option) html += '<span>· ' + esc(r.option) + '</span>';
+      html += '</div>';
+      if (r.title) html += '<div class="rtitle">' + esc(r.title) + '</div>';
+      if (r.content) html += '<div class="rcontent">' + esc(r.content) + '</div>';
+      html += '</div>';
+    });
+    html += '</div></div>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
+function statCard(label, value) {
+  return '<div class="stat"><div class="l">' + esc(label) + '</div><div class="v">' + esc(value) + '</div></div>';
+}
+
+function fetchAnalyses() {
+  var token = loadToken();
+  if (!token) {
+    setStatus("", "연결 코드가 없습니다.");
+    listWrap.innerHTML = "";
+    return;
+  }
+  setStatus("", "불러오는 중...");
+  fetch(API_BASE + "?token=" + encodeURIComponent(token))
+    .then(function (res) { return res.json(); })
+    .then(function (data) {
+      if (!data || !data.ok) {
+        setStatus("error", "연결 코드가 올바르지 않습니다.");
+        listWrap.innerHTML = "";
+        return;
+      }
+      window.__lastItems = data.items || [];
+      setStatus("ok", (data.items || []).length + "건 동기화됨 · 방금 불러옴");
+      renderList(window.__lastItems);
+    })
+    .catch(function () {
+      setStatus("error", "불러오지 못했습니다 (네트워크 확인).");
+    });
+}
+
+tokenInput.value = loadToken();
+saveBtn.addEventListener("click", function () {
+  saveToken(tokenInput.value.trim());
+  openId = null;
+  fetchAnalyses();
+});
+refreshBtn.addEventListener("click", fetchAnalyses);
+tokenInput.addEventListener("keydown", function (e) {
+  if (e.key === "Enter") { saveToken(tokenInput.value.trim()); fetchAnalyses(); }
+});
+
+if (loadToken()) fetchAnalyses();
+else renderEmpty();
+</script>
+</body>
+</html>
