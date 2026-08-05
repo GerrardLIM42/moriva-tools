@@ -203,7 +203,9 @@
     </div>
 
     <div class="keybox">
-      <div class="title"><span class="dot"></span>AI 설정 — 사용하는 AI의 API 키를 넣어주세요</div>
+      <div class="title"><span class="dot"></span>AI 설정 — 사용하는 AI의 API 키를 넣어주세요
+        <button type="button" id="openAiSettings" style="margin-left:8px;font-size:11px;padding:2px 8px;border-radius:8px;border:1px solid var(--line);background:#fff;cursor:pointer;">AI 서비스 설정 도구 열기</button>
+      </div>
       <div class="keygrid">
         <label class="field">
           <span>AI 서비스</span>
@@ -302,7 +304,13 @@ function applyProvider(){
   const p = PROVIDERS[$("provider").value];
   $("apikey").placeholder = p.keyPlaceholder;
   $("model").placeholder = p.defaultModel;
-  if(!$("model").dataset.touched) $("model").value = "";
+  // "AI 서비스 설정" 도구(다른 탭)에서 고른 모델이 있으면 그것을 기본값으로 보여준다 (모든 도구 공통 설정).
+  if(!$("model").dataset.touched){
+    try{
+      const savedModels = JSON.parse(localStorage.getItem("moriva_models") || "{}");
+      $("model").value = savedModels[$("provider").value] || "";
+    }catch(e){ $("model").value = ""; }
+  }
   $("keyhelp").innerHTML = p.help;
   // 저장된 키 불러오기
   try{
@@ -316,6 +324,16 @@ $("provider").addEventListener("change", () => {
   applyProvider();
 });
 $("model").addEventListener("input", () => { $("model").dataset.touched = "1"; });
+$("model").addEventListener("change", () => {
+  // 이 도구에서 모델을 직접 바꾸면 "AI 서비스 설정"과 다른 도구에도 그대로 반영되도록 공통 키에 저장한다.
+  try{
+    const savedModels = JSON.parse(localStorage.getItem("moriva_models") || "{}");
+    const v = $("model").value.trim();
+    if(v) savedModels[$("provider").value] = v;
+    else delete savedModels[$("provider").value];
+    localStorage.setItem("moriva_models", JSON.stringify(savedModels));
+  }catch(e){}
+});
 function persistKey(){
   try{
     const saved = JSON.parse(localStorage.getItem("moriva_keys") || "{}");
@@ -330,6 +348,12 @@ function persistKey(){
 $("savekey").addEventListener("change", persistKey);
 $("apikey").addEventListener("change", persistKey);
 loadSettings();
+const _openAiSettingsBtn = document.getElementById("openAiSettings");
+if(_openAiSettingsBtn){
+  _openAiSettingsBtn.addEventListener("click", () => {
+    window.parent.postMessage({ type: "moriva-go", id: "ai-settings" }, "*");
+  });
+}
 
 // ── 이미지 등록 ──
 function addFiles(fileList){
