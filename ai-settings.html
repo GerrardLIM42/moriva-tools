@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AI 서비스 설정</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7/babel.min.js" crossorigin></script>
+<style>
+  :root {
+    --navy-950: #0a0e1f; --navy-900: #10162f; --navy-800: #182142; --navy-700: #212e57;
+    --navy-600: #2c3c70; --navy-500: #3d4f8c; --navy-400: #5c6fac; --navy-300: #8899c9;
+    --navy-200: #b0bddf; --navy-100: #d7deef; --navy-50: #eef1f8;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", system-ui, sans-serif;
+    background: #ffffff; color: #16192a; -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: 720px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1.title { font-size: 20px; font-weight: 700; color: var(--navy-900); margin: 0 0 4px; }
+  .subtitle { font-size: 13px; color: #6b7280; margin: 0 0 20px; line-height: 1.6; }
+  .card { border: 1px solid var(--navy-100); border-radius: 16px; background: #fff; padding: 20px; margin-bottom: 20px; }
+  label.field-label { display: block; margin-bottom: 4px; font-size: 13px; font-weight: 500; color: var(--navy-700); }
+  input[type=text], input[type=password] {
+    width: 100%; border: 1px solid var(--navy-200); border-radius: 10px; padding: 9px 12px;
+    font-size: 13px; color: #16192a; outline: none; font-family: inherit; background: #fff;
+  }
+  input:focus { border-color: var(--navy-500); box-shadow: 0 0 0 2px rgba(61,79,140,.15); }
+  .hint { font-size: 12px; color: #9aa2b1; margin: 4px 0 0; line-height: 1.6; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    border-radius: 10px; font-size: 13px; font-weight: 500; padding: 9px 14px;
+    border: 1px solid var(--navy-200); background: #fff; color: var(--navy-700);
+    cursor: pointer; transition: background .15s;
+  }
+  .btn:hover { background: var(--navy-50); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-primary { background: var(--navy-900); border-color: var(--navy-900); color: #fff; font-weight: 600; }
+  .btn-primary:hover { background: var(--navy-800); }
+  .btn-danger { border-color: #fecaca; color: #dc2626; }
+  .btn-danger:hover { background: #fef2f2; }
+  .stack-tight { display: flex; flex-direction: column; gap: 6px; }
+  .toolbar-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .provider-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+  .provider-tab { flex: 1; min-width: 140px; border: 1px solid var(--navy-200); background: #fff; border-radius: 10px; padding: 10px 12px; text-align: left; cursor: pointer; }
+  .provider-tab.active { border-color: var(--navy-900); background: var(--navy-900); }
+  .provider-tab .t { font-size: 13px; font-weight: 700; display: block; color: var(--navy-800); }
+  .provider-tab.active .t { color: #fff; }
+  .provider-tab .s { font-size: 10.5px; display: block; margin-top: 2px; color: #9aa2b1; }
+  .provider-tab.active .s { color: var(--navy-200); }
+  .model-chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .model-chip { border: 1px solid var(--navy-200); background: #fff; border-radius: 10px; padding: 8px 12px; text-align: left; cursor: pointer; min-width: 130px; }
+  .model-chip.active { border-color: var(--navy-900); background: var(--navy-900); }
+  .model-chip .t { font-size: 12.5px; font-weight: 700; display: block; color: var(--navy-800); }
+  .model-chip.active .t { color: #fff; }
+  .model-chip .d { font-size: 10.5px; display: block; margin-top: 2px; color: #9aa2b1; }
+  .model-chip.active .d { color: var(--navy-200); }
+  .notice-box { border-radius: 10px; padding: 10px 12px; font-size: 13px; }
+  .notice-info { background: var(--navy-50); color: var(--navy-700); }
+  .status-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .status-cell { border: 1px solid var(--navy-100); border-radius: 12px; padding: 12px; text-align: center; }
+  .status-cell .name { font-size: 12px; font-weight: 700; color: var(--navy-800); }
+  .status-cell .state { font-size: 11px; margin-top: 4px; }
+  .status-cell .state.ok { color: #047857; }
+  .status-cell .state.empty { color: #dc2626; }
+  .status-cell .active-badge { display: inline-block; margin-top: 6px; font-size: 10px; padding: 2px 8px; border-radius: 999px; background: var(--navy-900); color: #fff; }
+  .tools-list { font-size: 12px; color: var(--navy-600); margin: 0; padding-left: 18px; line-height: 1.8; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect } = React;
+
+const LS_PROVIDER = "moriva_provider";
+const LS_KEYS = "moriva_keys";
+const LS_MODELS = "moriva_models";
+
+const PROVIDERS = {
+  claude: {
+    label: "Claude (Anthropic)",
+    keyPlaceholder: "sk-ant-api03-…",
+    models: [
+      { id: "claude-opus-5", label: "Opus 5", desc: "가장 강력함 · 정밀 분석 추천" },
+      { id: "claude-sonnet-5", label: "Sonnet 5", desc: "균형 잡힌 기본값" },
+      { id: "claude-haiku-4-5-20251001", label: "Haiku 4.5", desc: "가장 빠르고 저렴" },
+    ],
+    defaultModel: "claude-sonnet-5",
+    help: '키 발급: <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com → API Keys</a>.',
+  },
+  gemini: {
+    label: "Gemini (Google)",
+    keyPlaceholder: "AIzaSy…",
+    models: [
+      { id: "gemini-3-pro-preview", label: "3 Pro", desc: "가장 강력함 · 정밀 분석 추천" },
+      { id: "gemini-3.6-flash", label: "3.6 Flash", desc: "균형 잡힌 기본값" },
+      { id: "gemini-flash-latest", label: "Flash (최신 자동)", desc: "항상 최신 Flash로 자동 연결" },
+    ],
+    defaultModel: "gemini-3.6-flash",
+    help: '키 발급: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio → Get API key</a> (무료 사용량 제공).',
+  },
+  openai: {
+    label: "ChatGPT (OpenAI)",
+    keyPlaceholder: "sk-…",
+    models: [
+      { id: "gpt-5.5", label: "GPT-5.5", desc: "가장 강력함 · 정밀 분석 추천" },
+      { id: "gpt-5.4", label: "GPT-5.4", desc: "균형 잡힌 기본값" },
+      { id: "gpt-5.4-mini", label: "GPT-5.4 mini", desc: "가장 빠르고 저렴" },
+    ],
+    defaultModel: "gpt-5.4",
+    help: '키 발급: <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com → API keys</a>. ChatGPT Plus 구독과 별개로 API 크레딧 충전이 필요합니다. 계정/조직 설정에 따라 브라우저에서 직접 호출이 막혀 있을 수 있습니다.',
+  },
+};
+
+function loadSettings() {
+  try {
+    const provider = localStorage.getItem(LS_PROVIDER);
+    const keys = JSON.parse(localStorage.getItem(LS_KEYS) || "{}");
+    const models = JSON.parse(localStorage.getItem(LS_MODELS) || "{}");
+    return {
+      provider: PROVIDERS[provider] ? provider : "claude",
+      keys: { claude: keys.claude || "", openai: keys.openai || "", gemini: keys.gemini || "" },
+      models: {
+        claude: models.claude || PROVIDERS.claude.defaultModel,
+        openai: models.openai || PROVIDERS.openai.defaultModel,
+        gemini: models.gemini || PROVIDERS.gemini.defaultModel,
+      },
+    };
+  } catch {
+    return {
+      provider: "claude",
+      keys: { claude: "", openai: "", gemini: "" },
+      models: { claude: PROVIDERS.claude.defaultModel, openai: PROVIDERS.openai.defaultModel, gemini: PROVIDERS.gemini.defaultModel },
+    };
+  }
+}
+function saveSettings(settings) {
+  try {
+    localStorage.setItem(LS_PROVIDER, settings.provider);
+    localStorage.setItem(LS_KEYS, JSON.stringify(settings.keys));
+    localStorage.setItem(LS_MODELS, JSON.stringify(settings.models));
+  } catch {}
+}
+function maskKey(key) {
+  const t = (key || "").trim();
+  if (t.length <= 4) return "••••";
+  return "••••" + t.slice(-4);
+}
+
+function App() {
+  const [settings, setSettings] = useState(() => loadSettings());
+  const [activeTab, setActiveTab] = useState(() => loadSettings().provider);
+  const [apiKeyInput, setApiKeyInput] = useState("");
+  const [showKey, setShowKey] = useState(false);
+  const [notice, setNotice] = useState("");
+
+  useEffect(() => { saveSettings(settings); }, [settings]);
+  useEffect(() => { if (!notice) return; const t = setTimeout(() => setNotice(""), 4000); return () => clearTimeout(t); }, [notice]);
+
+  const conf = PROVIDERS[activeTab];
+  const currentKey = settings.keys[activeTab] || "";
+  const currentModel = settings.models[activeTab] || conf.defaultModel;
+
+  const switchTab = (p) => { setActiveTab(p); setApiKeyInput(""); setShowKey(false); };
+
+  const handleSaveKey = () => {
+    const trimmed = apiKeyInput.trim();
+    if (!trimmed) return;
+    setSettings((s) => ({ ...s, keys: { ...s.keys, [activeTab]: trimmed } }));
+    setApiKeyInput("");
+    setNotice(`${conf.label} 키를 저장했습니다.`);
+  };
+  const handleClearKey = () => {
+    if (!window.confirm(`저장된 ${conf.label} API 키를 삭제할까요?`)) return;
+    setSettings((s) => ({ ...s, keys: { ...s.keys, [activeTab]: "" } }));
+    setNotice(`저장된 ${conf.label} 키를 삭제했습니다.`);
+  };
+  const selectModel = (modelId) => {
+    setSettings((s) => ({ ...s, models: { ...s.models, [activeTab]: modelId } }));
+  };
+  const useThisProvider = () => {
+    setSettings((s) => ({ ...s, provider: activeTab }));
+    setNotice(`이제부터 모든 도구에서 ${conf.label}을(를) 기본으로 사용합니다.`);
+  };
+
+  return (
+    <div className="container">
+      <h1 className="title">⚙ AI 서비스 설정</h1>
+      <p className="subtitle">
+        여기서 저장한 API 키와 모델은 이 브라우저의 <b>모든 AI 도구</b>(상세페이지 프롬프트 생성기, 상품명 생성기 등)에서
+        공통으로 사용됩니다. 도구마다 따로 키를 입력할 필요가 없습니다. 키는 이 브라우저의 localStorage에만 저장되며,
+        각 도구가 분석을 요청할 때 선택된 AI 서비스로 직접 전송됩니다 (중간 서버 없음).
+      </p>
+
+      <div className="card">
+        <h3 style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 700, color: "var(--navy-900)" }}>현재 상태</h3>
+        <div className="status-grid">
+          {Object.keys(PROVIDERS).map((key) => (
+            <div key={key} className="status-cell">
+              <div className="name">{PROVIDERS[key].label.split(" ")[0]}</div>
+              <div className={"state " + (settings.keys[key] ? "ok" : "empty")}>
+                {settings.keys[key] ? "키 저장됨" : "키 없음"}
+              </div>
+              {settings.provider === key && <span className="active-badge">기본 사용 중</span>}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="stack-tight" style={{ marginBottom: 14 }}>
+          <label className="field-label">AI 서비스 선택</label>
+          <div className="provider-tabs">
+            {Object.keys(PROVIDERS).map((key) => (
+              <button key={key} type="button" className={"provider-tab" + (activeTab === key ? " active" : "")} onClick={() => switchTab(key)}>
+                <span className="t">{PROVIDERS[key].label}</span>
+                <span className="s">{settings.keys[key] ? `저장됨 (${maskKey(settings.keys[key])})` : "키 없음"}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="stack-tight" style={{ marginBottom: 14 }}>
+          <label className="field-label">{conf.label} API 키</label>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              type={showKey ? "text" : "password"}
+              value={apiKeyInput}
+              onChange={(e) => setApiKeyInput(e.target.value)}
+              placeholder={currentKey ? maskKey(currentKey) : conf.keyPlaceholder}
+              autoComplete="off"
+            />
+            <button type="button" className="btn" onClick={() => setShowKey((v) => !v)} style={{ flexShrink: 0 }}>{showKey ? "숨기기" : "표시"}</button>
+            <button type="button" className="btn btn-primary" onClick={handleSaveKey} disabled={!apiKeyInput.trim()} style={{ flexShrink: 0 }}>저장</button>
+          </div>
+          <p className="hint" dangerouslySetInnerHTML={{ __html: conf.help }} />
+        </div>
+
+        <div className="stack-tight" style={{ marginBottom: 14 }}>
+          <label className="field-label">모델 선택</label>
+          <div className="model-chip-row">
+            {conf.models.map((m) => (
+              <button key={m.id} type="button" className={"model-chip" + (currentModel === m.id ? " active" : "")} onClick={() => selectModel(m.id)}>
+                <span className="t">{m.label}</span>
+                <span className="d">{m.desc}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {notice && <div className="notice-box notice-info" style={{ marginBottom: 12 }}>{notice}</div>}
+        <div className="toolbar-row">
+          <button type="button" className="btn btn-primary" onClick={useThisProvider} disabled={activeTab === settings.provider}>
+            {activeTab === settings.provider ? `${conf.label} 기본 사용 중` : `${conf.label}을(를) 기본으로 사용`}
+          </button>
+          {currentKey && <button type="button" className="btn btn-danger" onClick={handleClearKey}>저장된 키 삭제</button>}
+        </div>
+      </div>
+
+      <div className="card">
+        <h3 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: "var(--navy-900)" }}>이 설정을 사용하는 도구</h3>
+        <ul className="tools-list">
+          <li>상세페이지 프롬프트 생성기</li>
+          <li>상품명 생성기</li>
+        </ul>
+        <p className="hint" style={{ marginTop: 10 }}>
+          API 키는 개인 기기에서만 사용하세요. 공용 컴퓨터나 공유 브라우저에서는 사용을 피하세요.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
