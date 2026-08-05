@@ -273,6 +273,14 @@ function fetchAnalyses() {
     });
 }
 
+// saas-starter의 "모리바 도구모음에서 분석 기록 보기" 버튼을 통해 들어온 경우,
+// index.html이 이 프레임 주소에 ?token=...을 실어서 전달한다. 있으면 바로
+// 저장해서 사용자가 코드를 직접 붙여넣지 않아도 되게 한다.
+try {
+  var urlToken = new URLSearchParams(location.search).get("token");
+  if (urlToken) saveToken(urlToken);
+} catch (e) {}
+
 tokenInput.value = loadToken();
 saveBtn.addEventListener("click", function () {
   saveToken(tokenInput.value.trim());
