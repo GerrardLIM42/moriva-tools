@@ -77,6 +77,7 @@
   .detail-list{margin-top:10px;display:flex;flex-direction:column;gap:8px;}
   .detail-item{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:8px;padding:6px;}
   .detail-item img{width:44px;height:44px;object-fit:cover;border-radius:4px;flex-shrink:0;}
+  .detail-item .vid-ph{width:44px;height:44px;border-radius:4px;flex-shrink:0;background:#1b2a3d;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;}
   .detail-item .name{flex:1;font-size:11.5px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .icon-btn{
     width:22px;height:22px;border:1px solid var(--border);background:#fff;border-radius:5px;font-size:11px;cursor:pointer;
@@ -212,7 +213,7 @@
     font-size:14.5px;font-weight:700;margin:0;padding:20px 14px 12px;border-top:8px solid #f4f5f7;
     margin-left:-14px;margin-right:-14px;
   }
-  .m-detail-imgs img{width:100%;display:block;}
+  .m-detail-imgs img,.m-detail-imgs video{width:100%;display:block;}
   .m-buybar{display:flex;gap:8px;padding:10px 14px;border-top:1px solid #eee;background:#fff;}
   .m-buybar button{flex:1;padding:13px 0;border-radius:8px;border:none;font-size:14px;font-weight:700;cursor:pointer;}
   .m-buybar .cart{background:#fff;border:1.5px solid var(--coupang-blue);color:var(--coupang-blue);}
@@ -282,7 +283,7 @@
   .pc-seller-box{margin:0 40px 10px;background:#fafbfc;border-radius:10px;padding:16px 18px;font-size:12.5px;color:#555;line-height:1.9;}
   .pc-seller-box b{color:#1a1a1a;}
   .pc-detail-imgs{padding:0 40px 40px;text-align:center;}
-  .pc-detail-imgs img{max-width:780px;width:100%;display:block;margin:0 auto;}
+  .pc-detail-imgs img,.pc-detail-imgs video{max-width:780px;width:100%;display:block;margin:0 auto;}
   .pc-empty{display:flex;align-items:center;justify-content:center;flex-direction:column;color:#c7c9cf;font-size:13px;height:100%;gap:10px;}
   .ph-mini{display:flex;align-items:center;justify-content:center;background:repeating-linear-gradient(45deg,#f7f7f8,#f7f7f8 8px,#efeff1 8px,#efeff1 16px);color:#c3c6cc;font-size:9px;}
 
@@ -336,31 +337,31 @@
     <div class="section">
       <div class="section-label">상품 기본 정보</div>
       <div class="field"><label>스토어명</label>
-        <input type="text" id="in-store" value="MORIVA" oninput="render()"></div>
+        <input type="text" id="in-store" placeholder="MORIVA" oninput="render()"></div>
       <div class="field"><label>판매자 상호(정식명)</label>
-        <input type="text" id="in-sellerlegal" value="주식회사 모리바(MORIVA)" oninput="render()"></div>
+        <input type="text" id="in-sellerlegal" placeholder="주식회사 모리바(MORIVA)" oninput="render()"></div>
       <div class="field"><label>상품명</label>
-        <input type="text" id="in-title" value="[MORIVA] 프리미엄 접이식 캠핑 테이블 대형 알루미늄 야외 휴대용 초경량" oninput="render()"></div>
+        <input type="text" id="in-title" placeholder="[MORIVA] 프리미엄 접이식 캠핑 테이블 대형 알루미늄 야외 휴대용 초경량" oninput="render()"></div>
       <div class="field"><label>카테고리 랭킹 문구</label>
-        <input type="text" id="in-rank" value="캠핑용품 구매 1위" oninput="render()"></div>
+        <input type="text" id="in-rank" placeholder="캠핑용품 구매 1위" oninput="render()"></div>
       <div class="field"><label>옵션 문구 (예: 색상 x 사이즈 x 수량)</label>
-        <input type="text" id="in-option" value="색상 x 사이즈 x 수량  블랙 x 대형 x 1개" oninput="render()"></div>
+        <input type="text" id="in-option" placeholder="색상 x 사이즈 x 수량  블랙 x 대형 x 1개" oninput="render()"></div>
       <div class="row2">
-        <div class="field"><label>할인율(%)</label><input type="number" id="in-discount" value="17" oninput="render()"></div>
-        <div class="field"><label>판매가(원)</label><input type="number" id="in-price" value="27800" oninput="render()"></div>
+        <div class="field"><label>할인율(%)</label><input type="number" id="in-discount" placeholder="17" oninput="render()"></div>
+        <div class="field"><label>판매가(원)</label><input type="number" id="in-price" placeholder="27800" oninput="render()"></div>
       </div>
       <div class="field"><label>정가(원, 취소선)</label>
-        <input type="number" id="in-original" value="33500" oninput="render()"></div>
+        <input type="number" id="in-original" placeholder="33500" oninput="render()"></div>
       <div class="field"><label>쿠폰할인 문구</label>
-        <input type="text" id="in-coupon" value="2,000원 쿠폰할인 · 11시간 남음" oninput="render()"></div>
+        <input type="text" id="in-coupon" placeholder="2,000원 쿠폰할인 · 11시간 남음" oninput="render()"></div>
       <div class="row2">
-        <div class="field"><label>평점</label><input type="number" id="in-rating" value="4.5" step="0.1" oninput="render()"></div>
-        <div class="field"><label>리뷰수</label><input type="number" id="in-reviews" value="2648" oninput="render()"></div>
+        <div class="field"><label>평점</label><input type="number" id="in-rating" placeholder="4.5" step="0.1" oninput="render()"></div>
+        <div class="field"><label>리뷰수</label><input type="number" id="in-reviews" placeholder="2648" oninput="render()"></div>
       </div>
       <div class="field"><label>배송 도착 문구</label>
-        <input type="text" id="in-deliver" value="내일(7/17) 새벽 7시 전 도착" oninput="render()"></div>
+        <input type="text" id="in-deliver" placeholder="내일(7/17) 새벽 7시 전 도착" oninput="render()"></div>
       <div class="field"><label>구매 사회적증거 문구</label>
-        <input type="text" id="in-social" value="한 달간 3,200명 이상 구매했어요" oninput="render()"></div>
+        <input type="text" id="in-social" placeholder="한 달간 3,200명 이상 구매했어요" oninput="render()"></div>
       <div class="field"><label>주의사항 안내문구 (선택, 비우면 표시 안 함)</label>
         <input type="text" id="in-notice" value="" placeholder="예: 저가 제품과 다르게 저희가 직접 제작했습니다" oninput="render()"></div>
     </div>
@@ -377,14 +378,17 @@
       <div class="section-label">📄 상세페이지 이미지</div>
       <label class="upload-btn">+ 상세페이지 이미지 추가 (여러 장 선택 가능)
         <input type="file" accept="image/*" multiple onchange="handleDetailUpload(event)"></label>
+      <label class="upload-btn">🎬 + 동영상 추가 (목록 맨 아래에 추가되며, ▲▼로 원하는 위치로 옮길 수 있어요)
+        <input type="file" accept="video/*" multiple onchange="handleDetailVideoUpload(event)"></label>
       <div class="detail-list" id="detail-list"></div>
       <div class="empty-hint" id="detail-empty">아직 등록된 상세페이지 이미지가 없어요</div>
     </div>
 
     <p class="footer-note">
-      * 업로드한 이미지는 서버로 전송되지 않고 브라우저 안에서만 미리보기로 사용됩니다.<br>
+      * 업로드한 이미지·동영상은 서버로 전송되지 않고 브라우저 안에서만 미리보기로 사용됩니다.<br>
       * 실제 쿠팡 화면과 100% 동일하지 않은 목업(mock-up) 화면입니다.<br>
-      * "실행" 버튼을 누르면 좌측 패널 없이 화면 전체로 상품페이지를 확인할 수 있어요.
+      * "실행" 버튼을 누르면 좌측 패널 없이 화면 전체로 상품페이지를 확인할 수 있어요.<br>
+      * 동영상은 용량이 크면 브라우저가 느려질 수 있으니 너무 긴 파일은 피해주세요.
     </p>
   </div>
 
@@ -405,6 +409,24 @@
 let state = { device: 'mobile', thumbs: [], details: [], prodNo: (8000000000 + Math.floor(Math.random()*999999999)) + ' - ' + (10000000 + Math.floor(Math.random()*89999999)) };
 let uid = 1;
 
+// 클릭 전에는 이 값들이 입력칸에 예시(placeholder)로만 보이고,
+// 실제로 아무것도 입력하지 않은 채로 두면 미리보기에는 이 예시값이 그대로 사용됩니다.
+const DEFAULTS = {
+  store: 'MORIVA',
+  sellerLegal: '주식회사 모리바(MORIVA)',
+  title: '[MORIVA] 프리미엄 접이식 캠핑 테이블 대형 알루미늄 야외 휴대용 초경량',
+  rank: '캠핑용품 구매 1위',
+  option: '색상 x 사이즈 x 수량  블랙 x 대형 x 1개',
+  discount: 17,
+  price: 27800,
+  original: 33500,
+  coupon: '2,000원 쿠폰할인 · 11시간 남음',
+  rating: 4.5,
+  reviews: 2648,
+  deliver: '내일(7/17) 새벽 7시 전 도착',
+  social: '한 달간 3,200명 이상 구매했어요'
+};
+
 function fileToDataURL(file){
   return new Promise((res,rej)=>{
     const r = new FileReader();
@@ -421,7 +443,12 @@ async function handleThumbUpload(e){
 }
 async function handleDetailUpload(e){
   const files = Array.from(e.target.files);
-  for(const f of files){ const src = await fileToDataURL(f); state.details.push({id:uid++, src, name:f.name}); }
+  for(const f of files){ const src = await fileToDataURL(f); state.details.push({id:uid++, src, name:f.name, type:'image'}); }
+  e.target.value=''; renderControls(); render();
+}
+async function handleDetailVideoUpload(e){
+  const files = Array.from(e.target.files);
+  for(const f of files){ const src = await fileToDataURL(f); state.details.push({id:uid++, src, name:f.name, type:'video'}); }
   e.target.value=''; renderControls(); render();
 }
 function removeThumb(id){ state.thumbs = state.thumbs.filter(t=>t.id!==id); renderControls(); render(); }
@@ -463,9 +490,11 @@ function renderControls(){
   state.details.forEach((d,i)=>{
     const div = document.createElement('div');
     div.className = 'detail-item';
+    const isVideo = d.type === 'video';
+    const preview = isVideo ? `<div class="vid-ph">▶</div>` : `<img src="${d.src}">`;
     div.innerHTML = `
-      <img src="${d.src}">
-      <div class="name">${i+1}. ${d.name}</div>
+      ${preview}
+      <div class="name">${i+1}. ${isVideo ? '🎬 ' : ''}${d.name}</div>
       <div class="icon-btn" onclick="moveDetail(${d.id}, -1)">▲</div>
       <div class="icon-btn" onclick="moveDetail(${d.id}, 1)">▼</div>
       <div class="icon-btn danger" onclick="removeDetail(${d.id})">✕</div>`;
@@ -485,19 +514,19 @@ function fmt(n){ n = Number(n)||0; return n.toLocaleString('ko-KR'); }
 
 function getVals(){
   return {
-    store: document.getElementById('in-store').value || 'STORE',
-    sellerLegal: document.getElementById('in-sellerlegal').value || '',
-    title: document.getElementById('in-title').value || '상품명을 입력해주세요',
-    rank: document.getElementById('in-rank').value || '',
-    option: document.getElementById('in-option').value || '',
-    discount: document.getElementById('in-discount').value || 0,
-    price: document.getElementById('in-price').value || 0,
-    original: document.getElementById('in-original').value || 0,
-    coupon: document.getElementById('in-coupon').value || '',
-    rating: document.getElementById('in-rating').value || 0,
-    reviews: document.getElementById('in-reviews').value || 0,
-    deliver: document.getElementById('in-deliver').value || '',
-    social: document.getElementById('in-social').value || '',
+    store: document.getElementById('in-store').value || DEFAULTS.store,
+    sellerLegal: document.getElementById('in-sellerlegal').value || DEFAULTS.sellerLegal,
+    title: document.getElementById('in-title').value || DEFAULTS.title,
+    rank: document.getElementById('in-rank').value || DEFAULTS.rank,
+    option: document.getElementById('in-option').value || DEFAULTS.option,
+    discount: document.getElementById('in-discount').value || DEFAULTS.discount,
+    price: document.getElementById('in-price').value || DEFAULTS.price,
+    original: document.getElementById('in-original').value || DEFAULTS.original,
+    coupon: document.getElementById('in-coupon').value || DEFAULTS.coupon,
+    rating: document.getElementById('in-rating').value || DEFAULTS.rating,
+    reviews: document.getElementById('in-reviews').value || DEFAULTS.reviews,
+    deliver: document.getElementById('in-deliver').value || DEFAULTS.deliver,
+    social: document.getElementById('in-social').value || DEFAULTS.social,
     notice: document.getElementById('in-notice') ? document.getElementById('in-notice').value : ''
   };
 }
@@ -520,7 +549,9 @@ function mobileInnerHTML(v){
 
   const details = state.details.length
     ? `<div class="m-section-title">상품 상세정보</div>
-       <div class="m-detail-imgs">${state.details.map(d=>`<img src="${d.src}">`).join('')}</div>`
+       <div class="m-detail-imgs">${state.details.map(d=> d.type==='video'
+         ? `<video src="${d.src}" controls playsinline preload="metadata"></video>`
+         : `<img src="${d.src}">`).join('')}</div>`
     : `<div class="m-section-title">상품 상세정보</div>
        <div class="m-empty" style="height:200px;">등록된 상세페이지 이미지가<br>여기에 표시됩니다</div>`;
 
@@ -605,7 +636,9 @@ function pcInnerHTML(v){
     ? state.thumbs.map(t=>`<img src="${t.src}">`).join('')
     : `<div class="ph-mini" style="width:56px;height:56px;border-radius:6px;">이미지</div>`;
   const details = state.details.length
-    ? state.details.map(d=>`<img src="${d.src}">`).join('')
+    ? state.details.map(d=> d.type==='video'
+        ? `<video src="${d.src}" controls playsinline preload="metadata"></video>`
+        : `<img src="${d.src}">`).join('')
     : `<div class="pc-empty" style="height:260px;">등록된 상세페이지 이미지가 여기에 표시됩니다</div>`;
 
   return `
