@@ -127,6 +127,8 @@
   .word.B{background:var(--navy);color:#fff}
   .word.T{background:var(--gold);color:#fff}
   .word.S{background:var(--navy-soft);color:var(--navy)}
+  .word.flag{box-shadow:0 0 0 2px #d0392c inset}
+  .rec .exwarn{margin-top:8px;font-size:12px;font-weight:700;color:#c0392b}
   .rec .why{margin-top:10px;font-size:13px;color:var(--gray);line-height:1.55}
   .rec .foot{margin-top:10px;display:flex;align-items:center;gap:10px}
   .copy{border:1px solid var(--line);background:#fff;color:var(--navy-deep);border-radius:7px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
@@ -200,6 +202,10 @@
         <span>참고사항 <em class="opt">(선택)</em></span>
         <input id="hint" placeholder="예: 중소형 카테고리 / 여름 시즌 강조 / 러닝용">
       </label>
+      <label class="field" style="grid-column:1/-1">
+        <span>제외 키워드 <em class="opt">(선택 — 상품명에 절대 넣지 않을 표현, 쉼표로 구분)</em></span>
+        <input id="exclude" placeholder="예: 롤타입, 형광, 대용량">
+      </label>
     </div>
 
     <div class="keybox">
@@ -259,6 +265,7 @@
 <script>
 const $ = (id) => document.getElementById(id);
 let lastResult = null; // 마지막 분석 결과(저장·불러오기에 사용)
+let currentExcludeTerms = []; // 마지막 분석에 사용한 제외 키워드
 let images = [];      // 검색결과 스크린샷
 let autoImages = [];  // 자동완성/연관검색어 캡처
 let sendImages = [];  // 전송용 (검색결과 + 자동완성)
@@ -655,6 +662,14 @@ async function analyze(){
     .filter(Boolean)
     .slice(0, 20);
 
+  // 제외 키워드 정리 (줄바꿈/쉼표 구분)
+  const excludeTerms = $("exclude").value
+    .split(/[\n,]+/)
+    .map(s => s.trim())
+    .filter(Boolean)
+    .slice(0, 20);
+  currentExcludeTerms = excludeTerms;
+
   // 전송 이미지: 검색결과 스크린샷 먼저, 자동완성 캡처 나중
   sendImages = [...images, ...autoImages];
 
@@ -685,6 +700,7 @@ ${autoBlock}
 - 5가지 안은 서로 다른 검색 수요를 커버하는 서로 다른 조합.
 - 공백 포함 50자 이내 목표, 80자 초과 금지. 동일 키워드 반복 금지, 특수문자 금지.
 - 상위노출 상품명에 실제 등장한 검색 키워드만 사용.
+${excludeTerms.length ? "- [필수] 다음 표현은 어떤 형태로도(부분 포함·유사 표현 포함) 5단어 상품명에 절대 사용하지 않는다: " + excludeTerms.join(", ") : ""}
 ${hint ? "- 참고: " + hint : ""}
 
 [출력 — 매우 중요]
@@ -767,16 +783,21 @@ function render(parsed, recs){
     const len = name.length;
     const words = name.split(/\s+/);
     const roles = (rec.ro || "").split(",").map(r => r.trim());
+    const hasExcluded = (w) => currentExcludeTerms.some(ex => ex && w.toLowerCase().includes(ex.toLowerCase()));
+    let anyExcluded = false;
     const chips = words.map((w, j) => {
       const role = roles[j] || (j === 0 ? "B" : "S");
       const cls = (role === "B" || role === "T" || role === "S") ? role : "S";
-      return `<span class="word ${cls}">${esch(w)}</span>`;
+      const flagged = hasExcluded(w);
+      if (flagged) anyExcluded = true;
+      return `<span class="word ${cls}${flagged ? " flag" : ""}"${flagged ? ' title="제외 요청 키워드 포함"' : ""}>${esch(w)}</span>`;
     }).join("");
     const wordWarn = words.length !== 5 ? `<span class="len over">(${words.length}단어)</span>` : "";
     return `
     <div class="rec">
       <div class="words"><span class="no">${i+1}안</span>${chips}${wordWarn}</div>
       ${rec.w ? `<div class="why">${esch(rec.w)}</div>` : ""}
+      ${anyExcluded ? `<div class="exwarn">⚠ 제외 요청한 키워드가 포함되어 있습니다. 다시 생성하거나 직접 수정해 주세요.</div>` : ""}
       <div class="foot">
         <button class="copy" data-name="${esch(name)}">상품명 복사</button>
         <span class="len ${len > 50 ? "over" : ""}">${len}자 ${len <= 50 ? "· 50자 이내 ✓" : "· 50자 초과 주의"}</span>
