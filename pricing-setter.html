@@ -137,6 +137,9 @@
     background:var(--surface);
   }
   .plain-num-input span{font-family:var(--mono); font-size:13px; color:var(--ink-soft);}
+  .hint-note{font-size:10px; color:var(--ink-faint); margin-top:6px; line-height:1.5;}
+  .vat-toggle-row{display:flex; align-items:center; gap:7px; font-size:13px; color:var(--ink); font-weight:600; cursor:pointer; margin-top:2px;}
+  .vat-toggle-row input{width:15px; height:15px; cursor:pointer; accent-color:var(--navy);}
 
   /* ---- 비교표 ---- */
   .compare-wrap{
@@ -547,6 +550,47 @@
   .margin-item.margin-highlight.negative{background:var(--brick-soft);}
   .margin-item.margin-highlight.negative strong{color:var(--brick);}
 
+  .cost-row select.logistics-select{
+    font-family:var(--mono);
+    font-size:12.5px;
+    font-weight:600;
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:5px 8px;
+    color:var(--ink);
+    background:var(--surface);
+    flex:1;
+    min-width:0;
+  }
+  .cost-row input.logistics-custom{width:84px; margin-left:0;}
+
+  .margin-bar-wrap{margin-top:12px;}
+  .margin-bar-label{font-size:10.5px; color:var(--ink-soft); font-weight:600; margin-bottom:6px;}
+  .margin-bar{
+    display:flex;
+    width:100%;
+    height:22px;
+    border-radius:6px;
+    overflow:hidden;
+    background:var(--line);
+  }
+  .margin-bar .seg{height:100%; min-width:0; transition:width .15s;}
+  .margin-bar .seg.seg-cost{background:var(--brick);}
+  .margin-bar .seg.seg-fee{background:var(--amber);}
+  .margin-bar .seg.seg-logi{background:var(--slate);}
+  .margin-bar .seg.seg-vat{background:var(--navy);}
+  .margin-bar .seg.seg-margin{background:var(--green);}
+  .margin-bar .seg.seg-margin.negative{background:var(--brick);}
+  .margin-legend{display:flex; flex-wrap:wrap; gap:7px 14px; margin-top:9px;}
+  .margin-legend .leg-item{display:flex; align-items:center; gap:5px; font-size:10.5px; color:var(--ink-soft);}
+  .margin-legend .dot{width:8px; height:8px; border-radius:2px; flex-shrink:0;}
+  .margin-legend .dot.seg-cost{background:var(--brick);}
+  .margin-legend .dot.seg-fee{background:var(--amber);}
+  .margin-legend .dot.seg-logi{background:var(--slate);}
+  .margin-legend .dot.seg-vat{background:var(--navy);}
+  .margin-legend .dot.seg-margin{background:var(--green);}
+  .margin-legend strong{color:var(--ink); font-family:var(--mono); font-weight:700; font-size:11px;}
+
   .add-card-wrap{
     flex:1 1 360px;
     max-width:420px;
@@ -617,12 +661,13 @@
 
   <section class="global-settings">
     <div class="control">
-      <label>환율 <span class="hint">(¥1 → ₩, 직접 확인 후 입력)</span></label>
+      <label>중국 원가 간편비율 <span class="hint">(¥1 → ₩, 관부가세·배송비 버퍼 포함 추정)</span></label>
       <div class="plain-num-input">
         <span>¥1 =</span>
-        <input type="text" inputmode="decimal" id="gExchangeRate" value="212">
+        <input type="text" inputmode="decimal" id="gExchangeRate" value="300">
         <span>원</span>
       </div>
+      <div class="hint-note">기본 ₩300 — 실제 환율과 다르며 통관·배송비 버퍼가 포함된 추정치예요. 직접 수정 가능합니다.</div>
     </div>
     <div class="control">
       <label>쿠팡 판매수수료 <span class="hint">(%, 카테고리별 상이)</span></label>
@@ -630,6 +675,13 @@
         <input type="text" inputmode="decimal" id="gFeeRate" value="10.8">
         <span>%</span>
       </div>
+    </div>
+    <div class="control">
+      <label>부가세 <span class="hint">(일반과세자 매출세액, 최종소비자가 ÷ 11)</span></label>
+      <label class="vat-toggle-row" for="gVatOn">
+        <input type="checkbox" id="gVatOn" checked>
+        <span>마진 계산에 반영</span>
+      </label>
     </div>
   </section>
 
@@ -656,7 +708,7 @@
   <footer class="note">
     기본 로직 — 판매가 = 최종소비자가 + 즉시할인 + 다운할인 · 정상가 = 판매가 ÷ (1 − 표시할인율), 100원 단위 반올림.<br>
     최종소비자가가 기준값입니다. 최종소비자가는 직접 입력할 때만 바뀌고, 즉시할인·판매가·다운할인 중 어떤 값을 수정해도 최종소비자가는 그대로 유지된 채 그 변화가 판매가를 거쳐 정상가에 반영됩니다.<br>
-    마진 계산 — 원가(₩) = 중국 원가(¥) × 환율 · 정산예상액 = 최종소비자가 × (1 − 수수료율) · 마진 = 정산예상액 − 원가(₩). 실제 정산 기준(즉시할인·쿠폰 반영 여부 등)은 판매 정책에 따라 달라질 수 있어 참고용 추정치입니다.
+    마진 계산 — 원가(₩) = 중국 원가(¥) × 간편비율(기본 300원, 관부가세·배송비 버퍼 포함 추정) · 정산예상액 = 최종소비자가 − 판매수수료 − 로켓그로스 물류비 · 부가세 = 최종소비자가 ÷ 11(일반과세자 매출세액 기준 간편 추정, 매입세액공제 미반영) · 마진 = 정산예상액 − 원가(₩) − 부가세. 막대그래프는 최종소비자가를 원가·판매수수료·물류비·부가세·순마진 비율로 나눠 보여줍니다. 실제 정산·세금 기준은 사업자 유형과 판매 정책에 따라 달라질 수 있어 참고용 추정치입니다.
   </footer>
 </div>
 
@@ -670,7 +722,8 @@
   const compareBody = document.getElementById('compareBody');
   const gEls = {
     exchangeRate: document.getElementById('gExchangeRate'),
-    feeRate: document.getElementById('gFeeRate')
+    feeRate: document.getElementById('gFeeRate'),
+    vatOn: document.getElementById('gVatOn')
   };
 
   function fmt(n){
@@ -688,7 +741,8 @@
   function globalNums(){
     return {
       exchangeRate: parseNum(gEls.exchangeRate.value) || 0,
-      feeRate: parseFloat(String(gEls.feeRate.value).replace(/[^0-9.\-]/g,'')) || 0
+      feeRate: parseFloat(String(gEls.feeRate.value).replace(/[^0-9.\-]/g,'')) || 0,
+      vatOn: gEls.vatOn ? gEls.vatOn.checked : true
     };
   }
 
@@ -786,6 +840,18 @@
           <input type="text" inputmode="decimal" id="c${uid}-costCny" value="0">
           <span class="cost-krw" id="c${uid}-costKrw">= ₩0</span>
         </div>
+        <div class="cost-row">
+          <label>로켓그로스 물류비</label>
+          <select id="c${uid}-logisticsTier" class="logistics-select">
+            <option value="1800">극소형 (50g 이하) · ₩1,800</option>
+            <option value="2500">소형 (2kg 이하) · ₩2,500</option>
+            <option value="3500">중형 (5kg 이하) · ₩3,500</option>
+            <option value="5000">대형 (10kg 이하) · ₩5,000</option>
+            <option value="7500">특대형 (10kg 초과) · ₩7,500</option>
+            <option value="custom">직접입력</option>
+          </select>
+          <input type="text" inputmode="decimal" id="c${uid}-logisticsCustom" class="logistics-custom" style="display:none;" placeholder="₩">
+        </div>
         <div class="margin-grid">
           <div class="margin-item">
             <span>정산예상액</span>
@@ -795,6 +861,14 @@
             <span>원가(₩)</span>
             <strong id="c${uid}-costKrwBig">₩0</strong>
           </div>
+          <div class="margin-item">
+            <span>로켓그로스 물류비</span>
+            <strong id="c${uid}-logisticsAmt">₩0</strong>
+          </div>
+          <div class="margin-item">
+            <span>부가세</span>
+            <strong id="c${uid}-vatAmt">₩0</strong>
+          </div>
           <div class="margin-item margin-highlight" id="c${uid}-marginBox">
             <span>마진</span>
             <strong id="c${uid}-marginAmt">₩0</strong>
@@ -802,6 +876,23 @@
           <div class="margin-item margin-highlight" id="c${uid}-marginRateBox">
             <span>마진율 (최종소비자가 기준)</span>
             <strong id="c${uid}-marginRateLabel">0.0%</strong>
+          </div>
+        </div>
+        <div class="margin-bar-wrap">
+          <div class="margin-bar-label">최종소비자가 구성 비율</div>
+          <div class="margin-bar" id="c${uid}-marginBar">
+            <div class="seg seg-cost" id="c${uid}-segCost"></div>
+            <div class="seg seg-fee" id="c${uid}-segFee"></div>
+            <div class="seg seg-logi" id="c${uid}-segLogi"></div>
+            <div class="seg seg-vat" id="c${uid}-segVat"></div>
+            <div class="seg seg-margin" id="c${uid}-segMargin"></div>
+          </div>
+          <div class="margin-legend">
+            <span class="leg-item"><span class="dot seg-cost"></span>원가 <strong id="c${uid}-legCost">₩0</strong></span>
+            <span class="leg-item"><span class="dot seg-fee"></span>판매수수료 <strong id="c${uid}-legFee">₩0</strong></span>
+            <span class="leg-item"><span class="dot seg-logi"></span>물류비 <strong id="c${uid}-legLogi">₩0</strong></span>
+            <span class="leg-item"><span class="dot seg-vat"></span>부가세 <strong id="c${uid}-legVat">₩0</strong></span>
+            <span class="leg-item"><span class="dot seg-margin"></span>순마진 <strong id="c${uid}-legMargin">₩0</strong></span>
           </div>
         </div>
       </div>
@@ -816,7 +907,8 @@
       downDiscount: (typeof opts.downDiscount === 'number') ? opts.downDiscount : 100,
       targetRate: (typeof opts.targetRate === 'number') ? opts.targetRate : 50,
       roundUnit: (typeof opts.roundUnit === 'number') ? opts.roundUnit : 100,
-      costCny: (typeof opts.costCny === 'number') ? opts.costCny : 0
+      costCny: (typeof opts.costCny === 'number') ? opts.costCny : 0,
+      logisticsFee: (typeof opts.logisticsFee === 'number') ? opts.logisticsFee : 2500
     };
 
     const g = (id) => document.getElementById(`c${uid}-${id}`);
@@ -829,12 +921,30 @@
       subValue: g('subValue'), displayRateLabel: g('displayRateLabel'),
       totalRateLabel: g('totalRateLabel'), instantRateLabel: g('instantRateLabel'), instantPct: g('instantPct'),
       costCny: g('costCny'), costKrw: g('costKrw'),
+      logisticsTier: g('logisticsTier'), logisticsCustom: g('logisticsCustom'),
       settleAmt: g('settleAmt'), costKrwBig: g('costKrwBig'),
+      logisticsAmt: g('logisticsAmt'), vatAmt: g('vatAmt'),
       marginAmt: g('marginAmt'), marginRateLabel: g('marginRateLabel'),
       marginBox: g('marginBox'), marginRateBox: g('marginRateBox'),
+      segCost: g('segCost'), segFee: g('segFee'), segLogi: g('segLogi'),
+      segVat: g('segVat'), segMargin: g('segMargin'),
+      legCost: g('legCost'), legFee: g('legFee'), legLogi: g('legLogi'),
+      legVat: g('legVat'), legMargin: g('legMargin'),
       remove: g('remove')
     };
     els.roundUnit.value = String(state.roundUnit);
+    (function initLogisticsSelect(){
+      const presets = ['1800','2500','3500','5000','7500'];
+      const feeStr = String(state.logisticsFee);
+      if (presets.includes(feeStr)){
+        els.logisticsTier.value = feeStr;
+        els.logisticsCustom.style.display = 'none';
+      } else {
+        els.logisticsTier.value = 'custom';
+        els.logisticsCustom.style.display = '';
+        els.logisticsCustom.value = String(state.logisticsFee);
+      }
+    })();
 
     function derive(){
       const salePrice = state.finalPrice + state.instantDiscount + state.downDiscount;
@@ -848,10 +958,13 @@
     function deriveMargin(){
       const gn = globalNums();
       const costKrw = state.costCny * gn.exchangeRate;
-      const settleAmt = state.finalPrice * (1 - gn.feeRate / 100);
-      const margin = settleAmt - costKrw;
+      const commission = state.finalPrice * (gn.feeRate / 100);
+      const logisticsFee = state.logisticsFee || 0;
+      const vat = gn.vatOn ? state.finalPrice / 11 : 0;
+      const settleAmt = state.finalPrice - commission - logisticsFee;
+      const margin = settleAmt - costKrw - vat;
       const marginRate = state.finalPrice > 0 ? (margin / state.finalPrice) * 100 : 0;
-      return { costKrw, settleAmt, margin, marginRate };
+      return { costKrw, commission, logisticsFee, vat, settleAmt, margin, marginRate };
     }
 
     function render(){
@@ -881,14 +994,40 @@
       els.instantPct.textContent = salePrice > 0 ? '(' + instantRate.toFixed(0) + '%)' : '';
 
       if (active !== els.costCny) els.costCny.value = state.costCny ? String(state.costCny) : '0';
+      if (active !== els.logisticsCustom && els.logisticsTier.value === 'custom'){
+        els.logisticsCustom.value = state.logisticsFee ? String(state.logisticsFee) : '0';
+      }
       const m = deriveMargin();
       els.costKrw.textContent = '= ₩' + fmt(m.costKrw);
       els.settleAmt.textContent = '₩' + fmt(m.settleAmt);
       els.costKrwBig.textContent = '₩' + fmt(m.costKrw);
+      els.logisticsAmt.textContent = '₩' + fmt(m.logisticsFee);
+      els.vatAmt.textContent = '₩' + fmt(m.vat);
       els.marginAmt.textContent = m.margin < 0 ? '-₩' + fmt(Math.abs(m.margin)) : '₩' + fmt(m.margin);
       els.marginRateLabel.textContent = m.marginRate.toFixed(1) + '%';
       els.marginBox.classList.toggle('negative', m.margin < 0);
       els.marginRateBox.classList.toggle('negative', m.margin < 0);
+
+      const base = state.finalPrice > 0 ? state.finalPrice : 1;
+      const pct = (v) => Math.max(0, Math.min(100, (v / base) * 100));
+      let costW = pct(m.costKrw), feeW = pct(m.commission), logiW = pct(m.logisticsFee), vatW = pct(m.vat);
+      const usedW = costW + feeW + logiW + vatW;
+      let marginW = Math.max(0, 100 - usedW);
+      if (usedW > 100){
+        const scale = 100 / usedW;
+        costW *= scale; feeW *= scale; logiW *= scale; vatW *= scale; marginW = 0;
+      }
+      els.segCost.style.width = costW + '%';
+      els.segFee.style.width = feeW + '%';
+      els.segLogi.style.width = logiW + '%';
+      els.segVat.style.width = vatW + '%';
+      els.segMargin.style.width = marginW + '%';
+      els.segMargin.classList.toggle('negative', m.margin < 0);
+      els.legCost.textContent = '₩' + fmt(m.costKrw);
+      els.legFee.textContent = '₩' + fmt(m.commission);
+      els.legLogi.textContent = '₩' + fmt(m.logisticsFee);
+      els.legVat.textContent = '₩' + fmt(m.vat);
+      els.legMargin.textContent = m.margin < 0 ? '-₩' + fmt(Math.abs(m.margin)) : '₩' + fmt(m.margin);
 
       updateComparisonTable();
     }
@@ -946,9 +1085,26 @@
     els.costCny.addEventListener('input', onCost);
     els.costCny.addEventListener('change', onCost);
 
+    function onLogisticsTier(e){
+      const v = e.target.value;
+      if (v === 'custom'){
+        els.logisticsCustom.style.display = '';
+        state.logisticsFee = parseNum(els.logisticsCustom.value) || state.logisticsFee || 0;
+      } else {
+        els.logisticsCustom.style.display = 'none';
+        state.logisticsFee = parseNum(v);
+      }
+      render();
+    }
+    els.logisticsTier.addEventListener('change', onLogisticsTier);
+
+    function onLogisticsCustom(e){ state.logisticsFee = parseNum(e.target.value); render(); }
+    els.logisticsCustom.addEventListener('input', onLogisticsCustom);
+    els.logisticsCustom.addEventListener('change', onLogisticsCustom);
+
     els.label.addEventListener('input', updateComparisonTable);
 
-    [els.normal, els.sale, els.instant, els.down, els.final, els.rateInput, els.costCny].forEach(input => {
+    [els.normal, els.sale, els.instant, els.down, els.final, els.rateInput, els.costCny, els.logisticsCustom].forEach(input => {
       input.addEventListener('focus', () => { setTimeout(() => { try { input.select(); } catch(err) {} }, 0); });
       input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); });
     });
@@ -1015,6 +1171,7 @@
   gEls.exchangeRate.addEventListener('change', renderAllMargins);
   gEls.feeRate.addEventListener('input', renderAllMargins);
   gEls.feeRate.addEventListener('change', renderAllMargins);
+  if (gEls.vatOn) gEls.vatOn.addEventListener('change', renderAllMargins);
   [gEls.exchangeRate, gEls.feeRate].forEach(input => {
     input.addEventListener('focus', () => { setTimeout(() => { try { input.select(); } catch(err) {} }, 0); });
     input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); });
@@ -1057,6 +1214,7 @@
         if (d.global){
           if (typeof d.global.exchangeRate === 'number') gEls.exchangeRate.value = d.global.exchangeRate;
           if (typeof d.global.feeRate === 'number') gEls.feeRate.value = d.global.feeRate;
+          if (typeof d.global.vatOn === 'boolean' && gEls.vatOn) gEls.vatOn.checked = d.global.vatOn;
         }
         if (Array.isArray(d.products) && d.products.length){
           const addBtnWrap = document.getElementById('addCardBtn');
