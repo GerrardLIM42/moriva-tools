@@ -22,6 +22,8 @@
     --brick-soft:#F1DEDA;
     --slate:#8B95A1;
     --slate-soft:#EDE7D8;
+    --green:#3E8E5B;
+    --green-soft:#E1F0E6;
     --line:#DCD5C3;
     --radius:12px;
     --mono:ui-monospace, SFMono-Regular, Consolas, Menlo, 'Roboto Mono', monospace;
@@ -36,7 +38,7 @@
     -webkit-font-smoothing:antialiased;
   }
   .app{
-    max-width:640px;
+    max-width:1360px;
     margin:0 auto;
     padding:36px 20px 56px;
   }
@@ -65,7 +67,7 @@
     font-weight:500;
   }
 
-  header{margin-bottom:28px;}
+  header{margin-bottom:22px; max-width:720px;}
   .eyebrow{
     font-family:var(--mono);
     font-size:11px;
@@ -87,13 +89,180 @@
     line-height:1.6;
     color:var(--ink-soft);
     margin:0;
-    max-width:520px;
+    max-width:640px;
   }
+
+  /* ---- 글로벌 설정(환율/수수료) ---- */
+  .global-settings{
+    display:flex;
+    gap:10px;
+    margin:20px 0 24px;
+    flex-wrap:wrap;
+    max-width:720px;
+  }
+  .global-settings .control{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:12px 14px;
+    flex:1;
+    min-width:220px;
+  }
+  .global-settings .control label{
+    display:block;
+    font-size:11px;
+    color:var(--ink-soft);
+    margin-bottom:8px;
+    font-weight:600;
+  }
+  .global-settings .control label .hint{
+    font-weight:500;
+    color:var(--ink-faint);
+  }
+  .plain-num-input{
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .plain-num-input input{
+    width:90px;
+    font-family:var(--mono);
+    font-weight:700;
+    font-size:15px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:5px 8px;
+    text-align:right;
+    color:var(--navy);
+    background:var(--surface);
+  }
+  .plain-num-input span{font-family:var(--mono); font-size:13px; color:var(--ink-soft);}
+
+  /* ---- 비교표 ---- */
+  .compare-wrap{
+    display:none;
+    margin-bottom:28px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:16px 16px 8px;
+    overflow-x:auto;
+  }
+  .compare-title{
+    font-size:12px;
+    font-weight:700;
+    color:var(--ink-soft);
+    margin-bottom:10px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .compare-title .tag-mini2{
+    font-family:var(--mono);
+    font-size:9.5px;
+    color:var(--navy);
+    background:rgba(91,124,153,.12);
+    padding:2px 6px;
+    border-radius:20px;
+    font-weight:700;
+  }
+  table.compare-table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:12.5px;
+    min-width:680px;
+  }
+  table.compare-table th{
+    text-align:right;
+    font-size:10.5px;
+    font-weight:700;
+    color:var(--ink-faint);
+    padding:6px 10px;
+    border-bottom:1px solid var(--line);
+    white-space:nowrap;
+  }
+  table.compare-table th:first-child, table.compare-table td:first-child{text-align:left;}
+  table.compare-table td{
+    text-align:right;
+    padding:8px 10px;
+    border-bottom:1px solid var(--line);
+    font-family:var(--mono);
+    font-weight:600;
+    white-space:nowrap;
+  }
+  table.compare-table td.cmp-label{
+    font-family:var(--sans);
+    font-weight:700;
+    color:var(--ink);
+  }
+  table.compare-table tr:last-child td{border-bottom:none;}
+  table.compare-table tr.negative td{color:var(--brick);}
+
+  /* ---- 상품 카드 컨테이너 ---- */
+  .products-wrap{
+    display:flex;
+    flex-wrap:wrap;
+    gap:20px;
+    align-items:flex-start;
+  }
+  .product-card{
+    flex:1 1 360px;
+    max-width:420px;
+    min-width:300px;
+    background:transparent;
+  }
+
+  .card-head{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:12px;
+  }
+  .card-label{
+    flex:1;
+    font-size:15px;
+    font-weight:700;
+    color:var(--ink);
+    border:1px solid transparent;
+    background:transparent;
+    border-radius:6px;
+    padding:5px 7px;
+    font-family:var(--sans);
+  }
+  .card-label:hover, .card-label:focus{
+    border-color:var(--line);
+    background:var(--surface);
+    outline:none;
+  }
+  .main-tag{
+    font-family:var(--mono);
+    font-size:9.5px;
+    letter-spacing:.03em;
+    padding:3px 7px;
+    border-radius:20px;
+    background:rgba(22,35,61,.1);
+    color:var(--navy-deep);
+    font-weight:700;
+    white-space:nowrap;
+  }
+  .remove-btn{
+    font-family:var(--mono);
+    font-size:11px;
+    font-weight:600;
+    color:var(--brick);
+    background:var(--brick-soft);
+    border:none;
+    border-radius:20px;
+    padding:5px 10px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .remove-btn:hover{background:#e8c6bf;}
 
   .controls-row{
     display:flex;
     gap:10px;
-    margin:22px 0 26px;
+    margin:0 0 14px;
     flex-wrap:wrap;
   }
   .control{
@@ -102,7 +271,7 @@
     border-radius:var(--radius);
     padding:12px 14px;
     flex:1;
-    min-width:200px;
+    min-width:150px;
   }
   .control label{
     display:block;
@@ -306,23 +475,108 @@
   .summary{
     display:flex;
     gap:10px;
-    margin-top:22px;
+    margin-top:18px;
   }
   .summary-item{
     flex:1;
     background:var(--surface);
     border:1px solid var(--line);
     border-radius:var(--radius);
-    padding:14px 16px;
+    padding:12px 14px;
     display:flex;
     flex-direction:column;
     gap:6px;
   }
-  .summary-item span{font-size:11.5px; color:var(--ink-soft); font-weight:600;}
-  .summary-item strong{font-family:var(--mono); font-size:19px; color:var(--navy);}
+  .summary-item span{font-size:11px; color:var(--ink-soft); font-weight:600;}
+  .summary-item strong{font-family:var(--mono); font-size:17px; color:var(--navy);}
+
+  /* ---- 원가/마진 섹션 ---- */
+  .cost-section{
+    margin-top:14px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:14px 16px;
+  }
+  .cost-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:12px;
+  }
+  .cost-row label{
+    font-size:11.5px;
+    font-weight:700;
+    color:var(--ink-soft);
+    white-space:nowrap;
+  }
+  .cost-row input{
+    width:90px;
+    font-family:var(--mono);
+    font-weight:700;
+    font-size:14px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:5px 8px;
+    text-align:right;
+    color:var(--ink);
+  }
+  .cost-row .cost-krw{
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--ink-faint);
+    margin-left:auto;
+  }
+  .margin-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+  .margin-item{
+    background:var(--bg);
+    border-radius:8px;
+    padding:9px 11px;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+  .margin-item span{font-size:10.5px; color:var(--ink-soft); font-weight:600;}
+  .margin-item strong{font-family:var(--mono); font-size:15px; color:var(--ink);}
+  .margin-item.margin-highlight{background:var(--green-soft);}
+  .margin-item.margin-highlight strong{color:var(--green);}
+  .margin-item.margin-highlight.negative{background:var(--brick-soft);}
+  .margin-item.margin-highlight.negative strong{color:var(--brick);}
+
+  .add-card-wrap{
+    flex:1 1 360px;
+    max-width:420px;
+    min-width:300px;
+    display:flex;
+    align-items:stretch;
+  }
+  .add-card-btn{
+    width:100%;
+    min-height:180px;
+    border:1.5px dashed var(--line);
+    border-radius:var(--radius);
+    background:transparent;
+    color:var(--ink-soft);
+    font-family:var(--sans);
+    font-size:13.5px;
+    font-weight:600;
+    cursor:pointer;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    transition:.15s;
+  }
+  .add-card-btn:hover{border-color:var(--navy); color:var(--navy); background:var(--surface);}
+  .add-card-btn .plus{font-size:26px; line-height:1;}
 
   .note{
-    margin-top:22px;
+    margin-top:26px;
     font-size:12px;
     line-height:1.6;
     color:var(--ink-faint);
@@ -330,6 +584,7 @@
     background:var(--surface);
     border:1px dashed var(--line);
     border-radius:var(--radius);
+    max-width:900px;
   }
 
   @media (max-width:420px){
@@ -357,258 +612,469 @@
   <header>
     <div class="eyebrow">Coupang Rocket Growth · Pricing</div>
     <h1>로켓그로스 가격 세팅 도구</h1>
-    <p class="sub">최종소비자가를 입력하면 판매가·즉시할인·다운할인·정상가가 자동으로 계산됩니다. 최종소비자가는 직접 수정하지 않는 한 바뀌지 않으며, 즉시할인·판매가·다운할인을 수정하면 그 변화가 정상가에 반영되어 100원 단위로 다시 맞춰집니다.</p>
+    <p class="sub">최종소비자가를 입력하면 판매가·즉시할인·다운할인·정상가가 자동으로 계산됩니다. 최종소비자가는 직접 수정하지 않는 한 바뀌지 않으며, 즉시할인·판매가·다운할인을 수정하면 그 변화가 정상가에 반영되어 100원 단위로 다시 맞춰집니다. "+ 옵션 상품 추가"로 옵션별 가격을 나란히 비교하고, 중국 원가를 입력하면 옵션별 마진도 함께 볼 수 있습니다.</p>
   </header>
 
-  <section class="controls-row">
+  <section class="global-settings">
     <div class="control">
-      <label>정상가 표시 할인율 (정상가 → 판매가)</label>
-      <div class="rate-input">
-        <input type="range" id="rateSlider" min="10" max="90" step="1" value="50">
-        <input type="text" inputmode="decimal" id="rateInput" value="50">
+      <label>환율 <span class="hint">(¥1 → ₩, 직접 확인 후 입력)</span></label>
+      <div class="plain-num-input">
+        <span>¥1 =</span>
+        <input type="text" inputmode="decimal" id="gExchangeRate" value="212">
+        <span>원</span>
+      </div>
+    </div>
+    <div class="control">
+      <label>쿠팡 판매수수료 <span class="hint">(%, 카테고리별 상이)</span></label>
+      <div class="plain-num-input">
+        <input type="text" inputmode="decimal" id="gFeeRate" value="10.8">
         <span>%</span>
       </div>
     </div>
-    <div class="control">
-      <label>정상가 반올림 단위</label>
-      <select id="roundUnit">
-        <option value="100" selected>100원 단위</option>
-        <option value="1000">1,000원 단위</option>
-      </select>
-    </div>
   </section>
 
-  <section class="ladder">
-    <div class="step step-normal" id="rowNormal">
-      <div class="step-fill" id="fillNormal" style="width:100%"></div>
-      <div class="step-content">
-        <span class="step-label">정상가 <span class="tag">필수 · 등록가</span></span>
-        <div class="step-value"><span class="won">₩</span><input type="text" inputmode="numeric" id="inputNormal" value="30,000"></div>
-      </div>
-    </div>
+  <div class="compare-wrap" id="compareWrap">
+    <div class="compare-title">상품 비교 <span class="tag-mini2">최종소비자가 기준 마진</span></div>
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>상품/옵션</th>
+          <th>정상가</th>
+          <th>판매가</th>
+          <th>최종소비자가</th>
+          <th>원가(₩)</th>
+          <th>마진</th>
+          <th>마진율</th>
+        </tr>
+      </thead>
+      <tbody id="compareBody"></tbody>
+    </table>
+  </div>
 
-    <div class="connector display-discount">
-      <span class="connector-label">표시 할인율 (정상가→판매가)</span>
-      <span class="connector-value" id="displayRateLabel">-50.0%</span>
-    </div>
-
-    <div class="step step-sale" id="rowSale">
-      <div class="step-fill" id="fillSale" style="width:100%"></div>
-      <div class="step-content">
-        <span class="step-label">판매가 <span class="tag-sub">(최종 판매가)</span></span>
-        <div class="step-value"><span class="won">₩</span><input type="text" inputmode="numeric" id="inputSale" value="15,000"></div>
-      </div>
-    </div>
-
-    <div class="connector minus brick">
-      <span class="connector-label">즉시할인</span>
-      <span class="won" style="opacity:.6">₩</span><input class="connector-input" type="text" inputmode="numeric" id="inputInstant" value="6,000">
-      <span class="connector-pct" id="instantPct">(40%)</span>
-    </div>
-
-    <div class="step step-sub" id="rowSub">
-      <div class="step-fill" id="fillSub" style="width:30%"></div>
-      <div class="step-content">
-        <span class="step-label">즉시할인 적용가</span>
-        <span class="step-value-static" id="subValue">₩9,000</span>
-      </div>
-    </div>
-
-    <div class="connector minus slate">
-      <span class="connector-label">다운할인 <span class="tag-mini">선택 · 구매심리자극</span></span>
-      <span class="won" style="opacity:.6">₩</span><input class="connector-input" type="text" inputmode="numeric" id="inputDown" value="100">
-    </div>
-
-    <div class="step step-final" id="rowFinal">
-      <div class="step-fill" id="fillFinal" style="width:100%"></div>
-      <div class="step-content">
-        <span class="step-label">최종소비자가 <span class="tag-sub">(고객 실결제가)</span> <span class="tag anchor">기준값</span></span>
-        <div class="step-value"><span class="won">₩</span><input type="text" inputmode="numeric" id="inputFinal" value="8,900"></div>
-      </div>
-    </div>
-  </section>
-
-  <section class="summary">
-    <div class="summary-item">
-      <span>정상가 대비 총 할인율</span>
-      <strong id="totalRateLabel">70.3%</strong>
-    </div>
-    <div class="summary-item">
-      <span>판매가 대비 즉시할인율</span>
-      <strong id="instantRateLabel">40.0%</strong>
-    </div>
-  </section>
+  <section class="products-wrap" id="productsWrap"></section>
 
   <footer class="note">
     기본 로직 — 판매가 = 최종소비자가 + 즉시할인 + 다운할인 · 정상가 = 판매가 ÷ (1 − 표시할인율), 100원 단위 반올림.<br>
-    최종소비자가가 기준값입니다. 최종소비자가는 직접 입력할 때만 바뀌고, 즉시할인·판매가·다운할인 중 어떤 값을 수정해도 최종소비자가는 그대로 유지된 채 그 변화가 판매가를 거쳐 정상가에 반영됩니다.
+    최종소비자가가 기준값입니다. 최종소비자가는 직접 입력할 때만 바뀌고, 즉시할인·판매가·다운할인 중 어떤 값을 수정해도 최종소비자가는 그대로 유지된 채 그 변화가 판매가를 거쳐 정상가에 반영됩니다.<br>
+    마진 계산 — 원가(₩) = 중국 원가(¥) × 환율 · 정산예상액 = 최종소비자가 × (1 − 수수료율) · 마진 = 정산예상액 − 원가(₩). 실제 정산 기준(즉시할인·쿠폰 반영 여부 등)은 판매 정책에 따라 달라질 수 있어 참고용 추정치입니다.
   </footer>
 </div>
 
 <script>
 (function(){
-  const state = {
-    finalPrice: 8900,
-    instantDiscount: 6000,
-    downDiscount: 100,
-    targetRate: 50,
-    roundUnit: 100
-  };
+  let uidSeq = 0;
+  const cards = [];
 
-  const els = {
-    normal: document.getElementById('inputNormal'),
-    sale: document.getElementById('inputSale'),
-    instant: document.getElementById('inputInstant'),
-    down: document.getElementById('inputDown'),
-    final: document.getElementById('inputFinal'),
-    rateSlider: document.getElementById('rateSlider'),
-    rateInput: document.getElementById('rateInput'),
-    roundUnit: document.getElementById('roundUnit'),
-    fillNormal: document.getElementById('fillNormal'),
-    fillSale: document.getElementById('fillSale'),
-    fillSub: document.getElementById('fillSub'),
-    fillFinal: document.getElementById('fillFinal'),
-    subValue: document.getElementById('subValue'),
-    displayRateLabel: document.getElementById('displayRateLabel'),
-    totalRateLabel: document.getElementById('totalRateLabel'),
-    instantRateLabel: document.getElementById('instantRateLabel'),
-    instantPct: document.getElementById('instantPct')
+  const productsWrap = document.getElementById('productsWrap');
+  const compareWrap = document.getElementById('compareWrap');
+  const compareBody = document.getElementById('compareBody');
+  const gEls = {
+    exchangeRate: document.getElementById('gExchangeRate'),
+    feeRate: document.getElementById('gFeeRate')
   };
 
   function fmt(n){
     return Math.round(n).toLocaleString('ko-KR');
   }
   function parseNum(str){
-    const n = parseInt(String(str).replace(/[^0-9-]/g,''), 10);
+    const n = parseFloat(String(str).replace(/[^0-9.\-]/g,''));
     return isNaN(n) ? 0 : Math.max(0, n);
   }
-
-  function derive(){
-    // 최종소비자가(기준값)는 절대 건드리지 않는다. 판매가는 거기서 파생된다.
-    const salePrice = state.finalPrice + state.instantDiscount + state.downDiscount;
-    const rate = Math.min(95, Math.max(0, state.targetRate)) / 100;
-    // 정상가는 "정상가 → 판매가" 표시 할인율 기준으로 산출한다 (판매가가 바뀌면 정상가도 같이 반영됨).
-    const rawNormal = rate < 1 ? salePrice / (1 - rate) : salePrice;
-    const normalPrice = Math.max(salePrice, Math.round(rawNormal / state.roundUnit) * state.roundUnit);
-    const subAfterInstant = salePrice - state.instantDiscount;
-    return { salePrice, normalPrice, subAfterInstant };
+  function escapeHtml(v){
+    return String(v ?? '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  }
+  function globalNums(){
+    return {
+      exchangeRate: parseNum(gEls.exchangeRate.value) || 0,
+      feeRate: parseFloat(String(gEls.feeRate.value).replace(/[^0-9.\-]/g,'')) || 0
+    };
   }
 
-  function render(){
-    const { salePrice, normalPrice, subAfterInstant } = derive();
-    const active = document.activeElement;
+  function cardTemplate(uid, label, removable){
+    return `
+    <div class="product-card" data-card="${uid}">
+      <div class="card-head">
+        <input type="text" class="card-label" id="c${uid}-label" value="${escapeHtml(label)}" placeholder="상품명 / 옵션명">
+        ${removable ? `<button type="button" class="remove-btn" id="c${uid}-remove">삭제</button>` : `<span class="main-tag">기본 상품</span>`}
+      </div>
 
-    if (active !== els.normal) els.normal.value = fmt(normalPrice);
-    if (active !== els.sale) els.sale.value = fmt(salePrice);
-    if (active !== els.instant) els.instant.value = fmt(state.instantDiscount);
-    if (active !== els.down) els.down.value = fmt(state.downDiscount);
-    if (active !== els.final) els.final.value = fmt(state.finalPrice);
-    els.subValue.textContent = '₩' + fmt(subAfterInstant);
+      <div class="controls-row">
+        <div class="control">
+          <label>정상가 표시 할인율</label>
+          <div class="rate-input">
+            <input type="range" id="c${uid}-rateSlider" min="10" max="90" step="1" value="50">
+            <input type="text" inputmode="decimal" id="c${uid}-rateInput" value="50">
+            <span>%</span>
+          </div>
+        </div>
+        <div class="control">
+          <label>정상가 반올림 단위</label>
+          <select id="c${uid}-roundUnit">
+            <option value="100" selected>100원 단위</option>
+            <option value="1000">1,000원 단위</option>
+          </select>
+        </div>
+      </div>
 
-    if (active !== els.rateSlider) els.rateSlider.value = state.targetRate;
-    if (active !== els.rateInput) els.rateInput.value = state.targetRate;
+      <div class="ladder">
+        <div class="step step-normal" id="c${uid}-rowNormal">
+          <div class="step-fill" id="c${uid}-fillNormal" style="width:100%"></div>
+          <div class="step-content">
+            <span class="step-label">정상가 <span class="tag">필수 · 등록가</span></span>
+            <div class="step-value"><span class="won">₩</span><input type="text" inputmode="numeric" id="c${uid}-inputNormal" value="30,000"></div>
+          </div>
+        </div>
 
-    const max = Math.max(normalPrice, 1);
-    els.fillNormal.style.width = '100%';
-    els.fillSale.style.width = '100%';
-    els.fillSub.style.width = Math.min(100, (subAfterInstant / max) * 100) + '%';
-    els.fillFinal.style.width = '100%';
+        <div class="connector display-discount">
+          <span class="connector-label">표시 할인율</span>
+          <span class="connector-value" id="c${uid}-displayRateLabel">-50.0%</span>
+        </div>
 
-    const displayRate = normalPrice > 0 ? (1 - salePrice / normalPrice) * 100 : 0;
-    const totalRate = normalPrice > 0 ? (1 - state.finalPrice / normalPrice) * 100 : 0;
-    const instantRate = salePrice > 0 ? (state.instantDiscount / salePrice) * 100 : 0;
+        <div class="step step-sale" id="c${uid}-rowSale">
+          <div class="step-fill" id="c${uid}-fillSale" style="width:100%"></div>
+          <div class="step-content">
+            <span class="step-label">판매가 <span class="tag-sub">(최종 판매가)</span></span>
+            <div class="step-value"><span class="won">₩</span><input type="text" inputmode="numeric" id="c${uid}-inputSale" value="15,000"></div>
+          </div>
+        </div>
 
-    els.displayRateLabel.textContent = '-' + displayRate.toFixed(1) + '%';
-    els.totalRateLabel.textContent = totalRate.toFixed(1) + '%';
-    els.instantRateLabel.textContent = instantRate.toFixed(1) + '%';
-    els.instantPct.textContent = salePrice > 0 ? '(' + instantRate.toFixed(0) + '%)' : '';
+        <div class="connector minus brick">
+          <span class="connector-label">즉시할인</span>
+          <span class="won" style="opacity:.6">₩</span><input class="connector-input" type="text" inputmode="numeric" id="c${uid}-inputInstant" value="6,000">
+          <span class="connector-pct" id="c${uid}-instantPct">(40%)</span>
+        </div>
+
+        <div class="step step-sub" id="c${uid}-rowSub">
+          <div class="step-fill" id="c${uid}-fillSub" style="width:30%"></div>
+          <div class="step-content">
+            <span class="step-label">즉시할인 적용가</span>
+            <span class="step-value-static" id="c${uid}-subValue">₩9,000</span>
+          </div>
+        </div>
+
+        <div class="connector minus slate">
+          <span class="connector-label">다운할인 <span class="tag-mini">선택 · 구매심리자극</span></span>
+          <span class="won" style="opacity:.6">₩</span><input class="connector-input" type="text" inputmode="numeric" id="c${uid}-inputDown" value="100">
+        </div>
+
+        <div class="step step-final" id="c${uid}-rowFinal">
+          <div class="step-fill" id="c${uid}-fillFinal" style="width:100%"></div>
+          <div class="step-content">
+            <span class="step-label">최종소비자가 <span class="tag-sub">(고객 실결제가)</span> <span class="tag anchor">기준값</span></span>
+            <div class="step-value"><span class="won">₩</span><input type="text" inputmode="numeric" id="c${uid}-inputFinal" value="8,900"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="summary">
+        <div class="summary-item">
+          <span>정상가 대비 총 할인율</span>
+          <strong id="c${uid}-totalRateLabel">70.3%</strong>
+        </div>
+        <div class="summary-item">
+          <span>즉시할인율</span>
+          <strong id="c${uid}-instantRateLabel">40.0%</strong>
+        </div>
+      </div>
+
+      <div class="cost-section">
+        <div class="cost-row">
+          <label>중국 원가</label>
+          <span>¥</span>
+          <input type="text" inputmode="decimal" id="c${uid}-costCny" value="0">
+          <span class="cost-krw" id="c${uid}-costKrw">= ₩0</span>
+        </div>
+        <div class="margin-grid">
+          <div class="margin-item">
+            <span>정산예상액</span>
+            <strong id="c${uid}-settleAmt">₩0</strong>
+          </div>
+          <div class="margin-item">
+            <span>원가(₩)</span>
+            <strong id="c${uid}-costKrwBig">₩0</strong>
+          </div>
+          <div class="margin-item margin-highlight" id="c${uid}-marginBox">
+            <span>마진</span>
+            <strong id="c${uid}-marginAmt">₩0</strong>
+          </div>
+          <div class="margin-item margin-highlight" id="c${uid}-marginRateBox">
+            <span>마진율 (최종소비자가 기준)</span>
+            <strong id="c${uid}-marginRateLabel">0.0%</strong>
+          </div>
+        </div>
+      </div>
+    </div>`;
   }
 
-  // --- edit handlers ---
-  // 최종소비자가가 기준값(anchor)이며, 직접 입력할 때만 바뀐다.
-  // 즉시할인·판매가·다운할인을 수정하면 최종소비자가는 그대로 유지된 채,
-  // 그 변화가 판매가를 거쳐 정상가에 반영된다.
-  // 'input' 이벤트로 타이핑 즉시 반영하고(모바일에서 blur를 기다릴 필요 없음),
-  // 'change'(blur 시)에서 최종적으로 값 포맷을 정리한다.
+  function initCard(uid, opts){
+    opts = opts || {};
+    const state = {
+      finalPrice: (typeof opts.finalPrice === 'number') ? opts.finalPrice : 8900,
+      instantDiscount: (typeof opts.instantDiscount === 'number') ? opts.instantDiscount : 6000,
+      downDiscount: (typeof opts.downDiscount === 'number') ? opts.downDiscount : 100,
+      targetRate: (typeof opts.targetRate === 'number') ? opts.targetRate : 50,
+      roundUnit: (typeof opts.roundUnit === 'number') ? opts.roundUnit : 100,
+      costCny: (typeof opts.costCny === 'number') ? opts.costCny : 0
+    };
 
-  function onFinal(e){ state.finalPrice = parseNum(e.target.value); render(); }
-  els.final.addEventListener('input', onFinal);
-  els.final.addEventListener('change', onFinal);
+    const g = (id) => document.getElementById(`c${uid}-${id}`);
+    const els = {
+      label: g('label'),
+      normal: g('inputNormal'), sale: g('inputSale'), instant: g('inputInstant'),
+      down: g('inputDown'), final: g('inputFinal'),
+      rateSlider: g('rateSlider'), rateInput: g('rateInput'), roundUnit: g('roundUnit'),
+      fillSub: g('fillSub'),
+      subValue: g('subValue'), displayRateLabel: g('displayRateLabel'),
+      totalRateLabel: g('totalRateLabel'), instantRateLabel: g('instantRateLabel'), instantPct: g('instantPct'),
+      costCny: g('costCny'), costKrw: g('costKrw'),
+      settleAmt: g('settleAmt'), costKrwBig: g('costKrwBig'),
+      marginAmt: g('marginAmt'), marginRateLabel: g('marginRateLabel'),
+      marginBox: g('marginBox'), marginRateBox: g('marginRateBox'),
+      remove: g('remove')
+    };
+    els.roundUnit.value = String(state.roundUnit);
 
-  function onInstant(e){ state.instantDiscount = parseNum(e.target.value); render(); }
-  els.instant.addEventListener('input', onInstant);
-  els.instant.addEventListener('change', onInstant);
-
-  function onDown(e){ state.downDiscount = parseNum(e.target.value); render(); }
-  els.down.addEventListener('input', onDown);
-  els.down.addEventListener('change', onDown);
-
-  function onSale(e){
-    const newSale = parseNum(e.target.value);
-    // 최종소비자가·다운할인은 고정하고, 그 차이를 즉시할인으로 흡수한다.
-    const newInstant = newSale - state.finalPrice - state.downDiscount;
-    if (newInstant >= 0){
-      state.instantDiscount = newInstant;
-    } else {
-      state.instantDiscount = 0;
-      state.downDiscount = Math.max(0, newSale - state.finalPrice);
+    function derive(){
+      const salePrice = state.finalPrice + state.instantDiscount + state.downDiscount;
+      const rate = Math.min(95, Math.max(0, state.targetRate)) / 100;
+      const rawNormal = rate < 1 ? salePrice / (1 - rate) : salePrice;
+      const normalPrice = Math.max(salePrice, Math.round(rawNormal / state.roundUnit) * state.roundUnit);
+      const subAfterInstant = salePrice - state.instantDiscount;
+      return { salePrice, normalPrice, subAfterInstant };
     }
-    render();
-  }
-  els.sale.addEventListener('input', onSale);
-  els.sale.addEventListener('change', onSale);
 
-  function onNormal(e){
-    const newNormal = parseNum(e.target.value);
-    const { salePrice } = derive();
-    if (newNormal > salePrice){
-      state.targetRate = Math.round((1 - salePrice / newNormal) * 1000) / 10;
+    function deriveMargin(){
+      const gn = globalNums();
+      const costKrw = state.costCny * gn.exchangeRate;
+      const settleAmt = state.finalPrice * (1 - gn.feeRate / 100);
+      const margin = settleAmt - costKrw;
+      const marginRate = state.finalPrice > 0 ? (margin / state.finalPrice) * 100 : 0;
+      return { costKrw, settleAmt, margin, marginRate };
     }
-    render();
-  }
-  els.normal.addEventListener('input', onNormal);
-  els.normal.addEventListener('change', onNormal);
 
-  function setRate(v){
-    state.targetRate = Math.min(95, Math.max(0, v));
-    render();
-  }
-  els.rateSlider.addEventListener('input', e => setRate(parseFloat(e.target.value)));
-  els.rateInput.addEventListener('input', e => setRate(parseFloat(e.target.value) || 0));
-  els.rateInput.addEventListener('change', e => setRate(parseFloat(e.target.value) || 0));
-  els.roundUnit.addEventListener('change', e => {
-    state.roundUnit = parseInt(e.target.value, 10);
-    render();
-  });
+    function render(){
+      const { salePrice, normalPrice, subAfterInstant } = derive();
+      const active = document.activeElement;
 
-  // select-all on focus for quick editing
-  [els.normal, els.sale, els.instant, els.down, els.final, els.rateInput].forEach(input => {
+      if (active !== els.normal) els.normal.value = fmt(normalPrice);
+      if (active !== els.sale) els.sale.value = fmt(salePrice);
+      if (active !== els.instant) els.instant.value = fmt(state.instantDiscount);
+      if (active !== els.down) els.down.value = fmt(state.downDiscount);
+      if (active !== els.final) els.final.value = fmt(state.finalPrice);
+      els.subValue.textContent = '₩' + fmt(subAfterInstant);
+
+      if (active !== els.rateSlider) els.rateSlider.value = state.targetRate;
+      if (active !== els.rateInput) els.rateInput.value = state.targetRate;
+
+      const max = Math.max(normalPrice, 1);
+      els.fillSub.style.width = Math.min(100, (subAfterInstant / max) * 100) + '%';
+
+      const displayRate = normalPrice > 0 ? (1 - salePrice / normalPrice) * 100 : 0;
+      const totalRate = normalPrice > 0 ? (1 - state.finalPrice / normalPrice) * 100 : 0;
+      const instantRate = salePrice > 0 ? (state.instantDiscount / salePrice) * 100 : 0;
+
+      els.displayRateLabel.textContent = '-' + displayRate.toFixed(1) + '%';
+      els.totalRateLabel.textContent = totalRate.toFixed(1) + '%';
+      els.instantRateLabel.textContent = instantRate.toFixed(1) + '%';
+      els.instantPct.textContent = salePrice > 0 ? '(' + instantRate.toFixed(0) + '%)' : '';
+
+      if (active !== els.costCny) els.costCny.value = state.costCny ? String(state.costCny) : '0';
+      const m = deriveMargin();
+      els.costKrw.textContent = '= ₩' + fmt(m.costKrw);
+      els.settleAmt.textContent = '₩' + fmt(m.settleAmt);
+      els.costKrwBig.textContent = '₩' + fmt(m.costKrw);
+      els.marginAmt.textContent = m.margin < 0 ? '-₩' + fmt(Math.abs(m.margin)) : '₩' + fmt(m.margin);
+      els.marginRateLabel.textContent = m.marginRate.toFixed(1) + '%';
+      els.marginBox.classList.toggle('negative', m.margin < 0);
+      els.marginRateBox.classList.toggle('negative', m.margin < 0);
+
+      updateComparisonTable();
+    }
+
+    function onFinal(e){ state.finalPrice = parseNum(e.target.value); render(); }
+    els.final.addEventListener('input', onFinal);
+    els.final.addEventListener('change', onFinal);
+
+    function onInstant(e){ state.instantDiscount = parseNum(e.target.value); render(); }
+    els.instant.addEventListener('input', onInstant);
+    els.instant.addEventListener('change', onInstant);
+
+    function onDown(e){ state.downDiscount = parseNum(e.target.value); render(); }
+    els.down.addEventListener('input', onDown);
+    els.down.addEventListener('change', onDown);
+
+    function onSale(e){
+      const newSale = parseNum(e.target.value);
+      const newInstant = newSale - state.finalPrice - state.downDiscount;
+      if (newInstant >= 0){
+        state.instantDiscount = newInstant;
+      } else {
+        state.instantDiscount = 0;
+        state.downDiscount = Math.max(0, newSale - state.finalPrice);
+      }
+      render();
+    }
+    els.sale.addEventListener('input', onSale);
+    els.sale.addEventListener('change', onSale);
+
+    function onNormal(e){
+      const newNormal = parseNum(e.target.value);
+      const { salePrice } = derive();
+      if (newNormal > salePrice){
+        state.targetRate = Math.round((1 - salePrice / newNormal) * 1000) / 10;
+      }
+      render();
+    }
+    els.normal.addEventListener('input', onNormal);
+    els.normal.addEventListener('change', onNormal);
+
+    function setRate(v){
+      state.targetRate = Math.min(95, Math.max(0, v));
+      render();
+    }
+    els.rateSlider.addEventListener('input', e => setRate(parseFloat(e.target.value)));
+    els.rateInput.addEventListener('input', e => setRate(parseFloat(e.target.value) || 0));
+    els.rateInput.addEventListener('change', e => setRate(parseFloat(e.target.value) || 0));
+    els.roundUnit.addEventListener('change', e => {
+      state.roundUnit = parseInt(e.target.value, 10);
+      render();
+    });
+
+    function onCost(e){ state.costCny = parseNum(e.target.value); render(); }
+    els.costCny.addEventListener('input', onCost);
+    els.costCny.addEventListener('change', onCost);
+
+    els.label.addEventListener('input', updateComparisonTable);
+
+    [els.normal, els.sale, els.instant, els.down, els.final, els.rateInput, els.costCny].forEach(input => {
+      input.addEventListener('focus', () => { setTimeout(() => { try { input.select(); } catch(err) {} }, 0); });
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); });
+    });
+
+    if (els.remove){
+      els.remove.addEventListener('click', () => removeCard(uid));
+    }
+
+    const cardObj = {
+      uid, state, els, derive, deriveMargin, render,
+      getLabel: () => els.label.value || '(이름없음)',
+      get root(){ return document.querySelector(`.product-card[data-card="${uid}"]`); }
+    };
+    render();
+    return cardObj;
+  }
+
+  function addCard(initial, removable){
+    uidSeq += 1;
+    const uid = uidSeq;
+    const label = (initial && initial.label) || (removable ? `옵션 ${cards.length}` : '기본 상품');
+    productsWrap.insertAdjacentHTML('beforeend', cardTemplate(uid, label, !!removable));
+    const card = initCard(uid, initial || {});
+    cards.push(card);
+    return card;
+  }
+
+  function removeCard(uid){
+    const idx = cards.findIndex(c => c.uid === uid);
+    if (idx === -1) return;
+    const root = cards[idx].root;
+    if (root) root.remove();
+    cards.splice(idx, 1);
+    updateComparisonTable();
+  }
+
+  function updateComparisonTable(){
+    const rows = cards.map(c => {
+      const d = c.derive();
+      const m = c.deriveMargin();
+      return {
+        label: c.getLabel(),
+        normal: d.normalPrice, sale: d.salePrice, final: c.state.finalPrice,
+        cost: m.costKrw, margin: m.margin, marginRate: m.marginRate
+      };
+    });
+    compareBody.innerHTML = rows.map(r => `
+      <tr class="${r.margin < 0 ? 'negative' : ''}">
+        <td class="cmp-label">${escapeHtml(r.label)}</td>
+        <td>₩${fmt(r.normal)}</td>
+        <td>₩${fmt(r.sale)}</td>
+        <td>₩${fmt(r.final)}</td>
+        <td>₩${fmt(r.cost)}</td>
+        <td>${r.margin < 0 ? '-₩' + fmt(Math.abs(r.margin)) : '₩' + fmt(r.margin)}</td>
+        <td>${r.marginRate.toFixed(1)}%</td>
+      </tr>`).join('');
+    compareWrap.style.display = cards.length > 1 ? '' : 'none';
+  }
+
+  function renderAllMargins(){
+    cards.forEach(c => c.render());
+  }
+  gEls.exchangeRate.addEventListener('input', renderAllMargins);
+  gEls.exchangeRate.addEventListener('change', renderAllMargins);
+  gEls.feeRate.addEventListener('input', renderAllMargins);
+  gEls.feeRate.addEventListener('change', renderAllMargins);
+  [gEls.exchangeRate, gEls.feeRate].forEach(input => {
     input.addEventListener('focus', () => { setTimeout(() => { try { input.select(); } catch(err) {} }, 0); });
     input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); });
   });
 
-  render();
+  function addAddButton(){
+    const wrap = document.createElement('div');
+    wrap.className = 'add-card-wrap';
+    wrap.innerHTML = `<button type="button" class="add-card-btn" id="addCardBtn"><span class="plus">＋</span>옵션 상품 추가</button>`;
+    productsWrap.appendChild(wrap);
+    document.getElementById('addCardBtn').addEventListener('click', () => {
+      const source = cards[cards.length - 1] || cards[0];
+      const initial = source ? Object.assign({}, source.state, { label: `옵션 ${cards.length}` }) : {};
+      wrap.remove();
+      addCard(initial, true);
+      addAddButton();
+      updateComparisonTable();
+    });
+  }
+
+  // 초기 기본 상품 1개 생성
+  addCard({ finalPrice: 8900, instantDiscount: 6000, downDiscount: 100, targetRate: 50, roundUnit: 100, costCny: 0, label: '기본 상품' }, false);
+  addAddButton();
+  updateComparisonTable();
 
   /* ── 저장 보관함 연결 ── */
   window.addEventListener('load', function(){
     if (!window.MorivaSaves) return;
     MorivaSaves.init({
-      storeKey: 'moriva_pricing_saves_v1',
+      storeKey: 'moriva_pricing_saves_v2',
       title: '가격 세팅',
-      collect: function(){ return { s: Object.assign({}, state) }; },
+      collect: function(){
+        return {
+          global: globalNums(),
+          products: cards.map(c => Object.assign({ label: c.getLabel() }, c.state))
+        };
+      },
       restore: function(d){
-        var v = (d && d.s) || {};
-        ['finalPrice','instantDiscount','downDiscount','targetRate','roundUnit'].forEach(function(k){
-          if (typeof v[k] === 'number') state[k] = v[k];
-        });
-        els.rateSlider.value = state.targetRate;
-        els.rateInput.value = state.targetRate;
-        els.roundUnit.value = String(state.roundUnit);
-        render();
+        if (!d) return;
+        if (d.global){
+          if (typeof d.global.exchangeRate === 'number') gEls.exchangeRate.value = d.global.exchangeRate;
+          if (typeof d.global.feeRate === 'number') gEls.feeRate.value = d.global.feeRate;
+        }
+        if (Array.isArray(d.products) && d.products.length){
+          const addBtnWrap = document.getElementById('addCardBtn');
+          const addWrapEl = addBtnWrap ? addBtnWrap.closest('.add-card-wrap') : null;
+          cards.slice().forEach(c => { if (c.root) c.root.remove(); });
+          cards.length = 0;
+          if (addWrapEl) addWrapEl.remove();
+          d.products.forEach((p, idx) => addCard(p, idx !== 0));
+          addAddButton();
+        }
+        renderAllMargins();
+        updateComparisonTable();
       },
       summary: function(d){
-        var v = (d && d.s) || {};
-        return '최종소비자가 ' + Math.round(v.finalPrice||0).toLocaleString('ko-KR') + '원';
+        const list = (d && d.products) || [];
+        const main = list[0] || {};
+        const extra = list.length > 1 ? ' 외 ' + (list.length - 1) + '개 옵션' : '';
+        return (main.label || '가격') + ' · 최종 ' + Math.round(main.finalPrice || 0).toLocaleString('ko-KR') + '원' + extra;
       }
     });
   });
