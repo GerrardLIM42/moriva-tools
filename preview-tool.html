@@ -278,6 +278,30 @@
   .pc-badge.free{background:#eaf8ec;color:var(--coupang-green);}
   .pc-deliver{background:#f8f9fb;border-radius:10px;padding:14px 16px;font-size:12.5px;color:#555;margin-bottom:18px;line-height:1.8;}
   .pc-deliver b{color:#1a1a1a;}
+  .pc-price-top{font-size:13px;color:#999;display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+  .pc-price-top .disc{color:var(--coupang-price);font-weight:800;font-size:16px;}
+  .pc-price-top .orig{text-decoration:line-through;color:#999;}
+  .pc-price-main{display:flex;align-items:baseline;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+  .pc-daypill{
+    margin-left:auto;border:1px solid #ddd;color:#333;font-size:11.5px;font-weight:700;
+    padding:4px 12px;border-radius:14px;display:inline-flex;align-items:center;gap:4px;
+  }
+  .pc-wow-row{display:flex;align-items:center;gap:6px;font-size:13px;color:#333;margin:12px 0 10px;}
+  .pc-wow-tag{background:#e9f1ff;color:var(--coupang-blue);font-weight:800;font-size:11px;padding:3px 8px;border-radius:5px;}
+  .pc-guarantee-row{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+  .pc-guarantee-row span{
+    display:flex;align-items:center;gap:5px;font-size:12.5px;color:#1a7a3c;font-weight:700;
+    background:#eaf8ec;padding:6px 12px;border-radius:20px;
+  }
+  .pc-divider{border-top:1px solid #eee;margin:14px 0;}
+  .pc-pricehistory{display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:700;color:#333;padding:2px 0;cursor:pointer;}
+  .pc-pricehistory .chev{color:#999;font-weight:400;}
+  .pc-freeship-row .lbl{font-size:12.5px;font-weight:700;color:#1a1a1a;margin-bottom:5px;}
+  .pc-freeship-row .sub{font-size:12.5px;color:#666;line-height:1.7;}
+  .pc-optsummary{font-size:12.5px;color:#555;}
+  .pc-optsummary b{color:#1a1a1a;font-weight:600;}
+  .pc-reward-row{font-size:12.5px;color:#555;display:flex;gap:12px;}
+  .pc-reward-row .lbl{color:#999;flex-shrink:0;}
   .pc-qty{display:flex;align-items:center;gap:10px;margin-bottom:18px;font-size:12.5px;color:#555;}
   .pc-qty .stepper{display:flex;align-items:center;border:1px solid #ddd;border-radius:6px;}
   .pc-qty .stepper span{width:30px;text-align:center;font-size:13px;padding:6px 0;}
@@ -569,6 +593,11 @@ function setDevice(dev){
 
 function fmt(n){ n = Number(n)||0; return n.toLocaleString('ko-KR'); }
 
+function dayShort(deliverText){
+  const m = String(deliverText||'').match(/^([가-힣]+)/);
+  return m ? m[1] : '내일';
+}
+
 function getVals(){
   return {
     store: document.getElementById('in-store').value || DEFAULTS.store,
@@ -646,8 +675,7 @@ function mobileInnerHTML(v){
             <i class="m-info-ic">i</i>
           </div>
           ${v.coupon ? `<div class="m-coupon">↓ ${v.coupon}<span class="chev">›</span></div>` : ''}
-          <div class="m-shiprow">🚀 <b>판매자로켓</b> <span class="dawn-pill">새벽</span></div>
-          <div class="m-shiprow"><b>${v.deliver}</b></div>
+          <div class="m-shiprow">🚀 <span class="dawn-pill">${dayShort(v.deliver)}</span> ${v.deliver}</div>
           <div class="m-freerow">
             <span>🚚 무료배송</span>
             <span>↩︎ 단순변심도 30일 무료반품</span>
@@ -724,15 +752,33 @@ function pcInnerHTML(v){
         <div class="pc-rating"><span class="star">${starRow(v.rating)}</span> ${v.rating}　리뷰 ${fmt(v.reviews)}개</div>
         ${v.option ? `<div class="pc-option">${v.option}</div>` : ''}
         <div class="pc-price-box">
-          <span class="pc-discount">${v.discount}%</span><span class="pc-price">${fmt(v.price)}원</span><span class="pc-per">(1개당 ${fmt(v.price)}원)</span>
-          <div class="pc-original">${fmt(v.original)}원</div>
-          ${v.coupon ? `<div class="pc-coupon">↓ ${v.coupon} ›</div>` : ''}
-          <div class="pc-badges">
-            <span class="pc-badge rocket">🚀 판매자로켓</span>
-            <span class="pc-badge free">무료배송</span>
+          <div class="pc-price-top">
+            <span class="disc">${v.discount}%</span>
+            <span class="orig">${fmt(v.original)}원</span>
+            <i class="m-info-ic">i</i>
           </div>
-          <div class="pc-deliver"><b>배송</b> ${v.deliver} · 단순변심 30일 무료반품<br><b>판매자</b> ${v.sellerLegal}</div>
-          <div class="pc-qty">
+          <div class="pc-price-main">
+            <span class="pc-price">${fmt(v.price)}원</span>
+            <span class="pc-per">(1개당 ${fmt(v.price)}원) 할인</span>
+            <span class="pc-daypill">🚀 ${dayShort(v.deliver)}</span>
+          </div>
+          ${v.coupon ? `<div class="pc-coupon">↓ ${v.coupon} ›</div>` : ''}
+          <div class="pc-wow-row"><span class="pc-wow-tag">WOW</span> 고객님은 <b>와우회원</b>으로</div>
+          <div class="pc-guarantee-row">
+            <span>✓ 무조건 무료배송</span>
+            <span>✓ 무료반품</span>
+          </div>
+          <div class="pc-divider"></div>
+          <div class="pc-pricehistory">가격 기록 <span class="chev">›</span></div>
+          <div class="pc-divider"></div>
+          <div class="pc-freeship-row">
+            <div class="lbl">무료배송</div>
+            <div class="sub">${v.deliver} · 단순변심 30일 무료반품<br>판매자 ${v.sellerLegal}</div>
+          </div>
+          ${v.option ? `<div class="pc-divider"></div><div class="pc-optsummary">${v.option}</div>` : ''}
+          <div class="pc-divider"></div>
+          <div class="pc-reward-row"><span class="lbl">적립</span> 최대 ${fmt(Math.round(v.price*0.01))}원 쿠팡캐시 적립 · 쿠페이 머니 결제시</div>
+          <div class="pc-qty" style="margin-top:16px;">
             수량
             <div class="stepper"><button>-</button><span>1</span><button>+</button></div>
             <span style="margin-left:auto;color:#999;">총 상품금액 <b style="color:#1a1a1a;">${fmt(v.price)}원</b></span>
