@@ -2233,10 +2233,10 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     toggleBundleQtyVisibility();
     toggleImportModeFields();
     toggleChannelFields();
-    toggleCoupangManualFee();
+        toggleCoupangManualFee();
+    if(draftOptions.length) updateOptionMarginReadouts();
     updateReadouts();
     updatePreview();
-    if(draftOptions.length) updateOptionMarginReadouts();
   }
 
   $('#f-category').addEventListener('change', () => {
@@ -3933,7 +3933,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     `;
   }
 
-  form.addEventListener('input', () => { updateReadouts(); updatePreview(); if(draftOptions.length) updateOptionMarginReadouts(); });
+  form.addEventListener('input', () => { if(draftOptions.length) updateOptionMarginReadouts(); updateReadouts(); updatePreview(); });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
