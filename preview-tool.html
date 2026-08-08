@@ -78,7 +78,17 @@
   .detail-item{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:8px;padding:6px;}
   .detail-item img{width:44px;height:44px;object-fit:cover;border-radius:4px;flex-shrink:0;}
   .detail-item .vid-ph{width:44px;height:44px;border-radius:4px;flex-shrink:0;background:#1b2a3d;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;}
+  .detail-item .html-ph{width:44px;height:44px;border-radius:4px;flex-shrink:0;background:#3a2f1b;color:#e1c98a;display:flex;align-items:center;justify-content:center;font-size:11px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
   .detail-item .name{flex:1;font-size:11.5px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .html-textarea{
+    width:100%;min-height:90px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;
+    font-size:11.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical;margin-top:6px;box-sizing:border-box;
+  }
+  .add-html-btn{
+    width:100%;margin-top:6px;padding:9px 0;border-radius:8px;border:1px solid var(--border);
+    background:#fff;color:var(--text-2);font-size:12.5px;font-weight:600;cursor:pointer;
+  }
+  .add-html-btn:hover{background:#f2f2f2;border-color:var(--coupang-blue);color:var(--coupang-blue);}
   .icon-btn{
     width:22px;height:22px;border:1px solid var(--border);background:#fff;border-radius:5px;font-size:11px;cursor:pointer;
     display:flex;align-items:center;justify-content:center;color:var(--text-2);
@@ -214,6 +224,7 @@
     margin-left:-14px;margin-right:-14px;
   }
   .m-detail-imgs img,.m-detail-imgs video{width:100%;display:block;}
+  .m-detail-imgs iframe.html-embed{width:100%;display:block;border:0;min-height:40px;}
   .m-buybar{display:flex;gap:8px;padding:10px 14px;border-top:1px solid #eee;background:#fff;}
   .m-buybar button{flex:1;padding:13px 0;border-radius:8px;border:none;font-size:14px;font-weight:700;cursor:pointer;}
   .m-buybar .cart{background:#fff;border:1.5px solid var(--coupang-blue);color:var(--coupang-blue);}
@@ -284,6 +295,7 @@
   .pc-seller-box b{color:#1a1a1a;}
   .pc-detail-imgs{padding:0 40px 40px;text-align:center;}
   .pc-detail-imgs img,.pc-detail-imgs video{max-width:780px;width:100%;display:block;margin:0 auto;}
+  .pc-detail-imgs iframe.html-embed{max-width:780px;width:100%;display:block;margin:0 auto;border:0;min-height:40px;}
   .pc-empty{display:flex;align-items:center;justify-content:center;flex-direction:column;color:#c7c9cf;font-size:13px;height:100%;gap:10px;}
   .ph-mini{display:flex;align-items:center;justify-content:center;background:repeating-linear-gradient(45deg,#f7f7f8,#f7f7f8 8px,#efeff1 8px,#efeff1 16px);color:#c3c6cc;font-size:9px;}
 
@@ -382,13 +394,18 @@
         <input type="file" accept="video/*" multiple onchange="handleDetailVideoUpload(event)"></label>
       <div class="detail-list" id="detail-list"></div>
       <div class="empty-hint" id="detail-empty">아직 등록된 상세페이지 이미지가 없어요</div>
+
+      <label class="upload-btn" style="cursor:default;margin-top:12px;">🧩 HTML 코드 추가 (붙여넣고 아래 버튼으로 목록에 추가, "실행"에서 실제로 렌더링돼요)</label>
+      <textarea id="htmlSnippetInput" class="html-textarea" placeholder="여기에 HTML 코드를 붙여넣으세요"></textarea>
+      <button type="button" class="add-html-btn" id="addHtmlBtn" onclick="addOrSaveHtmlBlock()">+ 목록에 추가</button>
     </div>
 
     <p class="footer-note">
       * 업로드한 이미지·동영상은 서버로 전송되지 않고 브라우저 안에서만 미리보기로 사용됩니다.<br>
       * 실제 쿠팡 화면과 100% 동일하지 않은 목업(mock-up) 화면입니다.<br>
       * "실행" 버튼을 누르면 좌측 패널 없이 화면 전체로 상품페이지를 확인할 수 있어요.<br>
-      * 동영상은 용량이 크면 브라우저가 느려질 수 있으니 너무 긴 파일은 피해주세요.
+      * 동영상은 용량이 크면 브라우저가 느려질 수 있으니 너무 긴 파일은 피해주세요.<br>
+      * HTML 블록은 독립된 영역(iframe)에 렌더링되어 안의 스크립트도 실제로 동작하며, 주변 화면 스타일에는 영향을 주지 않아요.
     </p>
   </div>
 
@@ -408,6 +425,11 @@
 <script>
 let state = { device: 'mobile', thumbs: [], details: [], prodNo: (8000000000 + Math.floor(Math.random()*999999999)) + ' - ' + (10000000 + Math.floor(Math.random()*89999999)) };
 let uid = 1;
+let pendingHtmlEditId = null; // HTML 블록을 수정 중일 때 대상 id (null이면 새로 추가하는 중)
+
+function escapeAttr(str){
+  return String(str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+}
 
 // 클릭 전에는 이 값들이 입력칸에 예시(placeholder)로만 보이고,
 // 실제로 아무것도 입력하지 않은 채로 두면 미리보기에는 이 예시값이 그대로 사용됩니다.
@@ -451,8 +473,40 @@ async function handleDetailVideoUpload(e){
   for(const f of files){ const src = await fileToDataURL(f); state.details.push({id:uid++, src, name:f.name, type:'video'}); }
   e.target.value=''; renderControls(); render();
 }
+function addOrSaveHtmlBlock(){
+  const ta = document.getElementById('htmlSnippetInput');
+  const val = ta.value;
+  if(!val.trim()) return;
+  if(pendingHtmlEditId !== null){
+    const item = state.details.find(d=>d.id===pendingHtmlEditId);
+    if(item) item.html = val;
+    pendingHtmlEditId = null;
+    document.getElementById('addHtmlBtn').textContent = '+ 목록에 추가';
+  } else {
+    state.details.push({id:uid++, type:'html', html:val, name:'HTML 블록'});
+  }
+  ta.value = '';
+  renderControls(); render();
+}
+function editHtmlBlock(id){
+  const item = state.details.find(d=>d.id===id);
+  if(!item) return;
+  pendingHtmlEditId = id;
+  const ta = document.getElementById('htmlSnippetInput');
+  ta.value = item.html;
+  ta.focus();
+  document.getElementById('addHtmlBtn').textContent = '수정 저장';
+}
 function removeThumb(id){ state.thumbs = state.thumbs.filter(t=>t.id!==id); renderControls(); render(); }
-function removeDetail(id){ state.details = state.details.filter(t=>t.id!==id); renderControls(); render(); }
+function removeDetail(id){
+  state.details = state.details.filter(t=>t.id!==id);
+  if(pendingHtmlEditId === id){
+    pendingHtmlEditId = null;
+    document.getElementById('htmlSnippetInput').value = '';
+    document.getElementById('addHtmlBtn').textContent = '+ 목록에 추가';
+  }
+  renderControls(); render();
+}
 function moveDetail(id, dir){
   const idx = state.details.findIndex(t=>t.id===id);
   const newIdx = idx + dir;
@@ -490,11 +544,14 @@ function renderControls(){
   state.details.forEach((d,i)=>{
     const div = document.createElement('div');
     div.className = 'detail-item';
-    const isVideo = d.type === 'video';
-    const preview = isVideo ? `<div class="vid-ph">▶</div>` : `<img src="${d.src}">`;
+    let preview, prefix, editBtn = '';
+    if(d.type === 'video'){ preview = `<div class="vid-ph">▶</div>`; prefix = '🎬 '; }
+    else if(d.type === 'html'){ preview = `<div class="html-ph">&lt;/&gt;</div>`; prefix = '🧩 '; editBtn = `<div class="icon-btn" onclick="editHtmlBlock(${d.id})">✎</div>`; }
+    else { preview = `<img src="${d.src}">`; prefix = ''; }
     div.innerHTML = `
       ${preview}
-      <div class="name">${i+1}. ${isVideo ? '🎬 ' : ''}${d.name}</div>
+      <div class="name">${i+1}. ${prefix}${d.name}</div>
+      ${editBtn}
       <div class="icon-btn" onclick="moveDetail(${d.id}, -1)">▲</div>
       <div class="icon-btn" onclick="moveDetail(${d.id}, 1)">▼</div>
       <div class="icon-btn danger" onclick="removeDetail(${d.id})">✕</div>`;
@@ -549,9 +606,11 @@ function mobileInnerHTML(v){
 
   const details = state.details.length
     ? `<div class="m-section-title">상품 상세정보</div>
-       <div class="m-detail-imgs">${state.details.map(d=> d.type==='video'
-         ? `<video src="${d.src}" controls playsinline preload="metadata"></video>`
-         : `<img src="${d.src}">`).join('')}</div>`
+       <div class="m-detail-imgs">${state.details.map(d=> {
+         if(d.type==='video') return `<video src="${d.src}" controls playsinline preload="metadata"></video>`;
+         if(d.type==='html') return `<iframe class="html-embed" srcdoc="${escapeAttr(d.html)}" scrolling="no" onload="this.style.height=(this.contentWindow.document.documentElement.scrollHeight+2)+'px';"></iframe>`;
+         return `<img src="${d.src}">`;
+       }).join('')}</div>`
     : `<div class="m-section-title">상품 상세정보</div>
        <div class="m-empty" style="height:200px;">등록된 상세페이지 이미지가<br>여기에 표시됩니다</div>`;
 
@@ -636,9 +695,11 @@ function pcInnerHTML(v){
     ? state.thumbs.map(t=>`<img src="${t.src}">`).join('')
     : `<div class="ph-mini" style="width:56px;height:56px;border-radius:6px;">이미지</div>`;
   const details = state.details.length
-    ? state.details.map(d=> d.type==='video'
-        ? `<video src="${d.src}" controls playsinline preload="metadata"></video>`
-        : `<img src="${d.src}">`).join('')
+    ? state.details.map(d=> {
+        if(d.type==='video') return `<video src="${d.src}" controls playsinline preload="metadata"></video>`;
+        if(d.type==='html') return `<iframe class="html-embed" srcdoc="${escapeAttr(d.html)}" scrolling="no" onload="this.style.height=(this.contentWindow.document.documentElement.scrollHeight+2)+'px';"></iframe>`;
+        return `<img src="${d.src}">`;
+      }).join('')
     : `<div class="pc-empty" style="height:260px;">등록된 상세페이지 이미지가 여기에 표시됩니다</div>`;
 
   return `
