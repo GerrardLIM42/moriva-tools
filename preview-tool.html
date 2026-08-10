@@ -417,7 +417,7 @@
       <div class="field"><label>옵션 문구 (예: 색상 x 사이즈 x 수량)</label>
         <input type="text" id="in-option" placeholder="색상 x 사이즈 x 수량  블랙 x 대형 x 1개" oninput="render()"></div>
       <div class="row2">
-        <div class="field"><label>할인율(%)</label><input type="number" id="in-discount" placeholder="17" oninput="render()"></div>
+        <div class="field"><label>할인율(%) <span style="font-weight:400;color:var(--text-3);">— 자동계산</span></label><input type="number" id="in-discount" placeholder="17" readonly style="background:#f3f0ea;color:var(--text-2);"></div>
         <div class="field"><label>판매가(원)</label><input type="number" id="in-price" placeholder="27800" oninput="render()"></div>
       </div>
       <div class="field"><label>정가(원, 취소선)</label>
@@ -812,7 +812,7 @@ function dayShort(deliverText){
   return m ? m[1] : '내일';
 }
 
-function getVals(){
+function autoCalcDiscount(){ const discountEl = document.getElementById('in-discount'); if (!discountEl) return; const price = Number(document.getElementById('in-price').value) || Number(DEFAULTS.price); const original = Number(document.getElementById('in-original').value) || Number(DEFAULTS.original); if (original > 0){ let rate = Math.round((original - price) / original * 100); rate = Math.min(99, Math.max(0, rate)); discountEl.value = rate; } } function getVals(){ autoCalcDiscount();
   return {
     store: document.getElementById('in-store').value || DEFAULTS.store,
     sellerLegal: document.getElementById('in-sellerlegal').value || DEFAULTS.sellerLegal,
