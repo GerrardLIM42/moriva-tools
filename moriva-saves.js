@@ -111,13 +111,25 @@
       } catch (e) { return []; }
     }
     function write(list) {
-      items = list;
-      try { localStorage.setItem(opt.storeKey, JSON.stringify(list)); } catch (e) {
-        alert("저장 공간이 가득 찼습니다. 오래된 항목을 몇 개 삭제한 뒤 다시 시도해 주세요.");
-        return false;
+      var attempt = list.slice();
+      var pruned = 0;
+      while (attempt.length > 0) {
+        try {
+          localStorage.setItem(opt.storeKey, JSON.stringify(attempt));
+          items = attempt;
+          paint();
+          if (pruned > 0) say("저장 공간이 부족해 오래된 저장 " + pruned + "개를 자동으로 정리하고 저장했습니다.");
+          return true;
+        } catch (e) {
+          if (attempt.length <= 1) break;
+          attempt.pop();
+          pruned++;
+        }
       }
+      alert("이 항목 하나만으로도 브라우저 저장 공간을 초과합니다. 이미지 개수를 줄이거나 다른 브라우저를 사용해 주세요.");
+      items = read();
       paint();
-      return true;
+      return false;
     }
 
     /* ── 화면 요소 ── */
