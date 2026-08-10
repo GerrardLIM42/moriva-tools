@@ -551,9 +551,17 @@ function getSyncCfg(){
   }catch(e){}
   return null;
 }
-const SHARE_MEDIA_SIZE_LIMIT = 40 * 1024 * 1024; // 약 40MB (base64 JSON 기준)
+const SHARE_MEDIA_SIZE_LIMIT = 60 * 1024 * 1024; // 약 60MB (base64 JSON 기준, GitHub 업로드 시 부풀어도 100MB 이내로 유지)
+let lastShareDroppedVideo = false;
 async function uploadMediaForShare(cfg){
-  const payload = JSON.stringify({ thumbs: state.thumbs, details: state.details });
+  let thumbs = state.thumbs, details = state.details;
+  let payload = JSON.stringify({ thumbs, details });
+  lastShareDroppedVideo = false;
+  if (payload.length > SHARE_MEDIA_SIZE_LIMIT && details.some(d=>d.type==='video')){
+    details = details.filter(d=>d.type!=='video');
+    payload = JSON.stringify({ thumbs, details });
+    lastShareDroppedVideo = true;
+  }
   if (payload.length > SHARE_MEDIA_SIZE_LIMIT){
     const mb = (payload.length/1024/1024).toFixed(1);
     throw new Error(`이미지·동영상 용량이 너무 커요(약 ${mb}MB). 동영상 길이를 줄이거나 이미지 개수를 줄인 뒤 다시 시도해주세요.`);
@@ -620,7 +628,7 @@ async function openShareModal(){
     qrBox.innerHTML = '<span style="font-size:11.5px;color:var(--text-3);">QR 라이브러리를 불러오지 못했어요. 아래 링크를 복사해주세요.</span>';
   }
   if (mediaRef){
-    setShareStatus('✅ 이미지·동영상도 함께 전달돼요 — 폰에서 다시 첨부하지 않아도 됩니다.', 'ok');
+    setShareStatus(lastShareDroppedVideo ? '✅ 이미지는 함께 전달돼요. 동영상은 용량이 너무 커서 이번엔 제외했어요.' : '✅ 이미지·동영상도 함께 전달돼요 — 폰에서 다시 첨부하지 않아도 됩니다.', 'ok');
   }
 }
 function closeShareModal(){
@@ -691,15 +699,37 @@ function fileToDataURL(file){
     r.readAsDataURL(file);
   });
 }
+function loadImageEl(src){
+  return new Promise((res,rej)=>{
+    const img = new Image();
+    img.onload = ()=>res(img);
+    img.onerror = rej;
+    img.src = src;
+  });
+}
+async function fileToStoredDataURL(file, maxDim, quality){
+  const raw = await fileToDataURL(file);
+  if (!file.type || file.type.indexOf('image/')!==0 || file.type==='image/gif') return raw;
+  try{
+    const img = await loadImageEl(raw);
+    const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+    if (scale >= 1) return raw;
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(img.width*scale));
+    c.height = Math.max(1, Math.round(img.height*scale));
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', quality);
+  }catch(e){ return raw; }
+}
 
 async function handleThumbUpload(e){
   const files = Array.from(e.target.files);
-  for(const f of files){ const src = await fileToDataURL(f); state.thumbs.push({id:uid++, src}); }
+  for(const f of files){ const src = await fileToStoredDataURL(f, 1000, .85); state.thumbs.push({id:uid++, src}); }
   e.target.value=''; renderControls(); render();
 }
 async function handleDetailUpload(e){
   const files = Array.from(e.target.files);
-  for(const f of files){ const src = await fileToDataURL(f); state.details.push({id:uid++, src, name:f.name, type:'image'}); }
+  for(const f of files){ const src = await fileToStoredDataURL(f, 1600, .85); state.details.push({id:uid++, src, name:f.name, type:'image'}); }
   e.target.value=''; renderControls(); render();
 }
 async function handleDetailVideoUpload(e){
