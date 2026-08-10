@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="MORIVA Seedance 광고 프롬프트 생성기">
+  <title>MORIVA Seedance 광고 프롬프트 생성기</title>
+  <style>
+    :root{--navy:#0b1b34;--navy2:#17385f;--gold:#d49a00;--gold2:#f7e7b6;--ivory:#f3f1ea;--paper:#fffdfa;--ink:#11213a;--muted:#69798e;--line:#e3d8c3;--danger:#a64036;--ok:#176b52}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(circle at 6% 0,rgba(212,154,0,.1),transparent 30rem),var(--ivory);color:var(--ink);font-family:Pretendard,"Noto Sans KR","Apple SD Gothic Neo",Arial,sans-serif}
+    button,input,textarea,select{font:inherit}button{cursor:pointer}.hidden{display:none!important}
+    .header{display:grid;grid-template-columns:330px 1fr;width:min(calc(100% - 40px),1480px);margin:24px auto 0;overflow:hidden;border:1px solid var(--line);border-radius:24px;background:var(--paper);box-shadow:0 18px 50px rgba(16,28,45,.09)}
+    .brand{display:flex;align-items:center;gap:18px;padding:25px 30px;background:var(--navy);color:#fff}.mark{position:relative;width:58px;height:45px}.mark:before,.mark:after{position:absolute;bottom:2px;width:12px;height:48px;background:#fff;content:"";transform-origin:bottom}.mark:before{left:12px;transform:skew(-30deg)}.mark:after{right:12px;transform:skew(30deg)}.diamond{position:absolute;z-index:2;top:3px;left:25px;width:10px;height:16px;background:var(--gold);transform:rotate(45deg)}
+    .brand b{display:block;font-size:23px;letter-spacing:.19em}.brand small{display:block;margin-top:6px;color:#cdd7e5;font-size:9px;font-weight:800;letter-spacing:.12em}
+    .titlebar{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:22px 28px}.kicker{color:var(--navy2);font-size:9px;font-weight:900;letter-spacing:.18em}.titlebar h1{margin:7px 0 5px;font-size:clamp(24px,3vw,36px);letter-spacing:-.05em}.titlebar p{margin:0;color:var(--muted);font-size:12px}
+    .top-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:7px}.btn{min-height:40px;padding:0 14px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--navy2);font-size:12px;font-weight:800}.btn:hover{transform:translateY(-1px)}.btn.primary{border-color:var(--navy);background:var(--navy);color:#fff}.btn.gold{border-color:var(--gold);background:var(--gold2);color:var(--navy)}.btn:disabled{cursor:not-allowed;opacity:.45;transform:none}
+    .wrap{display:grid;grid-template-columns:minmax(580px,1fr) minmax(360px,480px);gap:20px;width:min(calc(100% - 40px),1480px);margin:20px auto 60px;align-items:start}.left{display:grid;gap:16px}.card{padding:26px;border:1px solid var(--line);border-radius:20px;background:var(--paper);box-shadow:0 10px 32px rgba(16,28,45,.04)}.heading{display:flex;align-items:flex-start;gap:12px;margin-bottom:20px}.num{display:grid;flex:0 0 40px;height:40px;place-items:center;border:1px solid #ead49a;border-radius:11px;background:var(--gold2);font-size:11px;font-weight:900}.heading h2{margin:0;font-size:19px;letter-spacing:-.04em}.heading p{margin:4px 0 0;color:var(--muted);font-size:11px;line-height:1.5}
+    .grid{display:grid;gap:14px}.grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}.grid.four{grid-template-columns:repeat(4,minmax(0,1fr))}.field{display:grid;gap:7px}.field.full{grid-column:1/-1}.field label{color:var(--navy2);font-size:11px;font-weight:850}.field label small{float:right;color:#929baa;font-size:9px;font-weight:600}.field input,.field textarea,.field select,.keybox input{width:100%;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink);outline:0}.field input,.field select{height:42px;padding:0 11px}.field textarea{min-height:85px;padding:10px 11px;line-height:1.55;resize:vertical}.field textarea.tall{min-height:112px}.field input:focus,.field textarea:focus,.field select:focus,.keybox input:focus{border-color:#6682a5;box-shadow:0 0 0 3px rgba(40,74,115,.09)}
+    .drop{display:grid;min-height:190px;padding:23px;place-items:center;border:1.5px dashed #d4c19e;border-radius:15px;background:linear-gradient(140deg,#fffefb,#f8f4e9);text-align:center}.drop.drag{border-color:var(--gold);background:#fff8e6}.drop strong{font-size:13px}.drop span{color:var(--muted);font-size:10px}.plus{display:grid;width:45px;height:45px;place-items:center;border-radius:13px;background:var(--gold2);font-size:25px}
+    .thumbs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}.thumb{overflow:hidden;display:grid;grid-template-columns:120px 1fr;border:1px solid var(--line);border-radius:12px;background:#fff}.thumbpic{position:relative;min-height:150px;background:#e9edf3}.thumbpic img{width:100%;height:100%;object-fit:cover}.thumbpic button{position:absolute;top:7px;right:7px;width:26px;height:26px;border:0;border-radius:50%;background:rgba(11,27,52,.8);color:#fff}.thumbinfo{display:grid;align-content:start;gap:7px;min-width:0;padding:11px}.thumbinfo b{overflow:hidden;font-size:10px;text-overflow:ellipsis;white-space:nowrap}.thumbinfo small{color:var(--muted);font-size:9px}.thumbinfo select,.thumbinfo textarea{width:100%;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:10px}.thumbinfo select{height:31px}.thumbinfo textarea{min-height:58px;padding:7px;resize:vertical}
+    .ai{margin-top:14px;overflow:hidden;border:1px solid #d6c49f;border-radius:15px;background:linear-gradient(145deg,#fffefa,#f6f1e5)}.aihead{display:flex;justify-content:space-between;gap:14px;padding:17px;border-bottom:1px solid #e8dcc7}.aihead h3{margin:5px 0 3px;font-size:16px}.aihead p{margin:0;color:var(--muted);font-size:10px}.badge{align-self:start;padding:6px 9px;border-radius:999px;background:var(--gold2);font-size:9px;font-weight:850}.keybox{padding:15px 17px}.keybox label{font-size:11px;font-weight:850}.keybox small{display:block;margin-top:3px;color:var(--muted);font-size:9px}.keyrow{display:grid;grid-template-columns:1fr auto;gap:7px;margin-top:8px}.keybox input{height:41px;padding:0 11px}.help{margin:7px 0 0!important;color:#7f8792!important;font-size:9px!important}.result{margin:0 17px 17px;overflow:hidden;border:1px solid #d9e0ea;border-radius:12px;background:#fff}.result-title{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px;border-bottom:1px solid #e8ecf2}.result-title b{font-size:12px}.confidence{padding:6px 8px;border-radius:7px;background:#edf2f7;color:var(--navy2);font-size:9px;font-weight:850}.checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:#e8ecf2}.check{display:grid;grid-template-columns:auto 1fr;gap:8px;padding:11px;background:#fff;cursor:pointer}.check input{margin-top:2px;accent-color:var(--navy2)}.check b{display:block;font-size:9px}.check span span{display:block;margin-top:3px;color:var(--muted);font-size:9px;line-height:1.45;overflow-wrap:anywhere}.warnings{padding:11px 13px;background:#fff7e5;color:#74613a;font-size:9px;line-height:1.55}.warnings b{color:#89620f}.warnings ul{margin:5px 0 0;padding-left:16px}.applyrow{display:flex;justify-content:flex-end;gap:7px;padding:11px;border-top:1px solid #e8ecf2}
+    .segments{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border-radius:11px;background:#eee9de}.segments button{min-height:38px;border:0;border-radius:8px;background:transparent;color:var(--muted);font-size:10px;font-weight:800}.segments button.active{background:#fff;color:var(--navy);box-shadow:0 3px 9px rgba(16,28,45,.09)}
+    .make{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:11px;min-height:68px;padding:0 20px;border:0;border-radius:15px;background:linear-gradient(125deg,var(--navy),var(--navy2));color:#fff;box-shadow:0 15px 35px rgba(11,27,52,.2)}.make i{display:grid;width:36px;height:36px;place-items:center;border-radius:10px;background:rgba(255,255,255,.09);color:var(--gold2);font-style:normal}.make b{text-align:left}.make small{color:#c6d0dc;font-size:9px}
+    .right{position:sticky;top:16px;display:grid;gap:12px}.output{overflow:hidden;border:1px solid #294260;border-radius:19px;background:var(--navy);box-shadow:0 18px 45px rgba(11,27,52,.17)}.outhead{display:flex;align-items:center;justify-content:space-between;padding:15px 17px;border-bottom:1px solid rgba(255,255,255,.09);color:#fff}.outhead small{display:block;color:var(--gold2);font-size:8px;font-weight:900;letter-spacing:.17em}.outhead h2{margin:4px 0 0;font-size:16px}.outbuttons{display:flex;gap:6px}.outbuttons button{min-height:32px;border:1px solid rgba(255,255,255,.15);border-radius:8px;background:rgba(255,255,255,.07);color:#fff;font-size:10px}.prompt{display:block;width:100%;min-height:690px;max-height:calc(100vh - 180px);padding:18px;border:0;background:#0d213f;color:#e8edf5;font:11px/1.65 Consolas,monospace;resize:vertical;outline:0}.empty{display:grid;min-height:520px;padding:25px;place-items:center;color:#a9b6c7;text-align:center;font-size:12px;line-height:1.7}.outfoot{display:flex;justify-content:space-between;padding:10px 16px;color:#8191a6;font-size:9px}.fileactions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.fileactions button{padding:13px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--navy2);font-size:10px;font-weight:800}
+    .toast{position:fixed;z-index:50;top:15px;left:50%;display:flex;align-items:center;gap:9px;max-width:calc(100vw - 30px);padding:11px 14px;border:0;border-radius:12px;background:var(--navy);color:#fff;box-shadow:0 14px 40px rgba(11,27,52,.25);font-size:11px;transform:translateX(-50%)}.toast:before{display:grid;width:20px;height:20px;place-items:center;border-radius:50%;background:var(--gold);color:var(--navy);font-weight:900;content:"✓"}.toast.error:before{background:#efaea7;content:"!"}
+    .modalback{position:fixed;z-index:60;inset:0;display:grid;padding:20px;place-items:center;background:rgba(5,14,28,.55)}.modal{overflow:hidden;width:min(560px,100%);max-height:80vh;border-radius:18px;background:#fff;box-shadow:0 25px 70px rgba(0,0,0,.3)}.modalhead{display:flex;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--line)}.modalhead h2{margin:0;font-size:18px}.close{width:32px;height:32px;border:1px solid var(--line);border-radius:8px;background:#fff}.projectlist{overflow:auto;display:grid;gap:8px;max-height:60vh;padding:14px}.project{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:7px;padding:12px;border:1px solid var(--line);border-radius:11px}.project b{display:block;font-size:12px}.project small{color:var(--muted);font-size:9px}.danger{color:var(--danger)}
+    .footer{width:min(calc(100% - 40px),1480px);margin:-35px auto 30px;color:var(--muted);text-align:center;font-size:9px}.footer a{color:var(--navy2)}
+    @media(max-width:980px){.header{grid-template-columns:1fr}.wrap{grid-template-columns:1fr}.right{position:static}.prompt{min-height:500px;max-height:none}}
+    @media(max-width:650px){.header,.wrap,.footer{width:calc(100% - 20px)}.titlebar{display:grid}.top-actions{justify-content:flex-start}.grid.two,.grid.four,.thumbs,.checks{grid-template-columns:1fr}.card{padding:19px 15px}.thumb{grid-template-columns:105px 1fr}.aihead{display:grid}.keyrow{grid-template-columns:1fr}.applyrow{display:grid}.make{grid-template-columns:auto 1fr}.make small{display:none}.fileactions{grid-template-columns:1fr}.segments{grid-template-columns:1fr}.brand{padding:21px}.titlebar{padding:20px}.project{grid-template-columns:1fr auto}.project .danger{grid-column:2}}
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="brand"><div class="mark"><span class="diamond"></span></div><div><b>MORIVA</b><small>모리바 · BETTER LIFE, BETTER MOVE</small></div></div>
+    <div class="titlebar">
+      <div><span class="kicker">COUPANG SELLER TOOLKIT · VIDEO</span><h1>Seedance 광고 프롬프트 생성기</h1><p>제품 정보와 이미지를 넣고 쇼핑 광고용 영문 프롬프트를 만드세요.</p></div>
+      <div class="top-actions"><button class="btn" id="newBtn">새 프로젝트</button><button class="btn" id="loadBtn">불러오기</button><button class="btn gold" id="saveBtn">브라우저 저장</button></div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="left">
+      <section class="card" id="product">
+        <div class="heading"><span class="num">01</span><div><h2>제품 정보</h2><p>광고에서 바뀌면 안 되는 사실과 구매 포인트를 입력하세요.</p></div></div>
+        <div class="grid two" id="productFields"></div>
+      </section>
+
+      <section class="card" id="references">
+        <div class="heading"><span class="num">02</span><div><h2>레퍼런스 이미지</h2><p>제품 사진과 상세페이지를 올리고 역할을 지정하세요. 최대 10장입니다.</p></div></div>
+        <input class="hidden" id="imageInput" type="file" accept="image/png,image/jpeg,image/webp" multiple>
+        <div class="drop" id="drop"><div class="plus">＋</div><strong>이미지를 끌어놓거나 선택하세요</strong><span>JPG, PNG, WebP · 최대 10장</span><button class="btn gold" id="imageBtn">이미지 선택</button></div>
+        <div class="ai">
+          <div class="aihead"><div><span class="kicker">AI PRODUCT READER</span><h3>첨부 이미지에서 제품 정보 가져오기</h3><p>제품명·브랜드·카테고리·사용법과 눈에 보이는 제품 사실을 분석합니다.</p></div><span class="badge">키 저장 안 함</span></div>
+          <div class="keybox"><label for="apiKey">OpenAI API 키</label><small>파일과 프로젝트에 저장되지 않습니다. 분석 요청은 브라우저에서 OpenAI로 직접 전송됩니다.</small><div class="keyrow"><input id="apiKey" type="password" autocomplete="off" placeholder="sk-..."><button class="btn primary" id="analyzeBtn" disabled>AI로 분석</button></div><p class="help">인터넷 연결과 API 사용 한도가 필요합니다. 이미지 수에 따라 비용이 발생할 수 있습니다.</p></div>
+          <div class="result hidden" id="analysisResult"><div class="result-title"><b>제품정보 분석 결과</b><span class="confidence" id="confidence"></span></div><div class="checks" id="analysisChecks"></div><div class="warnings hidden" id="warnings"></div><div class="applyrow"><button class="btn" id="uncheckBtn">전체 해제</button><button class="btn primary" id="applyBtn">선택 항목 적용</button></div></div>
+        </div>
+        <div class="thumbs" id="thumbs"></div>
+      </section>
+
+      <section class="card">
+        <div class="heading"><span class="num">03</span><div><h2>영상 설정</h2><p>길이, 화면 비율과 연출 방향을 정하세요.</p></div></div>
+        <div class="grid four" id="videoFields"></div>
+      </section>
+
+      <section class="card">
+        <div class="heading"><span class="num">04</span><div><h2>음성·한글 키 문구</h2><p>음성 방식과 장면별 한글 문구를 설정하세요.</p></div></div>
+        <div class="segments" id="audioSegments"><button data-mode="Korean voice-over" class="active">내레이션</button><button data-mode="Model speaking">모델 직접 말하기</button><button data-mode="Silent / visual only">무음 중심</button></div>
+        <div class="grid two" id="audioFields" style="margin-top:14px"></div>
+      </section>
+
+      <button class="make" id="generateBtn"><i>✦</i><b>Seedance 영문 광고 프롬프트 생성</b><small id="makeMeta">15초 · 4:3 · 5 Scenes</small></button>
+    </section>
+
+    <aside class="right">
+      <section class="output">
+        <div class="outhead"><div><small>OUTPUT</small><h2>English Prompt</h2></div><div class="outbuttons"><button class="btn" id="copyBtn" disabled>코드 복사</button><button class="btn" id="txtBtn" disabled>TXT</button></div></div>
+        <div class="empty" id="empty">제품 정보와 영상 설정을 입력한 뒤<br>프롬프트 생성 버튼을 눌러주세요.</div>
+        <textarea class="prompt hidden" id="prompt" spellcheck="false"></textarea>
+        <div class="outfoot"><span id="charCount">Seedance optimized</span><span>MORIVA</span></div>
+      </section>
+      <div class="fileactions"><button id="exportBtn">↓ 프로젝트 JSON 다운로드</button><button id="importBtn">↑ 프로젝트 JSON 불러오기</button><input class="hidden" id="projectInput" type="file" accept="application/json"></div>
+    </aside>
+  </main>
+
+  <p class="footer">AI 이미지 분석은 <a href="https://developers.openai.com/api/docs/guides/images-vision" target="_blank" rel="noreferrer">OpenAI 이미지 입력 기능</a>을 사용합니다. 온라인 버전: <a href="https://seedance-prompt-studio.hyeon-chul-lim.chatgpt.site" target="_blank" rel="noreferrer">Seedance Prompt Studio</a></p>
+  <button class="toast hidden" id="toast"></button>
+  <div class="modalback hidden" id="modal"><div class="modal"><div class="modalhead"><h2>저장된 프로젝트</h2><button class="close" id="closeModal">×</button></div><div class="projectlist" id="projectList"></div></div></div>
+
+  <script>
+  (function(){
+    "use strict";
+    var ROLES=["제품 기준","사용 방법","연출 스타일","패키지 구조","비교·결과"];
+    var STORE="moriva-seedance-standalone-projects-v1";
+    var analysis=null;
+    var images=[];
+    var promptText="";
+    var state={
+      projectName:"새 광고 프로젝트",productName:"",brandName:"MORIVA",category:"생활용품",targetAudience:"",customerProblem:"",coreBenefit:"",
+      sellingPoints:"",exactFacts:"",productDimensions:"",itemDimensions:"",usageSteps:"",packageMechanism:"",productOptions:"",
+      duration:"15",aspectRatio:"4:3",fps:"24 fps",sceneCount:"5",style:"Korean UGC product demonstration",
+      setting:"Bright, clean Korean apartment interior",modelDescription:"A friendly Korean lifestyle creator with a natural, trustworthy appearance",
+      cameraMood:"Natural daylight, stable handheld camera, clean direct cuts",audioMode:"Korean voice-over",
+      voiceTone:"Friendly, clear, trustworthy Korean female voice",narration:"",koreanOverlays:"",callToAction:"",mustAvoid:"",additionalDirection:""
+    };
+    var productDefs=[
+      ["projectName","프로젝트명","input","예: 모리바 세탁시트 광고",""],
+      ["productName","제품명","input","예: 모리바 이염방지시트",""],
+      ["brandName","브랜드명","input","예: MORIVA",""],
+      ["category","카테고리","input","예: 세탁용품",""],
+      ["targetAudience","타깃 고객","input","예: 흰옷과 색깔옷을 함께 세탁하는 가정","full"],
+      ["customerProblem","고객의 핵심 고민","textarea","예: 혼합 세탁 시 흰옷에 색이 물들까 걱정됨",""],
+      ["coreBenefit","제품이 주는 핵심 결과","textarea","예: 빠져나온 색소를 시트가 흡수한 모습으로 효과를 보여줌",""],
+      ["sellingPoints","주요 판매 포인트 · 한 줄에 하나","textarea","시트 한 장으로 간편한 사용\\n사용 후 시트만 버리면 끝","full"],
+      ["exactFacts","변경 금지 제품 사실 · 한 줄에 하나","textarea","1박스에 100매\\n2박스 옵션은 총 200매\\n패키지 디자인 변경 금지","full tall"],
+      ["productDimensions","패키지 크기","input","예: 15.6 × 12.5 × 5.2cm",""],
+      ["itemDimensions","내용물 크기","input","예: 시트 14 × 10cm",""],
+      ["usageSteps","사용 순서 · 한 줄에 하나","textarea","세탁물을 넣는다\\n시트 한 장을 넣는다\\n세탁 후 시트를 꺼낸다",""],
+      ["packageMechanism","제품 구조·개봉 방식","textarea","예: 넓은 플랩을 책처럼 옆으로 열기",""],
+      ["productOptions","판매 옵션 · 한 줄에 하나","textarea","1박스 옵션 = 총 100매\\n2박스 옵션 = 총 200매","full"]
+    ];
+    var videoDefs=[
+      ["duration","길이(초)","number","15",["5","60"]],
+      ["aspectRatio","화면 비율","select",["9:16","3:4","4:3","16:9","1:1"]],
+      ["fps","프레임","select",["24 fps","25 fps","30 fps","60 fps"]],
+      ["sceneCount","장면 수","select",["4","5","6"]],
+      ["style","영상 스타일","select",["Korean UGC product demonstration","Clean premium product commercial","Problem-solution shopping short","Cinematic lifestyle advertisement","Before-and-after proof video","Fast mobile commerce video"],"full"],
+      ["setting","촬영 장소","input","Bright, clean Korean apartment interior",""],
+      ["modelDescription","모델 설명","textarea","A friendly Korean lifestyle creator",""],
+      ["cameraMood","카메라·조명","textarea","Natural daylight, stable handheld camera","full"]
+    ];
+    var audioDefs=[
+      ["voiceTone","음성 톤","input","Friendly, clear, trustworthy Korean female voice","voice"],
+      ["narration","정확한 대사 · 한 문장에 한 줄","textarea","흰옷이랑 색깔옷 같이 빨기 걱정되시죠?\\n시트를 넣고 같이 빨면 됩니다.","voice"],
+      ["koreanOverlays","화면에 표시할 한글 · 장면 순서대로 한 줄","textarea","흰옷·색깔옷 같이 빨기 걱정?\\n이염방지시트 한 장 쏙!","full tall"],
+      ["callToAction","마지막 구매 유도","textarea","예: 마지막 1.5초 동안 구매 옵션을 명확히 표시",""],
+      ["mustAvoid","금지 사항 · 한 줄에 하나","textarea","제품 크기 확대 금지\\n패키지 개봉 방향 변경 금지\\n대사 반복 금지",""],
+      ["additionalDirection","추가 연출 지시","textarea","필요한 배경과 모델 행동을 적어주세요.","full"]
+    ];
+    var analysisDefs=[
+      ["productName","제품명"],["brandName","브랜드명"],["category","카테고리"],["targetAudience","타깃 고객"],
+      ["customerProblem","고객 고민"],["coreBenefit","핵심 결과"],["sellingPoints","판매 포인트"],["exactFacts","제품 사실"],
+      ["usageSteps","사용 순서"],["packageMechanism","구조·개봉 방식"],["productOptions","판매 옵션"],
+      ["productDimensions","패키지 크기"],["itemDimensions","내용물 크기"]
+    ];
+    var $=function(id){return document.getElementById(id)};
+    function escapeHtml(s){return String(s).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"})[c]})}
+    function toast(message,error){var el=$("toast");el.textContent=message;el.classList.toggle("error",!!error);el.classList.remove("hidden");clearTimeout(window.__toastTimer);window.__toastTimer=setTimeout(function(){el.classList.add("hidden")},4200)}
+    function fieldHtml(d){
+      var key=d[0],label=d[1],type=d[2],data=d[3],cls=d[4]||"";
+      var input="";
+      if(type==="select"){input='<select data-key="'+key+'">'+data.map(function(v){return'<option'+(state[key]===v?' selected':'')+'>'+escapeHtml(v)+'</option>'}).join("")+"</select>"}
+      else if(type==="textarea"){input='<textarea data-key="'+key+'" class="'+(cls.indexOf("tall")>=0?"tall":"")+'" placeholder="'+escapeHtml(data)+'">'+escapeHtml(state[key])+"</textarea>"}
+      else{input='<input data-key="'+key+'" type="'+type+'" value="'+escapeHtml(state[key])+'" placeholder="'+escapeHtml(data)+'"'+(type==="number"?' min="'+d[4][0]+'" max="'+d[4][1]+'"':"")+">"}
+      return'<div class="field '+(cls.indexOf("full")>=0?"full":"")+'" data-wrap="'+key+'"><label>'+escapeHtml(label)+'</label>'+input+"</div>"
+    }
+    function renderFields(){
+      $("productFields").innerHTML=productDefs.map(fieldHtml).join("");
+      $("videoFields").innerHTML=videoDefs.map(fieldHtml).join("");
+      $("audioFields").innerHTML=audioDefs.map(fieldHtml).join("");
+      document.querySelectorAll("[data-key]").forEach(function(el){el.addEventListener("input",function(){state[this.dataset.key]=this.value;updateMeta()})});
+      toggleAudio();
+    }
+    function updateMeta(){$("makeMeta").textContent=state.duration+"초 · "+state.aspectRatio+" · "+state.sceneCount+" Scenes"}
+    function toggleAudio(){document.querySelectorAll("[data-wrap=voiceTone],[data-wrap=narration]").forEach(function(el){el.classList.toggle("hidden",state.audioMode==="Silent / visual only")});document.querySelectorAll("#audioSegments button").forEach(function(b){b.classList.toggle("active",b.dataset.mode===state.audioMode)})}
+    function readFile(file){return new Promise(function(resolve,reject){var r=new FileReader();r.onload=function(){resolve(String(r.result))};r.onerror=reject;r.readAsDataURL(file)})}
+    function loadImg(src){return new Promise(function(resolve,reject){var im=new Image();im.onload=function(){resolve(im)};im.onerror=reject;im.src=src})}
+    async function prepareImage(file){
+      var raw=await readFile(file),im=await loadImg(raw),max=900,scale=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement("canvas");
+      c.width=Math.max(1,Math.round(im.width*scale));c.height=Math.max(1,Math.round(im.height*scale));c.getContext("2d").drawImage(im,0,0,c.width,c.height);
+      return{id:(crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random()),name:file.name,role:"제품 기준",notes:"",preview:c.toDataURL("image/jpeg",.8),width:im.width,height:im.height}
+    }
+    async function addFiles(list){
+      var files=Array.from(list).filter(function(f){return f.type.indexOf("image/")===0}).slice(0,10-images.length);
+      if(!files.length)return;
+      try{var added=await Promise.all(files.map(prepareImage));images=images.concat(added);renderImages();toast(added.length+"개 이미지를 추가했습니다.")}
+      catch(e){toast("일부 이미지를 읽지 못했습니다.",true)}
+    }
+    function renderImages(){
+      $("thumbs").innerHTML=images.map(function(im,i){return'<article class="thumb"><div class="thumbpic"><img src="'+im.preview+'" alt="'+escapeHtml(im.name)+'"><button data-remove="'+im.id+'">×</button></div><div class="thumbinfo"><b title="'+escapeHtml(im.name)+'">'+(i+1)+". "+escapeHtml(im.name)+'</b><small>'+im.width+"×"+im.height+'</small><select data-role="'+im.id+'">'+ROLES.map(function(r){return'<option'+(r===im.role?' selected':'')+'>'+r+"</option>"}).join("")+'</select><textarea data-note="'+im.id+'" placeholder="반드시 유지할 부분">'+escapeHtml(im.notes)+"</textarea></div></article>"}).join("");
+      document.querySelectorAll("[data-remove]").forEach(function(b){b.onclick=function(){images=images.filter(function(im){return im.id!==b.dataset.remove});renderImages()}});
+      document.querySelectorAll("[data-role]").forEach(function(s){s.onchange=function(){var im=images.find(function(x){return x.id===s.dataset.role});if(im)im.role=s.value}});
+      document.querySelectorAll("[data-note]").forEach(function(t){t.oninput=function(){var im=images.find(function(x){return x.id===t.dataset.note});if(im)im.notes=t.value}});
+      $("analyzeBtn").disabled=!images.length||!$("apiKey").value.trim();
+    }
+    var schema={type:"object",properties:{
+      productName:{type:"string"},brandName:{type:"string"},category:{type:"string"},targetAudience:{type:"string"},customerProblem:{type:"string"},coreBenefit:{type:"string"},
+      sellingPoints:{type:"array",items:{type:"string"}},exactFacts:{type:"array",items:{type:"string"}},usageSteps:{type:"array",items:{type:"string"}},
+      packageMechanism:{type:"string"},productOptions:{type:"array",items:{type:"string"}},productDimensions:{type:"string"},itemDimensions:{type:"string"},
+      confidence:{type:"number",minimum:0,maximum:1},cautions:{type:"array",items:{type:"string"}}
+    },required:["productName","brandName","category","targetAudience","customerProblem","coreBenefit","sellingPoints","exactFacts","usageSteps","packageMechanism","productOptions","productDimensions","itemDimensions","confidence","cautions"],additionalProperties:false};
+    async function analyzeProduct(){
+      var key=$("apiKey").value.trim();if(!images.length)return toast("먼저 이미지를 추가해 주세요.",true);if(!key)return toast("OpenAI API 키를 입력해 주세요.",true);
+      $("analyzeBtn").disabled=true;$("analyzeBtn").textContent="분석 중…";$("analysisResult").classList.add("hidden");
+      var guide=images.map(function(im,i){return(i+1)+". "+im.name+" / role: "+im.role+" / note: "+(im.notes||"none")}).join("\\n");
+      var instruction="You are a meticulous Korean e-commerce product analyst. Analyze all images as one coherent product set. Return all text fields in natural Korean.\\nReference map:\\n"+guide+"\\nRules: Read visible Korean and English carefully. Use style-only references only for visual context, never as product proof. Exact facts, dimensions, quantities, materials, certifications, options and performance claims must be included only when visibly supported. Never guess missing numbers. If text is small, cropped, contradictory or uncertain, leave that field empty and explain it in cautions. Keep array items short and non-duplicative. If images do not show one coherent product, return empty fields and explain why.";
+      var content=[{type:"text",text:instruction}].concat(images.map(function(im){return{type:"image_url",image_url:{url:im.preview,detail:"high"}}}));
+      try{
+        var response=await fetch("https://api.openai.com/v1/chat/completions",{method:"POST",headers:{"Authorization":"Bearer "+key,"Content-Type":"application/json"},body:JSON.stringify({model:"gpt-5.4-mini",store:false,messages:[{role:"user",content:content}],response_format:{type:"json_schema",json_schema:{name:"product_analysis",strict:true,schema:schema}},max_completion_tokens:4000})});
+        var data=await response.json();if(!response.ok)throw new Error(response.status===401?"API 키를 확인해 주세요.":response.status===429?"API 사용 한도 또는 결제 상태를 확인해 주세요.":(data.error&&data.error.message)||"분석 요청에 실패했습니다.");
+        var msg=data.choices&&data.choices[0]&&data.choices[0].message;if(!msg||!msg.content)throw new Error("분석 결과가 비어 있습니다.");
+        analysis=JSON.parse(msg.content);renderAnalysis();toast("제품정보 분석이 완료되었습니다.");
+      }catch(e){
+        var m=e&&e.message?e.message:"이미지 분석에 실패했습니다.";
+        if(m==="Failed to fetch")m="브라우저가 API 연결을 차단했습니다. 인터넷 연결을 확인하거나 하단 온라인 버전을 사용해 주세요.";
+        toast(m,true);
+      }finally{$("analyzeBtn").textContent="AI로 분석";$("analyzeBtn").disabled=!images.length||!$("apiKey").value.trim()}
+    }
+    function renderAnalysis(){
+      $("confidence").textContent=Math.round((analysis.confidence||0)*100)+"% 신뢰도";
+      $("analysisChecks").innerHTML=analysisDefs.map(function(d){var v=analysis[d[0]],text=Array.isArray(v)?v.join(" · "):v;if(!text)return"";return'<label class="check"><input type="checkbox" data-analysis="'+d[0]+'" checked><span><b>'+d[1]+'</b><span>'+escapeHtml(text)+"</span></span></label>"}).join("");
+      var cautions=analysis.cautions||[];$("warnings").classList.toggle("hidden",!cautions.length);$("warnings").innerHTML=cautions.length?"<b>확인이 필요한 내용</b><ul>"+cautions.map(function(v){return"<li>"+escapeHtml(v)+"</li>"}).join("")+"</ul>":"";
+      $("analysisResult").classList.remove("hidden");
+    }
+    function applyAnalysis(){
+      if(!analysis)return;var count=0;document.querySelectorAll("[data-analysis]:checked").forEach(function(c){var v=analysis[c.dataset.analysis],text=Array.isArray(v)?v.join("\\n"):v;if(text){state[c.dataset.analysis]=text;count++}});
+      renderFields();toast(count+"개 항목을 제품 정보에 적용했습니다.");$("product").scrollIntoView({behavior:"smooth"})
+    }
+    function lines(v){return String(v||"").split("\\n").map(function(s){return s.trim()}).filter(Boolean)}
+    function bullets(v,fallback){var a=lines(v);return a.length?a.map(function(x){return"- "+x}).join("\\n"):"- "+fallback}
+    function clean(v,fallback){return String(v||"").trim()||fallback}
+    function timeline(){
+      var n=Number(state.sceneCount)||5,d=Math.max(5,Math.min(60,Number(state.duration)||15)),names=n===4?["Problem Hook","Product and Use","Visible Proof","Offer and CTA"]:n===6?["Problem Hook","Product Introduction","Feature Close-up","Usage Demonstration","Result and Proof","Offer and CTA"]:["Problem Hook","Product Introduction","Usage Demonstration","Result and Proof","Offer and CTA"];
+      var weights=n===4?[0,.22,.58,.82,1]:n===6?[0,.15,.30,.44,.66,.84,1]:[0,.18,.36,.62,.82,1];
+      return names.map(function(name,i){return{title:name,from:(weights[i]*d).toFixed(1),to:(weights[i+1]*d).toFixed(1)}})
+    }
+    function sceneText(scene,index,overlay){
+      var dirs={
+        "Problem Hook":"Show this customer problem immediately: "+clean(state.customerProblem,"the main inconvenience solved by the product")+". Use a clear real-world situation.",
+        "Product Introduction":"Reveal "+clean(state.productName,"the product")+" clearly. Preserve package design, proportions and printed layout from the references.",
+        "Feature Close-up":"Use a tight detail shot to prove: "+clean(state.coreBenefit,"the main functional benefit")+".",
+        "Product and Use":"Introduce the product and demonstrate the real usage sequence without changing its mechanism.",
+        "Usage Demonstration":"Demonstrate the exact action in a continuous sequence: "+clean(state.usageSteps,"show correct use from start to finish")+".",
+        "Visible Proof":"Show credible visible proof of the result: "+clean(state.coreBenefit,"the product result")+".",
+        "Result and Proof":"Show credible visible proof of the result: "+clean(state.coreBenefit,"the product result")+".",
+        "Offer and CTA":"Finish with a stable product shot and exact purchase options: "+clean(state.productOptions,"the supplied configuration")+". "+clean(state.callToAction,"End with a clear purchase invitation.")
+      };
+      return"SCENE "+(index+1)+" — "+scene.from+" TO "+scene.to+" SECONDS — "+scene.title.toUpperCase()+"\\n"+dirs[scene.title]+"\\n"+(overlay?'Display this exact Korean overlay: “'+overlay+'”. Keep every character unchanged.':"Do not invent on-screen copy.")
+    }
+    function buildPrompt(){
+      var d=Math.max(5,Math.min(60,Number(state.duration)||15)),over=lines(state.koreanOverlays),refs=images.length?images.map(function(im,i){return(i+1)+". "+im.name+" — role: "+im.role+"; "+im.width+" × "+im.height+"px; locked notes: "+(im.notes||"faithful visual reference")+"."}).join("\\n"):"No reference images attached. Do not invent package text, specifications or geometry.";
+      var audio=state.audioMode==="Silent / visual only"?"AUDIO\\n- No dialogue and no voice-over.\\n- Use subtle background music and natural product sounds.\\n- The story must remain understandable when muted.":state.audioMode==="Model speaking"?"AUDIO AND SPEECH\\n- The on-screen model speaks with accurate Korean lip-sync.\\n- Voice: "+clean(state.voiceTone,"natural and trustworthy")+".\\n- Use exactly these lines once only:\\n"+bullets(state.narration,"No script supplied; do not improvise claims"):"MASTER VOICE-OVER\\n- Use one continuous narration track.\\n- Voice: "+clean(state.voiceTone,"natural and trustworthy")+".\\n- Use exactly these lines once only:\\n"+bullets(state.narration,"No script supplied; use no improvised dialogue")+"\\n- Never repeat or restart narration.";
+      var text=over.length?"ON-SCREEN KOREAN TEXT\\n- Use only these exact Korean overlays in order:\\n"+over.map(function(x,i){return"  "+(i+1)+". “"+x+"”"}).join("\\n")+"\\n- Do not translate, paraphrase, misspell or invent Korean characters.":"ON-SCREEN TEXT\\n- Do not generate random captions or pseudo-Korean. Preserve clean text-safe space.";
+      var ratio={ "9:16":"1080 × 1920 vertical","3:4":"1080 × 1440 vertical","4:3":"1440 × 1080 horizontal","16:9":"1920 × 1080 horizontal","1:1":"1080 × 1080 square"}[state.aspectRatio]||state.aspectRatio;
+      return"Create a completely new "+d+"-second shopping advertisement optimized for Seedance 2.5.\\n\\nPROJECT\\n- Brand: "+clean(state.brandName,"not specified")+"\\n- Product: "+clean(state.productName,"not specified")+"\\n- Category: "+clean(state.category,"not specified")+"\\n- Target audience: "+clean(state.targetAudience,"general e-commerce shoppers")+"\\n- Customer problem: "+clean(state.customerProblem,"use the supplied product problem")+"\\n- Purchase proposition: "+clean(state.coreBenefit,"show the main functional benefit")+"\\n\\nVIDEO FORMAT\\n- Exact duration: "+d+" seconds\\n- Aspect ratio and resolution: "+ratio+"\\n- Frame rate: "+state.fps+"\\n- Style: "+state.style+"\\n- Setting: "+state.setting+"\\n- Model: "+state.modelDescription+"\\n- Camera and lighting: "+state.cameraMood+"\\n- Fill the full frame. No black bars, interface elements or watermarks.\\n\\nREFERENCE IMAGE MAP\\n"+refs+"\\n\\nREFERENCE RULES\\n- Product-reference images control package shape, colors, logo location, print layout, proportions, accessories and count.\\n- Style references control only mood, lighting and composition.\\n- Never rewrite, redesign, translate or hallucinate printed package text.\\n\\nLOCKED PRODUCT TRUTH\\nPackage dimensions:\\n"+bullets(state.productDimensions,"Use only dimensions supplied in references")+"\\n\\nItem dimensions:\\n"+bullets(state.itemDimensions,"Keep all items proportional")+"\\n\\nExact product facts:\\n"+bullets(state.exactFacts,"Do not invent specifications, certifications, materials or performance numbers")+"\\n\\nSelling points:\\n"+bullets(state.sellingPoints,"Show only supported benefits")+"\\n\\nUsage sequence:\\n"+bullets(state.usageSteps,"Show only the supplied real usage")+"\\n\\nPackage or operating mechanism:\\n"+bullets(state.packageMechanism,"Follow the reference mechanism exactly")+"\\n\\nPurchase options:\\n"+bullets(state.productOptions,"Do not invent quantities")+"\\n\\nCONTINUITY\\n- Keep the same model, product geometry, package, room, props, wardrobe and lighting throughout.\\n- Maintain item size, color, quantity and orientation before, during and after use.\\n- Use direct cuts and readable product actions.\\n\\nTIMECODED STORYBOARD\\n"+timeline().map(function(s,i){return sceneText(s,i,over[i])}).join("\\n\\n")+"\\n\\n"+audio+"\\n\\n"+text+"\\n\\nFINAL CALL TO ACTION\\n"+clean(state.callToAction,"Finish with a stable product shot and the exact supplied purchase option.")+"\\n\\nADDITIONAL DIRECTION\\n"+clean(state.additionalDirection,"Keep the result factual, clean, trustworthy and conversion-focused.")+"\\n\\nNEGATIVE CONSTRAINTS\\n"+bullets(state.mustAvoid,"No unsupported claims")+"\\n- No invented geometry, package text, certification marks, accessories, colors or quantities.\\n- No oversized product, changing proportions, duplicated objects or disappearing props.\\n- No malformed hands, warped packaging or incorrect physical interaction.\\n- No random Korean text, subtitles outside the supplied list or watermarks.\\n- No repeated dialogue, overlapping voices or improvised claims.\\n- No competitor logo or copied competitor artwork.\\n\\nFINAL QUALITY CHECK\\nVerify exact duration, aspect ratio, dimensions, quantity, mechanism direction, Korean spelling, narration count, scene continuity and final product composition.";
+    }
+    function generate(){promptText=buildPrompt();$("prompt").value=promptText;$("prompt").classList.remove("hidden");$("empty").classList.add("hidden");$("copyBtn").disabled=false;$("txtBtn").disabled=false;$("charCount").textContent=promptText.length.toLocaleString()+" characters";toast("Seedance 영문 프롬프트를 만들었습니다.")}
+    function download(name,content,type){var b=new Blob([content],{type:(type||"text/plain")+";charset=utf-8"}),u=URL.createObjectURL(b),a=document.createElement("a");a.href=u;a.download=name;a.click();setTimeout(function(){URL.revokeObjectURL(u)},500)}
+    function projectObject(){return{version:1,exportedAt:new Date().toISOString(),state:state,images:images,prompt:promptText}}
+    function saveProject(){
+      try{var arr=JSON.parse(localStorage.getItem(STORE)||"[]");arr=arr.filter(function(p){return p.state.projectName!==state.projectName});arr.unshift(Object.assign({id:Date.now(),updatedAt:new Date().toISOString()},projectObject()));localStorage.setItem(STORE,JSON.stringify(arr.slice(0,6)));toast("이 브라우저에 프로젝트를 저장했습니다.")}
+      catch(e){toast("이미지 용량이 커서 저장하지 못했습니다. JSON 다운로드를 사용해 주세요.",true)}
+    }
+    function loadProjectData(p){state=Object.assign({},state,p.state||{});images=Array.isArray(p.images)?p.images:[];promptText=p.prompt||"";renderFields();renderImages();if(promptText){$("prompt").value=promptText;$("prompt").classList.remove("hidden");$("empty").classList.add("hidden");$("copyBtn").disabled=false;$("txtBtn").disabled=false;$("charCount").textContent=promptText.length.toLocaleString()+" characters"}else{$("prompt").classList.add("hidden");$("empty").classList.remove("hidden")}closeModal();toast("프로젝트를 불러왔습니다.")}
+    function showProjects(){var arr=[];try{arr=JSON.parse(localStorage.getItem(STORE)||"[]")}catch(e){};$("projectList").innerHTML=arr.length?arr.map(function(p,i){return'<article class="project"><div><b>'+escapeHtml(p.state&&p.state.projectName||"이름 없는 프로젝트")+'</b><small>'+new Date(p.updatedAt).toLocaleString("ko-KR")+'</small></div><button class="btn" data-load="'+i+'">불러오기</button><button class="btn danger" data-delete="'+i+'">삭제</button></article>'}).join(""):'<p style="padding:35px;text-align:center;color:var(--muted);font-size:12px">저장된 프로젝트가 없습니다.</p>';$("modal").classList.remove("hidden");document.querySelectorAll("[data-load]").forEach(function(b){b.onclick=function(){loadProjectData(arr[Number(b.dataset.load)])}});document.querySelectorAll("[data-delete]").forEach(function(b){b.onclick=function(){arr.splice(Number(b.dataset.delete),1);localStorage.setItem(STORE,JSON.stringify(arr));showProjects()}})}
+    function closeModal(){$("modal").classList.add("hidden")}
+    function reset(){if(!confirm("현재 입력 내용을 모두 지울까요?"))return;location.reload()}
+    $("imageBtn").onclick=function(){$("imageInput").click()};$("imageInput").onchange=function(){addFiles(this.files);this.value=""};$("drop").ondragover=function(e){e.preventDefault();this.classList.add("drag")};$("drop").ondragleave=function(){this.classList.remove("drag")};$("drop").ondrop=function(e){e.preventDefault();this.classList.remove("drag");addFiles(e.dataTransfer.files)};
+    $("apiKey").oninput=function(){$("analyzeBtn").disabled=!images.length||!this.value.trim()};$("analyzeBtn").onclick=analyzeProduct;$("applyBtn").onclick=applyAnalysis;$("uncheckBtn").onclick=function(){document.querySelectorAll("[data-analysis]").forEach(function(c){c.checked=false})};
+    $("audioSegments").onclick=function(e){if(!e.target.dataset.mode)return;state.audioMode=e.target.dataset.mode;toggleAudio()};$("generateBtn").onclick=generate;
+    $("prompt").oninput=function(){promptText=this.value;$("charCount").textContent=promptText.length.toLocaleString()+" characters"};
+    $("copyBtn").onclick=async function(){try{await navigator.clipboard.writeText(promptText);toast("프롬프트 코드를 복사했습니다.")}catch(e){$("prompt").select();document.execCommand("copy");toast("프롬프트 코드를 복사했습니다.")}};
+    $("txtBtn").onclick=function(){download((state.projectName||"seedance-prompt")+".txt",promptText)};
+    $("exportBtn").onclick=function(){download((state.projectName||"seedance-project")+".json",JSON.stringify(projectObject(),null,2),"application/json");toast("프로젝트 파일을 다운로드했습니다.")};
+    $("importBtn").onclick=function(){$("projectInput").click()};$("projectInput").onchange=function(){var f=this.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var p=JSON.parse(String(r.result));if(!p.state)throw new Error();loadProjectData(p)}catch(e){toast("올바른 프로젝트 파일이 아닙니다.",true)}};r.readAsText(f);this.value=""};
+    $("saveBtn").onclick=saveProject;$("loadBtn").onclick=showProjects;$("newBtn").onclick=reset;$("closeModal").onclick=closeModal;$("modal").onclick=function(e){if(e.target===$("modal"))closeModal()};
+    renderFields();renderImages();updateMeta();
+  })();
+  </script>
+</body>
+</html>
