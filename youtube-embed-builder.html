@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>유튜브 HTML 생성기</title>
+<link rel="icon" type="image/png" href="./favicon.png">
+<link rel="apple-touch-icon" href="./favicon.png">
+<style>
+  :root{
+    /* 소싱 매니페스트·가격 세팅 도구와 통일된 따뜻한 종이 톤 + 앰버 포인트 */
+    --bg:#F6F3EC;
+    --surface:#FFFDF8;
+    --ink:#1B2A3D;
+    --ink-soft:#5F6B78;
+    --ink-faint:#8B95A1;
+    --navy:#5B7C99;
+    --navy-deep:#16222F;
+    --amber:#D98E3D;
+    --amber-deep:#C2703D;
+    --brick:#B8453A;
+    --brick-soft:#F1DEDA;
+    --slate:#8B95A1;
+    --slate-soft:#EDE7D8;
+    --line:#DCD5C3;
+    --radius:12px;
+    --mono:ui-monospace, SFMono-Regular, Consolas, Menlo, 'Roboto Mono', monospace;
+    --sans:-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Segoe UI', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:var(--sans);
+    background:var(--bg);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{
+    max-width:760px;
+    margin:0 auto;
+    padding:36px 20px 70px;
+  }
+  .brand-row{display:flex; align-items:center; gap:10px; margin-bottom:26px;}
+  .brand-mark{width:30px; height:30px; flex-shrink:0;}
+  .brand-word{font-family:var(--mono); font-weight:700; font-size:15px; letter-spacing:.16em; color:var(--navy-deep);}
+  .brand-divider{width:1px; height:16px; background:var(--line);}
+  .brand-sub{font-size:11px; color:var(--ink-faint); font-weight:500;}
+
+  header{margin-bottom:28px;}
+  .eyebrow{font-family:var(--mono); font-size:11px; letter-spacing:.12em; color:var(--navy); font-weight:600; text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; gap:8px;}
+  .count-badge{font-family:var(--mono); font-size:10.5px; color:var(--ink-soft); background:var(--slate-soft); border-radius:20px; padding:2px 9px; letter-spacing:0; text-transform:none;}
+  h1{font-size:26px; line-height:1.3; margin:0 0 10px; letter-spacing:-.01em; font-weight:700;}
+  .sub{font-size:13.5px; line-height:1.6; color:var(--ink-soft); margin:0; max-width:560px;}
+
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:20px; margin-bottom:16px;}
+  .card-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;}
+  .card-title{font-size:14px; font-weight:800; color:var(--ink); display:flex; align-items:center; gap:8px;}
+  .card-title .num{font-family:var(--mono); font-size:11px; color:#fff; background:var(--navy-deep); border-radius:6px; padding:2px 7px;}
+  .card-desc{font-size:11.5px; color:var(--ink-faint); margin:2px 0 16px; line-height:1.6;}
+  .pill-btn{font-family:var(--mono); font-size:10px; font-weight:700; color:var(--amber-deep); background:var(--slate-soft); border:none; border-radius:20px; padding:4px 10px; cursor:pointer;}
+  .pill-btn:hover{background:#E7DFC8;}
+
+  .tgl-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;}
+  @media (max-width:520px){.tgl-grid{grid-template-columns:1fr;}}
+  .tgl-row{display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--bg); border:1px solid var(--line); border-radius:9px; padding:10px 12px;}
+  .tgl-row .lbl{font-size:12.5px; font-weight:600; color:var(--ink);}
+  .tgl-row .hint{display:block; font-size:10px; font-weight:500; color:var(--ink-faint); margin-top:1px;}
+  .tgl{position:relative; width:38px; height:22px; flex-shrink:0; cursor:pointer;}
+  .tgl input{position:absolute; opacity:0; width:100%; height:100%; margin:0; cursor:pointer;}
+  .tgl .track{position:absolute; inset:0; background:#D8D2C2; border-radius:20px; transition:background .15s;}
+  .tgl .knob{position:absolute; top:2px; left:2px; width:18px; height:18px; background:#fff; border-radius:50%; box-shadow:0 1px 3px rgba(0,0,0,.25); transition:left .15s;}
+  .tgl input:checked + .track{background:var(--amber);}
+  .tgl input:checked + .track .knob{left:18px;}
+  .tgl input:checked ~ .knob{left:18px;}
+
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .fld label{display:block; font-size:11px; color:var(--ink-soft); font-weight:600; margin-bottom:6px;}
+  select, input[type=text], input[type=number]{
+    width:100%; font-family:var(--mono); font-size:13px; font-weight:600; color:var(--navy-deep);
+    border:1px solid var(--line); border-radius:8px; padding:9px 10px; background:var(--surface); font-family:inherit;
+  }
+  select{font-family:var(--mono);}
+  .apply-all-btn{
+    width:100%; margin-top:14px; padding:11px; border-radius:9px; border:1.5px solid var(--navy-deep);
+    background:transparent; color:var(--navy-deep); font-size:13px; font-weight:800; cursor:pointer; font-family:inherit;
+  }
+  .apply-all-btn:hover{background:var(--navy-deep); color:#fff;}
+  .note{margin-top:14px; font-size:11.5px; line-height:1.65; color:var(--ink-faint); padding:12px 14px; background:var(--bg); border:1px dashed var(--line); border-radius:9px;}
+
+  textarea{
+    width:100%; font-family:var(--mono); font-size:12.5px; line-height:1.6; color:var(--ink);
+    border:1px solid var(--line); border-radius:9px; padding:11px 12px; background:var(--surface); resize:vertical;
+  }
+  #linkInput{min-height:76px;}
+  .add-row{display:flex; gap:10px; align-items:flex-start; margin-top:10px;}
+  .add-btn{
+    flex-shrink:0; padding:12px 18px; border-radius:9px; border:none; background:var(--navy-deep); color:#fff;
+    font-size:13px; font-weight:800; cursor:pointer; white-space:nowrap;
+  }
+  .add-btn:hover{background:#0F1B2D;}
+  .add-hint{font-size:10.5px; color:var(--ink-faint); margin-top:8px;}
+  .clear-link{font-size:11px; color:var(--brick); background:none; border:none; cursor:pointer; font-weight:700; padding:0;}
+
+  .vlist{display:flex; flex-direction:column; gap:12px; margin-top:16px;}
+  .vcard{border:1px solid var(--line); border-radius:11px; padding:14px 16px; background:var(--bg);}
+  .vcard.invalid{border-color:var(--brick); background:var(--brick-soft);}
+  .vcard-head{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
+  .vcard-idx{font-family:var(--mono); font-size:11px; font-weight:800; color:#fff; background:var(--navy-deep); border-radius:7px; width:24px; height:24px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .vcard.invalid .vcard-idx{background:var(--brick);}
+  .vcard-id{flex:1; min-width:0;}
+  .vcard-id .idv{font-family:var(--mono); font-size:12.5px; font-weight:700; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .vcard-id .status{font-size:10.5px; font-weight:600; color:var(--amber-deep);}
+  .vcard.invalid .status{color:var(--brick);}
+  .vcard-acts{display:flex; gap:5px; flex-shrink:0;}
+  .icon-btn{width:26px; height:26px; border:1px solid var(--line); background:var(--surface); border-radius:7px; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--ink-soft);}
+  .icon-btn:hover{background:#EFE9DA;}
+  .icon-btn.danger:hover{background:var(--brick-soft); color:var(--brick); border-color:var(--brick);}
+  .vcard input[type=text]{margin-bottom:10px;}
+  .vcard-foot{display:flex; align-items:center; justify-content:space-between; margin-top:10px; padding-top:10px; border-top:1px dashed var(--line);}
+  .vcard-dims{font-family:var(--mono); font-size:11px; color:var(--ink-faint);}
+  .vcard-foot-acts{display:flex; gap:12px;}
+  .vcard-foot-acts button{background:none; border:none; font-size:11px; font-weight:700; color:var(--navy); cursor:pointer; padding:0;}
+  .vcard-foot-acts button:hover{text-decoration:underline;}
+
+  .empty-hint{text-align:center; font-size:12.5px; color:var(--ink-faint); padding:20px 0 4px; line-height:1.7;}
+
+  .prev-toolbar{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
+  .prev-load-btn{padding:10px 16px; border-radius:9px; border:1.5px solid var(--navy-deep); background:transparent; color:var(--navy-deep); font-size:12.5px; font-weight:800; cursor:pointer; font-family:inherit;}
+  .prev-load-btn:hover{background:var(--navy-deep); color:#fff;}
+  .prev-stage{border:1px dashed var(--line); border-radius:11px; padding:24px; background:var(--bg); min-height:120px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;}
+  .prev-placeholder{text-align:center; color:var(--ink-faint); font-size:12.5px; line-height:1.7;}
+  .prev-placeholder b{display:block; color:var(--ink-soft); font-size:13.5px; margin-bottom:4px;}
+  .prev-embed{width:100%;}
+  .prev-embed + .prev-embed{margin-top:18px; padding-top:18px; border-top:1px dashed var(--line);}
+
+  .html-toolbar{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;}
+  .copy-btn{padding:10px 18px; border-radius:9px; border:none; background:var(--amber); color:#fff; font-size:13px; font-weight:800; cursor:pointer; font-family:inherit;}
+  .copy-btn:hover{background:var(--amber-deep);}
+  .copy-btn:disabled{background:var(--slate-soft); color:var(--ink-faint); cursor:not-allowed;}
+  #htmlOutput{min-height:180px; max-height:360px; white-space:pre;}
+  .html-guide{font-size:11.5px; color:var(--ink-faint); margin:10px 0 0; line-height:1.6;}
+
+  .toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:999; background:var(--navy-deep); color:#fff; padding:10px 18px; border-radius:999px; font-size:13px; font-weight:700; opacity:0; transition:opacity .18s; pointer-events:none;}
+  .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="brand-row">
+    <svg class="brand-mark" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+      <path d="M6 50 L20 14 L30 34 L40 14 L54 50" fill="none" stroke="#0F1B2D" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/>
+      <rect x="26" y="27" width="8" height="8" fill="#E1A93B" transform="rotate(45 30 31)"/>
+    </svg>
+    <span class="brand-word">MORIVA</span>
+    <div class="brand-divider"></div>
+    <span class="brand-sub">모리바</span>
+  </div>
+
+  <header>
+    <div class="eyebrow">Coupang Seller Toolkit · Video <span class="count-badge" id="videoCountBadge">0개 영상</span></div>
+    <h1>유튜브 HTML 생성기</h1>
+    <p class="sub">유튜브 링크만 붙여넣으면 쿠팡 상세페이지(WING 텍스트 영역)에 바로 넣을 수 있는 임베드 HTML을 만들어줍니다. 자동재생·음소거·반복재생·화면 비율을 영상별로 다르게 설정할 수 있어요.</p>
+  </header>
+
+  <!-- 01 기본 설정 -->
+  <section class="card">
+    <div class="card-head">
+      <div class="card-title"><span class="num">01</span>기본 설정</div>
+      <span class="pill-btn">새 링크에 적용</span>
+    </div>
+    <p class="card-desc">앞으로 추가하는 모든 링크는 아래 설정으로 시작됩니다. 이미 추가한 영상에는 영향을 주지 않아요.</p>
+
+    <div class="tgl-grid">
+      <label class="tgl-row"><span class="lbl">자동재생<span class="hint">페이지에서 바로 재생</span></span><span class="tgl"><input type="checkbox" id="def-autoplay" checked><span class="track"></span><span class="knob"></span></span></label>
+      <label class="tgl-row"><span class="lbl">음소거<span class="hint">자동재생 권장 설정</span></span><span class="tgl"><input type="checkbox" id="def-mute" checked><span class="track"></span><span class="knob"></span></span></label>
+      <label class="tgl-row"><span class="lbl">무한반복<span class="hint">끝나면 처음부터 재생</span></span><span class="tgl"><input type="checkbox" id="def-loop" checked><span class="track"></span><span class="knob"></span></span></label>
+      <label class="tgl-row"><span class="lbl">자막 강제 표시<span class="hint">기본은 시청자 설정 따름</span></span><span class="tgl"><input type="checkbox" id="def-cc"><span class="track"></span><span class="knob"></span></span></label>
+      <label class="tgl-row"><span class="lbl">재생 컨트롤<span class="hint">재생바·버튼 표시</span></span><span class="tgl"><input type="checkbox" id="def-controls" checked><span class="track"></span><span class="knob"></span></span></label>
+    </div>
+
+    <div class="row2">
+      <div class="fld"><label>화면 비율</label>
+        <select id="def-ratio">
+          <option value="4:3">4:3 일반 광고</option>
+          <option value="16:9">16:9 와이드</option>
+          <option value="9:16">9:16 쇼츠</option>
+          <option value="1:1">1:1 정사각형</option>
+        </select>
+      </div>
+      <div class="fld"><label>최대 가로폭(px)</label><input type="number" id="def-width" value="780" min="120" max="1200" step="10"></div>
+    </div>
+
+    <button type="button" class="apply-all-btn" id="applyAllBtn">기존 영상 전체에 이 설정 적용</button>
+    <p class="note">cc_load_policy(자막 강제 표시)를 켜면 재생 시 자막이 기본으로 표시되도록 요청합니다. 다만 실제로 보이는지는 시청자의 유튜브 자막 환경설정에 따라 달라질 수 있어요.</p>
+  </section>
+
+  <!-- 02 유튜브 링크 -->
+  <section class="card">
+    <div class="card-head"><div class="card-title"><span class="num">02</span>유튜브 링크</div>
+      <button type="button" class="clear-link" id="clearAllBtn" style="display:none;">전체 삭제</button>
+    </div>
+    <p class="card-desc">일반 영상·Shorts·youtu.be 주소를 모두 지원합니다. 여러 링크는 줄을 바꿔 한 번에 입력하세요.</p>
+    <textarea id="linkInput" placeholder="https://youtu.be/XF7r0ZSSrK8&#10;https://www.youtube.com/shorts/11McPSoZKz0"></textarea>
+    <div class="add-row">
+      <button type="button" class="add-btn" id="addLinkBtn">링크 추가</button>
+      <span class="add-hint">Ctrl(⌘) + Enter로도 추가할 수 있습니다.</span>
+    </div>
+
+    <div class="vlist" id="vlist"></div>
+    <p class="empty-hint" id="emptyHint">아직 추가한 영상이 없습니다. 위에 유튜브 링크를 붙여넣고 '링크 추가'를 눌러주세요.</p>
+  </section>
+
+  <!-- 03 미리보기 -->
+  <section class="card">
+    <div class="prev-toolbar">
+      <div class="card-title"><span class="num">03</span>미리보기</div>
+      <button type="button" class="prev-load-btn" id="prevLoadBtn">미리보기 불러오기</button>
+    </div>
+    <div class="prev-stage" id="prevStage">
+      <div class="prev-placeholder"><b>설정을 확인한 뒤 미리보기를 불러오세요</b>자동재생 영상은 미리보기를 여는 순간 재생될 수 있습니다.</div>
+    </div>
+  </section>
+
+  <!-- 04 완성 HTML -->
+  <section class="card">
+    <div class="html-toolbar">
+      <div class="card-title"><span class="num">04</span>완성 HTML <span class="count-badge" id="charCountBadge">0자</span></div>
+      <button type="button" class="copy-btn" id="copyAllBtn" disabled>HTML 코드 복사</button>
+    </div>
+    <textarea id="htmlOutput" readonly></textarea>
+    <p class="html-guide">'HTML 코드 복사'를 누른 뒤 쿠팡 WING의 상세설명 편집기에서 '텍스트(HTML)' 모드로 전환해 그대로 붙여 넣으세요.</p>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  var RATIOS = { '4:3':[4,3], '16:9':[16,9], '9:16':[9,16], '1:1':[1,1] };
+  var uid = 1;
+
+  var state = {
+    defaults: { autoplay:true, mute:true, loop:true, cc:false, controls:true, ratio:'4:3', width:780 },
+    videos: []
+  };
+
+  var els = {
+    defAutoplay: document.getElementById('def-autoplay'),
+    defMute: document.getElementById('def-mute'),
+    defLoop: document.getElementById('def-loop'),
+    defCc: document.getElementById('def-cc'),
+    defControls: document.getElementById('def-controls'),
+    defRatio: document.getElementById('def-ratio'),
+    defWidth: document.getElementById('def-width'),
+    applyAllBtn: document.getElementById('applyAllBtn'),
+    linkInput: document.getElementById('linkInput'),
+    addLinkBtn: document.getElementById('addLinkBtn'),
+    clearAllBtn: document.getElementById('clearAllBtn'),
+    vlist: document.getElementById('vlist'),
+    emptyHint: document.getElementById('emptyHint'),
+    videoCountBadge: document.getElementById('videoCountBadge'),
+    prevLoadBtn: document.getElementById('prevLoadBtn'),
+    prevStage: document.getElementById('prevStage'),
+    htmlOutput: document.getElementById('htmlOutput'),
+    charCountBadge: document.getElementById('charCountBadge'),
+    copyAllBtn: document.getElementById('copyAllBtn'),
+    toast: document.getElementById('toast')
+  };
+
+  var previewLoaded = false;
+  var toastTimer = null;
+
+  function say(msg){
+    els.toast.textContent = msg;
+    els.toast.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ els.toast.classList.remove('show'); }, 1800);
+  }
+
+  /* ── 유튜브 링크 → 영상 ID 추출 ── */
+  function extractYoutubeId(raw){
+    var s = String(raw || '').trim();
+    if (!s) return null;
+    if (/^[a-zA-Z0-9_-]{11}$/.test(s)) return s;
+    var u;
+    try { u = new URL(s.indexOf('://') !== -1 ? s : 'https://' + s); } catch (e) { return null; }
+    var host = u.hostname.replace(/^www\./, '').replace(/^m\./, '');
+    if (host === 'youtu.be'){
+      var seg = u.pathname.split('/').filter(Boolean)[0];
+      return (seg && /^[a-zA-Z0-9_-]{11}$/.test(seg)) ? seg : null;
+    }
+    if (host === 'youtube.com' || host === 'music.youtube.com'){
+      var v = u.searchParams.get('v');
+      if (v && /^[a-zA-Z0-9_-]{11}$/.test(v)) return v;
+      var parts = u.pathname.split('/').filter(Boolean);
+      var idx = -1;
+      for (var i = 0; i < parts.length; i++){
+        if (parts[i] === 'shorts' || parts[i] === 'embed' || parts[i] === 'live'){ idx = i; break; }
+      }
+      if (idx !== -1 && parts[idx + 1] && /^[a-zA-Z0-9_-]{11}$/.test(parts[idx + 1])) return parts[idx + 1];
+    }
+    return null;
+  }
+
+  function computeSize(ratio, width){
+    var r = RATIOS[ratio] || RATIOS['4:3'];
+    var w = Math.max(1, Math.round(Number(width) || 780));
+    var h = Math.max(1, Math.round(w * r[1] / r[0]));
+    return { w: w, h: h, cssRatio: r[0] + '/' + r[1] };
+  }
+
+  function buildEmbedUrl(v){
+    var params = [];
+    if (v.autoplay) params.push('autoplay=1');
+    if (v.mute) params.push('mute=1');
+    if (v.cc) params.push('cc_load_policy=1');
+    if (v.loop){ params.push('loop=1'); params.push('playlist=' + v.ytid); }
+    params.push('controls=' + (v.controls ? '1' : '0'));
+    params.push('rel=0');
+    params.push('playsinline=1');
+    return 'https://www.youtube.com/embed/' + v.ytid + '?' + params.join('&');
+  }
+
+  function buildBlock(v, index){
+    var dim = computeSize(v.ratio, v.width);
+    var src = buildEmbedUrl(v).replace(/&/g, '&amp;');
+    return '<div style="width:100%; margin:0; padding:0; text-align:center; font-size:0; line-height:0;">\n' +
+      '  <iframe\n' +
+      '    src="' + src + '"\n' +
+      '    title="쿠팡 상품 동영상 ' + index + '"\n' +
+      '    width="' + dim.w + '"\n' +
+      '    height="' + dim.h + '"\n' +
+      '    frameborder="0"\n' +
+      '    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"\n' +
+      '    allowfullscreen\n' +
+      '    loading="lazy"\n' +
+      '    style="display:block; width:100%; max-width:' + dim.w + 'px; height:auto; aspect-ratio:' + dim.cssRatio + '; margin:0 auto; padding:0; border:0;"\n' +
+      '  ></iframe>\n' +
+      '</div>';
+  }
+
+  function validVideos(){
+    return state.videos.filter(function(v){ return v.valid; });
+  }
+
+  function generateFullHtml(){
+    var valid = validVideos();
+    return valid.map(function(v, i){ return buildBlock(v, i + 1); }).join('\n\n');
+  }
+
+  /* ── 기본 설정 읽기/반영 ── */
+  function readDefaultsFromUi(){
+    state.defaults = {
+      autoplay: els.defAutoplay.checked,
+      mute: els.defMute.checked,
+      loop: els.defLoop.checked,
+      cc: els.defCc.checked,
+      controls: els.defControls.checked,
+      ratio: els.defRatio.value,
+      width: Math.max(120, Math.min(1200, Number(els.defWidth.value) || 780))
+    };
+  }
+  function applyDefaultsToUi(){
+    els.defAutoplay.checked = state.defaults.autoplay;
+    els.defMute.checked = state.defaults.mute;
+    els.defLoop.checked = state.defaults.loop;
+    els.defCc.checked = state.defaults.cc;
+    els.defControls.checked = state.defaults.controls;
+    els.defRatio.value = state.defaults.ratio;
+    els.defWidth.value = state.defaults.width;
+  }
+
+  [els.defAutoplay, els.defMute, els.defLoop, els.defCc, els.defControls, els.defRatio].forEach(function(el){
+    el.addEventListener('change', readDefaultsFromUi);
+  });
+  els.defWidth.addEventListener('input', readDefaultsFromUi);
+  els.defWidth.addEventListener('change', readDefaultsFromUi);
+
+  els.applyAllBtn.addEventListener('click', function(){
+    readDefaultsFromUi();
+    if (!state.videos.length){ say('적용할 영상이 없습니다'); return; }
+    state.videos.forEach(function(v){
+      v.autoplay = state.defaults.autoplay;
+      v.mute = state.defaults.mute;
+      v.loop = state.defaults.loop;
+      v.cc = state.defaults.cc;
+      v.controls = state.defaults.controls;
+      v.ratio = state.defaults.ratio;
+      v.width = state.defaults.width;
+    });
+    render();
+    say('영상 ' + state.videos.length + '개에 기본 설정을 적용했습니다');
+  });
+
+  /* ── 링크 추가 ── */
+  function addLinks(){
+    var lines = els.linkInput.value.split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
+    if (!lines.length) return;
+    readDefaultsFromUi();
+    lines.forEach(function(line){
+      var ytid = extractYoutubeId(line);
+      state.videos.push({
+        uid: uid++,
+        sourceUrl: line,
+        ytid: ytid,
+        valid: !!ytid,
+        autoplay: state.defaults.autoplay,
+        mute: state.defaults.mute,
+        loop: state.defaults.loop,
+        cc: state.defaults.cc,
+        controls: state.defaults.controls,
+        ratio: state.defaults.ratio,
+        width: state.defaults.width
+      });
+    });
+    els.linkInput.value = '';
+    previewLoaded = false;
+    render();
+    var failCount = lines.length - lines.filter(function(l){ return !!extractYoutubeId(l); }).length;
+    say(failCount ? (lines.length - failCount) + '개 추가, ' + failCount + '개 인식 실패' : lines.length + '개 링크를 추가했습니다');
+  }
+  els.addLinkBtn.addEventListener('click', addLinks);
+  els.linkInput.addEventListener('keydown', function(e){
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter'){ e.preventDefault(); addLinks(); }
+  });
+
+  els.clearAllBtn.addEventListener('click', function(){
+    if (!state.videos.length) return;
+    if (!confirm('추가한 영상 ' + state.videos.length + '개를 모두 삭제할까요?')) return;
+    state.videos = [];
+    previewLoaded = false;
+    render();
+  });
+
+  /* ── 카드 단위 동작 ── */
+  function findVideo(uidVal){
+    for (var i = 0; i < state.videos.length; i++){ if (state.videos[i].uid === uidVal) return state.videos[i]; }
+    return null;
+  }
+
+  function copyText(text){
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      return navigator.clipboard.writeText(text);
+    }
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+    return Promise.resolve();
+  }
+
+  els.vlist.addEventListener('click', function(e){
+    var btn = e.target.closest('button');
+    if (!btn) return;
+    var card = e.target.closest('.vcard');
+    var vuid = Number(card && card.getAttribute('data-uid'));
+    var idx = state.videos.findIndex(function(v){ return v.uid === vuid; });
+    if (idx === -1) return;
+
+    if (btn.classList.contains('mv-up')){
+      if (idx > 0){ var tmp = state.videos[idx - 1]; state.videos[idx - 1] = state.videos[idx]; state.videos[idx] = tmp; previewLoaded = false; render(); }
+    } else if (btn.classList.contains('mv-down')){
+      if (idx < state.videos.length - 1){ var tmp2 = state.videos[idx + 1]; state.videos[idx + 1] = state.videos[idx]; state.videos[idx] = tmp2; previewLoaded = false; render(); }
+    } else if (btn.classList.contains('mv-del')){
+      state.videos.splice(idx, 1);
+      previewLoaded = false;
+      render();
+    } else if (btn.classList.contains('mv-reset')){
+      readDefaultsFromUi();
+      var v = state.videos[idx];
+      v.autoplay = state.defaults.autoplay; v.mute = state.defaults.mute; v.loop = state.defaults.loop;
+      v.cc = state.defaults.cc; v.controls = state.defaults.controls; v.ratio = state.defaults.ratio; v.width = state.defaults.width;
+      render();
+      say('기본값을 적용했습니다');
+    } else if (btn.classList.contains('mv-copy')){
+      var vv = state.videos[idx];
+      if (!vv.valid){ say('인식되지 않은 영상은 복사할 수 없습니다'); return; }
+      copyText(buildBlock(vv, validVideos().indexOf(vv) + 1));
+      say('이 영상의 코드를 복사했습니다');
+    }
+  });
+
+  els.vlist.addEventListener('change', function(e){
+    var card = e.target.closest('.vcard');
+    if (!card) return;
+    var vuid = Number(card.getAttribute('data-uid'));
+    var v = findVideo(vuid);
+    if (!v) return;
+
+    if (e.target.classList.contains('v-url')){
+      v.sourceUrl = e.target.value.trim();
+      v.ytid = extractYoutubeId(v.sourceUrl);
+      v.valid = !!v.ytid;
+      previewLoaded = false;
+      render();
+      return;
+    }
+    if (e.target.classList.contains('v-autoplay')) v.autoplay = e.target.checked;
+    if (e.target.classList.contains('v-mute')) v.mute = e.target.checked;
+    if (e.target.classList.contains('v-loop')) v.loop = e.target.checked;
+    if (e.target.classList.contains('v-cc')) v.cc = e.target.checked;
+    if (e.target.classList.contains('v-controls')) v.controls = e.target.checked;
+    if (e.target.classList.contains('v-ratio')) v.ratio = e.target.value;
+    if (e.target.classList.contains('v-width')) v.width = Math.max(120, Math.min(1200, Number(e.target.value) || 780));
+    previewLoaded = false;
+    render();
+  });
+
+  /* ── 렌더링 ── */
+  function tglHtml(cls, checked, uidVal){
+    return '<span class="tgl"><input type="checkbox" class="' + cls + '"' + (checked ? ' checked' : '') + '><span class="track"></span><span class="knob"></span></span>';
+  }
+
+  function ratioOptions(sel){
+    return ['4:3', '16:9', '9:16', '1:1'].map(function(r){
+      var label = r === '4:3' ? '4:3 일반 광고' : r === '16:9' ? '16:9 와이드' : r === '9:16' ? '9:16 쇼츠' : '1:1 정사각형';
+      return '<option value="' + r + '"' + (r === sel ? ' selected' : '') + '>' + label + '</option>';
+    }).join('');
+  }
+
+  function renderCard(v, i){
+    var dim = computeSize(v.ratio, v.width);
+    var statusText = v.valid ? '정상 인식 · ' + v.ytid : '인식 실패 · 링크를 확인해 주세요';
+    return '<div class="vcard' + (v.valid ? '' : ' invalid') + '" data-uid="' + v.uid + '">' +
+      '<div class="vcard-head">' +
+        '<span class="vcard-idx">' + (i + 1) + '</span>' +
+        '<div class="vcard-id"><div class="idv">영상 ID · ' + (v.ytid || '(인식 안 됨)') + '</div><div class="status">' + statusText + '</div></div>' +
+        '<div class="vcard-acts">' +
+          '<button type="button" class="icon-btn mv-up" title="위로" ' + (i === 0 ? 'disabled' : '') + '>↑</button>' +
+          '<button type="button" class="icon-btn mv-down" title="아래로" ' + (i === state.videos.length - 1 ? 'disabled' : '') + '>↓</button>' +
+          '<button type="button" class="icon-btn danger mv-del" title="삭제">✕</button>' +
+        '</div>' +
+      '</div>' +
+      '<input type="text" class="v-url" value="' + v.sourceUrl.replace(/"/g, '&quot;') + '">' +
+      '<div class="tgl-grid">' +
+        '<label class="tgl-row"><span class="lbl">자동재생</span>' + tglHtml('v-autoplay', v.autoplay) + '</label>' +
+        '<label class="tgl-row"><span class="lbl">음소거</span>' + tglHtml('v-mute', v.mute) + '</label>' +
+        '<label class="tgl-row"><span class="lbl">무한반복</span>' + tglHtml('v-loop', v.loop) + '</label>' +
+        '<label class="tgl-row"><span class="lbl">자막 강제 표시</span>' + tglHtml('v-cc', v.cc) + '</label>' +
+        '<label class="tgl-row"><span class="lbl">재생 컨트롤</span>' + tglHtml('v-controls', v.controls) + '</label>' +
+      '</div>' +
+      '<div class="row2">' +
+        '<div class="fld"><label>화면 비율</label><select class="v-ratio">' + ratioOptions(v.ratio) + '</select></div>' +
+        '<div class="fld"><label>최대 가로폭(px)</label><input type="number" class="v-width" value="' + v.width + '" min="120" max="1200" step="10"></div>' +
+      '</div>' +
+      '<div class="vcard-foot">' +
+        '<span class="vcard-dims">' + dim.w + '×' + dim.h + 'px</span>' +
+        '<div class="vcard-foot-acts"><button type="button" class="mv-reset">기본값 적용</button><button type="button" class="mv-copy">이 영상 코드 복사</button></div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function renderPreview(){
+    if (!previewLoaded){
+      els.prevStage.innerHTML = '<div class="prev-placeholder"><b>설정을 확인한 뒤 미리보기를 불러오세요</b>자동재생 영상은 미리보기를 여는 순간 재생될 수 있습니다.</div>';
+      return;
+    }
+    var valid = validVideos();
+    if (!valid.length){
+      els.prevStage.innerHTML = '<div class="prev-placeholder"><b>표시할 영상이 없습니다</b>인식 가능한 유튜브 링크를 추가해 주세요.</div>';
+      return;
+    }
+    els.prevStage.innerHTML = valid.map(function(v){
+      var dim = computeSize(v.ratio, v.width);
+      var src = buildEmbedUrl(v);
+      return '<div class="prev-embed"><iframe src="' + src + '" title="미리보기" width="' + dim.w + '" height="' + dim.h + '" frameborder="0" ' +
+        'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="lazy" ' +
+        'style="display:block; width:100%; max-width:' + dim.w + 'px; height:auto; aspect-ratio:' + dim.cssRatio + '; margin:0 auto; border:0;"></iframe></div>';
+    }).join('');
+  }
+
+  els.prevLoadBtn.addEventListener('click', function(){
+    previewLoaded = !previewLoaded;
+    els.prevLoadBtn.textContent = previewLoaded ? '미리보기 접기' : '미리보기 불러오기';
+    renderPreview();
+  });
+
+  function render(){
+    els.videoCountBadge.textContent = state.videos.length + '개 영상';
+    els.clearAllBtn.style.display = state.videos.length ? '' : 'none';
+
+    if (!state.videos.length){
+      els.vlist.innerHTML = '';
+      els.emptyHint.style.display = '';
+    } else {
+      els.emptyHint.style.display = 'none';
+      els.vlist.innerHTML = state.videos.map(function(v, i){ return renderCard(v, i); }).join('');
+    }
+
+    var html = generateFullHtml();
+    els.htmlOutput.value = html;
+    els.charCountBadge.textContent = html.length.toLocaleString('ko-KR') + '자';
+    els.copyAllBtn.disabled = !html.length;
+
+    renderPreview();
+  }
+
+  els.copyAllBtn.addEventListener('click', function(){
+    var html = els.htmlOutput.value;
+    if (!html) return;
+    copyText(html);
+    say('완성 HTML을 복사했습니다');
+  });
+
+  applyDefaultsToUi();
+  render();
+
+  /* ── 저장 보관함 연결 ── */
+  window.addEventListener('load', function(){
+    if (!window.MorivaSaves) return;
+    MorivaSaves.init({
+      storeKey: 'moriva_youtube_embed_saves_v1',
+      title: '유튜브 HTML 생성기',
+      collect: function(){
+        readDefaultsFromUi();
+        return {
+          defaults: state.defaults,
+          videos: state.videos.map(function(v){
+            return { sourceUrl: v.sourceUrl, autoplay: v.autoplay, mute: v.mute, loop: v.loop, cc: v.cc, controls: v.controls, ratio: v.ratio, width: v.width };
+          })
+        };
+      },
+      restore: function(d){
+        if (!d) return;
+        if (d.defaults) state.defaults = Object.assign({}, state.defaults, d.defaults);
+        applyDefaultsToUi();
+        state.videos = Array.isArray(d.videos) ? d.videos.map(function(sv){
+          var ytid = extractYoutubeId(sv.sourceUrl);
+          return {
+            uid: uid++,
+            sourceUrl: sv.sourceUrl,
+            ytid: ytid,
+            valid: !!ytid,
+            autoplay: !!sv.autoplay, mute: !!sv.mute, loop: !!sv.loop, cc: !!sv.cc, controls: !!sv.controls,
+            ratio: sv.ratio || '4:3', width: Number(sv.width) || 780
+          };
+        }) : [];
+        previewLoaded = false;
+        els.prevLoadBtn.textContent = '미리보기 불러오기';
+        render();
+      },
+      nameHint: function(){
+        var v = state.videos[0];
+        return v ? ('유튜브 영상 ' + state.videos.length + '개') : '';
+      },
+      summary: function(d){
+        var cnt = (d && Array.isArray(d.videos)) ? d.videos.length : 0;
+        return cnt ? '영상 ' + cnt + '개' : '영상 없음';
+      }
+    });
+  });
+})();
+</script>
+<script src="./moriva-saves.js"></script>
+<script src="./moriva-sync.js"></script>
+</body>
+</html>
