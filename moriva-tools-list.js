@@ -27,6 +27,7 @@ window.MORIVA_TOOLS = [
       { id: "product-name-generator", icon: "🏷️", name: "상품명 생성기",      desc: "상위노출 상품명을 분석해 5단어 상품명 5가지를 제안합니다." },
       { id: "pricing-setter",         icon: "💰", name: "가격 세팅 도구",      desc: "최종소비자가 기준으로 판매가·할인·정상가를 자동 계산합니다." },
       { id: "preview-tool",           icon: "🛒", name: "상세페이지 미리보기", desc: "썸네일·상세페이지를 실제 쿠팡 화면처럼 미리 봅니다." },
+       { id: "youtube-embed-builder",  icon: "🎬", name: "유튜브 HTML 생성기", desc: "유튜브 링크를 붙여넣으면 상세페이지에 바로 넣을 임베드 HTML을 만들어줍니다.", badge: "NEW" },
       { id: "kc-label-navigator",     icon: "📋", name: "KC 표시사항 내비게이터", desc: "카테고리별 KC 인증·표시사항 체크리스트를 안내합니다." }
     ]
   }
