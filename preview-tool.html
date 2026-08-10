@@ -136,6 +136,10 @@
     font-size:12.5px;font-weight:700;cursor:pointer;
   }
   .share-modal .close-link{font-size:12px;color:var(--text-3);cursor:pointer;margin-top:6px;display:inline-block;}
+  .share-modal .status-note{font-size:11px;line-height:1.55;text-align:left;padding:9px 11px;border-radius:7px;margin:-4px 0 14px;display:none;}
+  .share-modal .status-note.show{display:block;}
+  .share-modal .status-note.ok{background:#e1f0e6;color:#1f5c37;}
+  .share-modal .status-note.warn{background:#f6ecd9;color:#8a5a1f;}
   .footer-note{font-size:10.5px;color:var(--text-3);line-height:1.6;margin-top:8px;}
 
   /* ---------------- RIGHT PREVIEW AREA ---------------- */
@@ -382,6 +386,7 @@
 </style>
 </head>
 <body>
+<div id="media-load-banner" style="display:none;position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:10050;color:#fff;font-size:12px;font-weight:600;padding:9px 16px;border-radius:20px;box-shadow:0 6px 20px rgba(0,0,0,.25);max-width:88vw;text-align:center;"></div>
 <div class="app">
 
   <!-- ===================== LEFT PANEL ===================== -->
@@ -459,7 +464,7 @@
       * "실행" 버튼을 누르면 좌측 패널 없이 화면 전체로 상품페이지를 확인할 수 있어요.<br>
       * 동영상은 용량이 크면 브라우저가 느려질 수 있으니 너무 긴 파일은 피해주세요.<br>
       * HTML 블록은 독립된 영역(iframe)에 렌더링되어 안의 스크립트도 실제로 동작하며, 주변 화면 스타일에는 영향을 주지 않아요.<br>
-      * "링크/QR로 폰에서 보기"는 입력한 텍스트 정보만 링크에 담아 전달하며, 이미지·동영상은 포함되지 않아요.
+      * "링크/QR로 폰에서 보기"는 GitHub 동기화가 연결되어 있으면 이미지·동영상도 함께 전달돼요(용량이 너무 크면 제외될 수 있어요). 연결되어 있지 않으면 텍스트 정보만 전달돼요.
     </p>
   </div>
 
@@ -480,7 +485,8 @@
 <div id="share-overlay">
   <div class="share-modal">
     <h3>📱 폰에서 바로 확인하기</h3>
-    <p>QR코드를 폰 카메라로 스캔하거나 아래 링크를 복사해서 카카오톡·문자로 보내면, 지금 입력한 상품 정보 그대로 폰에서 열립니다.<br>업로드한 이미지·동영상은 용량 때문에 링크에 담기지 않아요 — 폰에서 필요하면 다시 추가해주세요.</p>
+    <p id="share-desc">QR코드를 폰 카메라로 스캔하거나 아래 링크를 복사해서 카카오톡·문자로 보내면, 지금 입력한 상품 정보 그대로 폰에서 열립니다.</p>
+    <p class="status-note" id="share-status"></p>
     <div class="qr-box" id="share-qr"></div>
     <div class="link-row">
       <input type="text" id="share-link-input" readonly>
@@ -526,12 +532,13 @@ const SHARE_FIELD_MAP = {
 function b64enc(s){ return btoa(unescape(encodeURIComponent(s))); }
 function b64dec(s){ return decodeURIComponent(escape(atob(s))); }
 
-function buildShareURL(){
+function buildShareURL(mediaRef){
   const payload = {};
   Object.keys(SHARE_FIELD_MAP).forEach(k=>{
     const el = document.getElementById(SHARE_FIELD_MAP[k]);
     if (el && el.value) payload[k] = el.value;
   });
+  if (mediaRef) payload._m = mediaRef;
   const url = new URL(location.href);
   url.search = '';
   url.hash = '';
@@ -540,17 +547,85 @@ function buildShareURL(){
   return url.href;
 }
 
-function openShareModal(){
-  const link = buildShareURL();
-  document.getElementById('share-link-input').value = link;
+/* ---------- 이미지·동영상까지 함께 전달: GitHub 저장소에 임시 업로드 ---------- */
+function getSyncCfg(){
+  try{
+    const cfg = JSON.parse(localStorage.getItem('moriva_sync_config_v1'));
+    if (cfg && cfg.token && cfg.owner && cfg.repo) return cfg;
+  }catch(e){}
+  return null;
+}
+const SHARE_MEDIA_SIZE_LIMIT = 40 * 1024 * 1024; // 약 40MB (base64 JSON 기준)
+async function uploadMediaForShare(cfg){
+  const payload = JSON.stringify({ thumbs: state.thumbs, details: state.details });
+  if (payload.length > SHARE_MEDIA_SIZE_LIMIT){
+    const mb = (payload.length/1024/1024).toFixed(1);
+    throw new Error(`이미지·동영상 용량이 너무 커요(약 ${mb}MB). 동영상 길이를 줄이거나 이미지 개수를 줄인 뒤 다시 시도해주세요.`);
+  }
+  const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const url = `https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}/contents/shares/${id}.json`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      'Authorization': 'token ' + cfg.token,
+      'Accept': 'application/vnd.github+json',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      message: 'MORIVA preview share ' + id,
+      content: b64enc(payload),
+      branch: cfg.branch || 'main'
+    })
+  });
+  if (!res.ok){
+    const body = await res.json().catch(()=>({}));
+    throw new Error(body.message || ('업로드 실패 (' + res.status + ')'));
+  }
+  return { id, owner: cfg.owner, repo: cfg.repo, branch: cfg.branch || 'main' };
+}
+
+function setShareStatus(text, kind){
+  const el = document.getElementById('share-status');
+  if (!text){ el.className = 'status-note'; el.textContent = ''; return; }
+  el.className = 'status-note show' + (kind ? (' ' + kind) : '');
+  el.textContent = text;
+}
+
+async function openShareModal(){
+  document.getElementById('share-overlay').classList.add('open');
+  document.getElementById('share-link-input').value = '';
+  document.getElementById('share-desc').textContent = 'QR코드를 폰 카메라로 스캔하거나 아래 링크를 복사해서 카카오톡·문자로 보내면, 지금 입력한 상품 정보 그대로 폰에서 열립니다.';
+  setShareStatus('');
+
   const qrBox = document.getElementById('share-qr');
+  const hasMedia = state.thumbs.length > 0 || state.details.length > 0;
+  let mediaRef = null;
+
+  if (hasMedia){
+    const cfg = getSyncCfg();
+    if (!cfg){
+      setShareStatus('⚠️ 이미지·동영상도 함께 보내려면 사이드바 하단의 데이터 백업(GitHub 연동)을 먼저 설정해주세요. 지금은 텍스트 정보만 전달돼요.', 'warn');
+    } else {
+      qrBox.innerHTML = '<span style="font-size:11.5px;color:var(--text-3);">이미지·동영상 업로드 중…</span>';
+      try{
+        mediaRef = await uploadMediaForShare(cfg);
+      } catch(err){
+        setShareStatus('⚠️ ' + err.message + ' (텍스트 정보만 전달돼요)', 'warn');
+      }
+    }
+  }
+
+  const link = buildShareURL(mediaRef);
+  document.getElementById('share-link-input').value = link;
   qrBox.innerHTML = '';
   if (window.QRCode){
     new QRCode(qrBox, { text: link, width: 176, height: 176, correctLevel: QRCode.CorrectLevel.M });
   } else {
     qrBox.innerHTML = '<span style="font-size:11.5px;color:var(--text-3);">QR 라이브러리를 불러오지 못했어요. 아래 링크를 복사해주세요.</span>';
   }
-  document.getElementById('share-overlay').classList.add('open');
+  if (mediaRef){
+    setShareStatus('✅ 이미지·동영상도 함께 전달돼요 — 폰에서 다시 첨부하지 않아도 됩니다.', 'ok');
+  }
 }
 function closeShareModal(){
   document.getElementById('share-overlay').classList.remove('open');
@@ -576,7 +651,40 @@ function applyShareParam(){
         if (el) el.value = data[k];
       }
     });
+    if (data._m) loadSharedMedia(data._m);
   } catch(e){ /* 손상된 공유 링크는 무시하고 기본값으로 표시 */ }
+}
+
+function showMediaBanner(text, kind){
+  const el = document.getElementById('media-load-banner');
+  if (!el) return;
+  el.textContent = text;
+  el.style.display = text ? 'block' : 'none';
+  el.style.background = kind === 'err' ? '#b8453a' : (kind === 'ok' ? '#3e8e5b' : '#16222f');
+}
+
+async function loadSharedMedia(ref, attempt){
+  attempt = attempt || 1;
+  showMediaBanner('📥 공유된 이미지·동영상 불러오는 중…', 'busy');
+  const url = `https://raw.githubusercontent.com/${encodeURIComponent(ref.owner)}/${encodeURIComponent(ref.repo)}/${encodeURIComponent(ref.branch || 'main')}/shares/${ref.id}.json?_=${Date.now()}`;
+  try{
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error('status ' + res.status);
+    const data = await res.json();
+    state.thumbs = Array.isArray(data.thumbs) ? data.thumbs : [];
+    state.details = Array.isArray(data.details) ? data.details : [];
+    const allIds = state.thumbs.concat(state.details).map(x=>x.id||0);
+    uid = (allIds.length ? Math.max.apply(null, allIds) : 0) + 1;
+    showMediaBanner('✅ 이미지·동영상을 불러왔어요', 'ok');
+    setTimeout(()=>showMediaBanner(''), 2200);
+    renderControls(); render();
+  } catch(e){
+    if (attempt < 4){
+      setTimeout(()=>loadSharedMedia(ref, attempt+1), 1500 * attempt);
+    } else {
+      showMediaBanner('⚠️ 이미지·동영상을 불러오지 못했어요. 링크가 오래됐거나 아직 업로드 중일 수 있어요 — 새로고침 해보세요.', 'err');
+    }
+  }
 }
 
 function fileToDataURL(file){
