@@ -562,8 +562,8 @@ async function uploadMediaForShare(cfg){
     const mb = (payload.length/1024/1024).toFixed(1);
     throw new Error(`이미지·동영상 용량이 너무 커요(약 ${mb}MB). 동영상 길이를 줄이거나 이미지 개수를 줄인 뒤 다시 시도해주세요.`);
   }
-  const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-  const url = `https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}/contents/shares/${id}.json`;
+  const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8); const shareOwner = location.hostname.split('.')[0] || cfg.owner; const shareRepo = location.pathname.split('/').filter(Boolean)[0] || cfg.repo;
+  const url = `https://api.github.com/repos/${encodeURIComponent(shareOwner)}/${encodeURIComponent(shareRepo)}/contents/shares/${id}.json`;
   const res = await fetch(url, {
     method: 'PUT',
     headers: {
@@ -581,7 +581,7 @@ async function uploadMediaForShare(cfg){
     const body = await res.json().catch(()=>({}));
     throw new Error(body.message || ('업로드 실패 (' + res.status + ')'));
   }
-  return { id, owner: cfg.owner, repo: cfg.repo, branch: cfg.branch || 'main' };
+  return { id, owner: shareOwner, repo: shareRepo, branch: cfg.branch || 'main' };
 }
 
 function setShareStatus(text, kind){
