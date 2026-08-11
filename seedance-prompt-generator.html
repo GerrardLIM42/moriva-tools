@@ -57,15 +57,29 @@
         <div class="thumbs" id="thumbs"></div>
       </section>
 
+      <section class="card" id="reviews">
+        <div class="heading"><span class="num">03</span><div><h2>고객 리뷰 참고</h2><p>불만·칭찬 리뷰를 스크린샷이나 텍스트로 붙여넣으면 광고 문구를 만들 때 참고합니다.</p></div></div>
+        <div class="grid two" id="reviewTextFields"></div>
+        <input class="hidden" id="reviewImageInput" type="file" accept="image/png,image/jpeg,image/webp" multiple>
+        <div class="drop" id="reviewDrop" style="margin-top:12px"><div class="plus">＋</div><strong>리뷰 스크린샷을 끌어놓거나 선택하세요</strong><span>JPG, PNG, WebP · 최대 10장</span><button class="btn gold" id="reviewImageBtn" type="button">스크린샷 선택</button></div>
+        <div class="thumbs" id="reviewThumbs"></div>
+        <div class="ai">
+          <div class="aihead"><div><span class="kicker">AI REVIEW READER</span><h3>리뷰 내용 정리하기</h3><p>붙여넣은 텍스트와 스크린샷을 함께 읽고 자주 나오는 불만·칭찬을 정리합니다.</p></div></div>
+          <div class="keyrow" style="padding:15px 17px 0"><p class="help" style="margin:0!important;align-self:center"></p><button class="btn primary" type="button" id="analyzeReviewsBtn">AI로 리뷰 정리</button></div>
+          <div class="result hidden" id="reviewResult"><div class="result-title"><b>리뷰 정리 결과</b></div><div id="reviewSummaryBody" style="padding:13px;font-size:11px;line-height:1.7;color:var(--ink)"></div></div>
+        </div>
+      </section>
+
       <section class="card">
-        <div class="heading"><span class="num">03</span><div><h2>영상 설정</h2><p>길이, 화면 비율과 연출 방향을 정하세요.</p></div></div>
+        <div class="heading"><span class="num">04</span><div><h2>영상 설정</h2><p>길이, 화면 비율과 연출 방향을 정하세요.</p></div></div>
         <div class="grid four" id="videoFields"></div>
       </section>
 
       <section class="card">
-        <div class="heading"><span class="num">04</span><div><h2>음성·한글 키 문구</h2><p>음성 방식과 장면별 한글 문구를 설정하세요.</p></div></div>
+        <div class="heading"><span class="num">05</span><div><h2>음성·한글 키 문구</h2><p>음성 방식과 장면별 한글 문구를 설정하세요.</p></div></div>
         <div class="segments" id="audioSegments"><button data-mode="Korean voice-over" class="active">내레이션</button><button data-mode="Model speaking">모델 직접 말하기</button><button data-mode="Silent / visual only">무음 중심</button></div>
         <div class="grid two" id="audioFields" style="margin-top:14px"></div>
+        <div class="keyrow" style="margin-top:10px"><p class="help" style="margin:0!important;align-self:center">제품 분석·리뷰 정리 결과를 참고해 대사와 한글 문구 초안을 AI가 만듭니다.</p><button class="btn primary" type="button" id="voiceDraftBtn">AI로 문구 초안 만들기</button></div>
       </section>
 
       <button class="make" id="generateBtn"><i>✦</i><b>Seedance 영문 광고 프롬프트 생성</b><small id="makeMeta">15초 · 4:3 · 5 Scenes</small></button>
@@ -93,6 +107,7 @@
     var STORE="moriva-seedance-standalone-projects-v1";
     var analysis=null;
     var images=[];
+    var reviewImages=[];
     var promptText="";
     var state={
       projectName:"새 광고 프로젝트",productName:"",brandName:"MORIVA",category:"생활용품",targetAudience:"",customerProblem:"",coreBenefit:"",
@@ -100,7 +115,8 @@
       duration:"15",aspectRatio:"4:3",fps:"24 fps",sceneCount:"5",style:"Korean UGC product demonstration",
       setting:"Bright, clean Korean apartment interior",modelDescription:"A friendly Korean lifestyle creator with a natural, trustworthy appearance",
       cameraMood:"Natural daylight, stable handheld camera, clean direct cuts",audioMode:"Korean voice-over",
-      voiceTone:"Friendly, clear, trustworthy Korean female voice",narration:"",koreanOverlays:"",callToAction:"",mustAvoid:"",additionalDirection:""
+      voiceTone:"Friendly, clear, trustworthy Korean female voice",narration:"",koreanOverlays:"",callToAction:"",mustAvoid:"",additionalDirection:"",
+      complaintReviews:"",praiseReviews:""
     };
     var productDefs=[
       ["projectName","프로젝트명","input","예: 모리바 세탁시트 광고",""],
@@ -136,6 +152,10 @@
       ["mustAvoid","금지 사항 · 한 줄에 하나","textarea","제품 크기 확대 금지\\n패키지 개봉 방향 변경 금지\\n대사 반복 금지",""],
       ["additionalDirection","추가 연출 지시","textarea","필요한 배경과 모델 행동을 적어주세요.","full"]
     ];
+    var reviewTextDefs=[
+      ["complaintReviews","불만 리뷰 · 캡처 또는 붙여넣기","textarea","예: 사이즈가 작다는 후기가 많음\\n건조하면 줄어든다는 불만이 있음","full tall"],
+      ["praiseReviews","칭찬 리뷰 · 캡처 또는 붙여넣기","textarea","예: 세탁 후에도 촉감이 부드럽다는 칭찬 다수\\n향이 좋다는 후기 많음","full tall"]
+    ];
     var analysisDefs=[
       ["productName","제품명"],["brandName","브랜드명"],["category","카테고리"],["targetAudience","타깃 고객"],
       ["customerProblem","고객 고민"],["coreBenefit","핵심 결과"],["sellingPoints","판매 포인트"],["exactFacts","제품 사실"],
@@ -155,6 +175,7 @@
     }
     function renderFields(){
       $("productFields").innerHTML=productDefs.map(fieldHtml).join("");
+      $("reviewTextFields").innerHTML=reviewTextDefs.map(fieldHtml).join("");
       $("videoFields").innerHTML=videoDefs.map(fieldHtml).join("");
       $("audioFields").innerHTML=audioDefs.map(fieldHtml).join("");
       document.querySelectorAll("[data-key]").forEach(function(el){el.addEventListener("input",function(){state[this.dataset.key]=this.value;updateMeta()})});
@@ -181,6 +202,16 @@
       document.querySelectorAll("[data-role]").forEach(function(s){s.onchange=function(){var im=images.find(function(x){return x.id===s.dataset.role});if(im)im.role=s.value}});
       document.querySelectorAll("[data-note]").forEach(function(t){t.oninput=function(){var im=images.find(function(x){return x.id===t.dataset.note});if(im)im.notes=t.value}});
       $("analyzeBtn").disabled=!images.length||(!$("apiKey").value.trim()&&$("provider").value!=="claude");
+    }
+    async function addReviewFiles(list){
+      var files=Array.from(list).filter(function(f){return f.type.indexOf("image/")===0}).slice(0,10-reviewImages.length);
+      if(!files.length)return;
+      try{var added=await Promise.all(files.map(prepareImage));reviewImages=reviewImages.concat(added);renderReviewImages();toast(added.length+"개 리뷰 스크린샷을 추가했습니다.")}
+      catch(e){toast("일부 이미지를 읽지 못했습니다.",true)}
+    }
+    function renderReviewImages(){
+      $("reviewThumbs").innerHTML=reviewImages.map(function(im,i){return'<article class="thumb"><div class="thumbpic"><img src="'+im.preview+'" alt="'+escapeHtml(im.name)+'"><button data-removereview="'+im.id+'">×</button></div><div class="thumbinfo"><b title="'+escapeHtml(im.name)+'">'+(i+1)+". "+escapeHtml(im.name)+'</b><small>'+im.width+"×"+im.height+'px</small></div></article>'}).join("");
+      document.querySelectorAll("[data-removereview]").forEach(function(b){b.onclick=function(){reviewImages=reviewImages.filter(function(im){return im.id!==b.dataset.removereview});renderReviewImages()}});
     }
     /* ── 공통 AI 서비스 설정 (다른 도구와 localStorage를 공유한다) ── */
     var PROVIDERS={
@@ -250,11 +281,12 @@
     }
 
     /* ── 제공자 3사 공통 호출 (자유 텍스트로 JSON을 요청하고 위 파서로 복구) ── */
-    async function callAI(provider,key,model,promptText){
+    async function callAI(provider,key,model,promptText,imageList){
+      imageList=imageList||images;
       if(provider==="gemini"){
         var callGemini=async function(mdl){
           var url="https://generativelanguage.googleapis.com/v1beta/models/"+encodeURIComponent(mdl)+":generateContent?key="+encodeURIComponent(key);
-          var parts=images.map(function(im){return{inline_data:{mime_type:"image/jpeg",data:im.preview.split(",")[1]}}}).concat([{text:promptText}]);
+          var parts=imageList.map(function(im){return{inline_data:{mime_type:"image/jpeg",data:im.preview.split(",")[1]}}}).concat([{text:promptText}]);
           var res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:parts}],generationConfig:{maxOutputTokens:4000,temperature:.4}})});
           return res.json();
         };
@@ -273,7 +305,7 @@
       if(provider==="openai"){
         var res2;
         try{
-          res2=await fetch("https://api.openai.com/v1/chat/completions",{method:"POST",headers:{"Authorization":"Bearer "+key,"Content-Type":"application/json"},body:JSON.stringify({model:model,max_completion_tokens:4000,messages:[{role:"user",content:[{type:"text",text:promptText}].concat(images.map(function(im){return{type:"image_url",image_url:{url:im.preview,detail:"high"}}}))}]})});
+          res2=await fetch("https://api.openai.com/v1/chat/completions",{method:"POST",headers:{"Authorization":"Bearer "+key,"Content-Type":"application/json"},body:JSON.stringify({model:model,max_completion_tokens:4000,messages:[{role:"user",content:[{type:"text",text:promptText}].concat(imageList.map(function(im){return{type:"image_url",image_url:{url:im.preview,detail:"high"}}}))}]})});
         }catch(e){throw new Error("ChatGPT API 호출에 실패했습니다. 브라우저에서 OpenAI API로의 직접 호출이 네트워크/보안 정책으로 차단되었을 수 있습니다. 이 경우 Gemini 또는 Claude를 사용해 주세요.")}
         var data2=await res2.json();
         if(!res2.ok)throw new Error(res2.status===401?"API 키를 확인해 주세요.":res2.status===429?"API 사용 한도 또는 결제 상태를 확인해 주세요.":(data2.error&&data2.error.message)||"분석 요청에 실패했습니다.");
@@ -283,7 +315,7 @@
       }
       var headers={"Content-Type":"application/json"};
       if(key){headers["x-api-key"]=key;headers["anthropic-version"]="2023-06-01";headers["anthropic-dangerous-direct-browser-access"]="true"}
-      var msgContent=images.map(function(im){return{type:"image",source:{type:"base64",media_type:"image/jpeg",data:im.preview.split(",")[1]}}}).concat([{type:"text",text:promptText}]);
+      var msgContent=imageList.map(function(im){return{type:"image",source:{type:"base64",media_type:"image/jpeg",data:im.preview.split(",")[1]}}}).concat([{type:"text",text:promptText}]);
       var res3=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:headers,body:JSON.stringify({model:model,max_tokens:key?4000:1000,messages:[{role:"user",content:msgContent}]})});
       var data3=await res3.json();
       if(data3.error)throw new Error("Claude API 호출 중 오류: "+(data3.error.message||res3.status));
@@ -301,7 +333,7 @@
       var guide=images.map(function(im,i){return(i+1)+". "+im.name+" / role: "+im.role+" / note: "+(im.notes||"none")}).join("\n");
       var instruction="You are a meticulous Korean e-commerce product analyst. Analyze all images as one coherent product set. Return all text fields in natural Korean.\nReference map:\n"+guide+"\nRules: Read visible Korean and English carefully. Use style-only references only for visual context, never as product proof. Exact facts, dimensions, quantities, materials, certifications, options and performance claims must be included only when visibly supported. Never guess missing numbers. If text is small, cropped, contradictory or uncertain, leave that field empty and explain it in cautions. Keep array items short and non-duplicative. If images do not show one coherent product, return empty fields and explain why.\n\nRespond with ONLY a single valid JSON object (no markdown, no code fences, no commentary) matching exactly this shape:\n{\"productName\":string,\"brandName\":string,\"category\":string,\"targetAudience\":string,\"customerProblem\":string,\"coreBenefit\":string,\"sellingPoints\":string[],\"exactFacts\":string[],\"usageSteps\":string[],\"packageMechanism\":string,\"productOptions\":string[],\"productDimensions\":string,\"itemDimensions\":string,\"confidence\":number (0 to 1),\"cautions\":string[]}\nEvery key must be present. Use empty string or empty array for fields with no supported evidence.";
       try{
-        var raw=await callAI(provider,key,model,instruction);
+        var raw=await callAI(provider,key,model,instruction,images);
         analysis=parseLooseJson(raw);renderAnalysis();toast("제품정보 분석이 완료되었습니다. ("+PROVIDERS[provider].label+")");
       }catch(e){
         var m=e&&e.message?e.message:"이미지 분석에 실패했습니다.";
@@ -318,6 +350,58 @@
     function applyAnalysis(){
       if(!analysis)return;var count=0;document.querySelectorAll("[data-analysis]:checked").forEach(function(c){var v=analysis[c.dataset.analysis],text=Array.isArray(v)?v.join("\\n"):v;if(text){state[c.dataset.analysis]=text;count++}});
       renderFields();toast(count+"개 항목을 제품 정보에 적용했습니다.");$("product").scrollIntoView({behavior:"smooth"})
+    }
+    var reviewAnalysis=null;
+    async function analyzeReviews(){
+      var provider=$("provider").value,key=$("apiKey").value.trim(),model=PROVIDERS[provider].defaultModel;
+      var complaintsText=String(state.complaintReviews||"").trim();
+      var praiseText=String(state.praiseReviews||"").trim();
+      if(!complaintsText&&!praiseText&&!reviewImages.length)return toast("불만·칭찬 리뷰 텍스트나 스크린샷을 먼저 입력해 주세요.",true);
+      if(!key&&provider!=="claude")return toast(PROVIDERS[provider].label+" API 키를 입력해 주세요.",true);
+      persistKey();
+      var btn=$("analyzeReviewsBtn");btn.disabled=true;var prevText=btn.textContent;btn.textContent="정리 중…";
+      var instruction="You are a Korean e-commerce customer review analyst. Read the pasted review text and any attached review screenshots together. Summarize recurring complaints and recurring praise in natural Korean, short and specific. Also suggest a short tone note for how the ad should reassure customers about the complaints while highlighting the praise.\n\nComplaint review text (may be empty):\n"+(complaintsText||"(none)")+"\n\nPraise review text (may be empty):\n"+(praiseText||"(none)")+"\n\nRespond with ONLY a single valid JSON object (no markdown, no commentary) matching exactly this shape:\n{\"complaintSummary\":string[],\"praiseSummary\":string[],\"toneNotes\":string,\"confidence\":number (0 to 1)}\nEvery key must be present. Use empty array or empty string when there is nothing supported.";
+      try{
+        var raw=await callAI(provider,key,model,instruction,reviewImages);
+        reviewAnalysis=parseLooseJson(raw);renderReviewAnalysis();toast("리뷰 정리가 완료되었습니다. ("+PROVIDERS[provider].label+")");
+      }catch(e){
+        var m=e&&e.message?e.message:"리뷰 정리에 실패했습니다.";
+        if(m==="Failed to fetch")m="브라우저가 API 연결을 차단했습니다. 인터넷 연결을 확인하거나 다른 AI 서비스를 사용해 주세요.";
+        toast(m,true);
+      }finally{btn.disabled=false;btn.textContent=prevText;applyProvider()}
+    }
+    function renderReviewAnalysis(){
+      if(!reviewAnalysis)return;
+      var c=reviewAnalysis.complaintSummary||[],p=reviewAnalysis.praiseSummary||[],tone=reviewAnalysis.toneNotes||"";
+      var body="";
+      if(c.length)body+="<b>자주 나오는 불만</b><ul style=\"margin:6px 0 12px;padding-left:18px\">"+c.map(function(v){return"<li>"+escapeHtml(v)+"</li>"}).join("")+"</ul>";
+      if(p.length)body+="<b>자주 나오는 칭찬</b><ul style=\"margin:6px 0 12px;padding-left:18px\">"+p.map(function(v){return"<li>"+escapeHtml(v)+"</li>"}).join("")+"</ul>";
+      if(tone)body+="<b>광고 톤 참고</b><p style=\"margin:6px 0 0\">"+escapeHtml(tone)+"</p>";
+      $("reviewSummaryBody").innerHTML=body||"<p style=\"color:var(--muted)\">정리된 내용이 없습니다.</p>";
+      $("reviewResult").classList.remove("hidden");
+    }
+    async function draftVoiceCopy(){
+      var provider=$("provider").value,key=$("apiKey").value.trim(),model=PROVIDERS[provider].defaultModel;
+      if(!key&&provider!=="claude")return toast(PROVIDERS[provider].label+" API 키를 입력해 주세요.",true);
+      persistKey();
+      var btn=$("voiceDraftBtn");btn.disabled=true;var prevText=btn.textContent;btn.textContent="작성 중…";
+      var productCtx="Product: "+clean(state.productName,"not specified")+"\nBrand: "+clean(state.brandName,"not specified")+"\nCustomer problem: "+clean(state.customerProblem,"not specified")+"\nCore benefit: "+clean(state.coreBenefit,"not specified")+"\nSelling points: "+clean(state.sellingPoints,"not specified")+"\nCall to action so far: "+clean(state.callToAction,"none yet");
+      var reviewCtx=reviewAnalysis?("Common complaints from real reviews: "+(reviewAnalysis.complaintSummary||[]).join("; ")+"\nCommon praise from real reviews: "+(reviewAnalysis.praiseSummary||[]).join("; ")+"\nSuggested tone: "+(reviewAnalysis.toneNotes||"")):"No review analysis available yet.";
+      var sceneCount=Number(state.sceneCount)||5;
+      var instruction="You are a Korean shopping-ad copywriter. Using the product context and real customer review insights below, write "+sceneCount+" short Korean voice-over lines (one per ad scene, natural spoken Korean, no literal quote marks) and "+sceneCount+" matching short Korean on-screen text lines (punchier, shorter than the voice-over). Where a review complaint is common, have the copy quietly reassure the customer about it without sounding defensive. Where praise is common, echo that strength. Never invent facts not present in the product context.\n\nPRODUCT CONTEXT\n"+productCtx+"\n\nREVIEW INSIGHTS\n"+reviewCtx+"\n\nRespond with ONLY a single valid JSON object (no markdown, no commentary) matching exactly this shape:\n{\"narration\":string[],\"koreanOverlays\":string[],\"callToAction\":string,\"mustAvoid\":string[]}\nnarration and koreanOverlays must each have exactly "+sceneCount+" short items in scene order. Every key must be present.";
+      try{
+        var raw=await callAI(provider,key,model,instruction,[]);
+        var draft=parseLooseJson(raw);
+        if(Array.isArray(draft.narration)&&draft.narration.length)state.narration=draft.narration.join("\\n");
+        if(Array.isArray(draft.koreanOverlays)&&draft.koreanOverlays.length)state.koreanOverlays=draft.koreanOverlays.join("\\n");
+        if(draft.callToAction)state.callToAction=draft.callToAction;
+        if(Array.isArray(draft.mustAvoid)&&draft.mustAvoid.length)state.mustAvoid=draft.mustAvoid.join("\\n");
+        renderFields();toast("음성·한글 문구 초안을 작성했습니다. ("+PROVIDERS[provider].label+")");document.getElementById("audioFields").scrollIntoView({behavior:"smooth"});
+      }catch(e){
+        var m=e&&e.message?e.message:"문구 초안 작성에 실패했습니다.";
+        if(m==="Failed to fetch")m="브라우저가 API 연결을 차단했습니다. 인터넷 연결을 확인하거나 다른 AI 서비스를 사용해 주세요.";
+        toast(m,true);
+      }finally{btn.disabled=false;btn.textContent=prevText;applyProvider()}
     }
     function lines(v){return String(v||"").split("\\n").map(function(s){return s.trim()}).filter(Boolean)}
     function bullets(v,fallback){var a=lines(v);return a.length?a.map(function(x){return"- "+x}).join("\\n"):"- "+fallback}
@@ -349,16 +433,18 @@
     }
     function generate(){promptText=buildPrompt();$("prompt").value=promptText;$("prompt").classList.remove("hidden");$("empty").classList.add("hidden");$("copyBtn").disabled=false;$("txtBtn").disabled=false;$("charCount").textContent=promptText.length.toLocaleString()+" characters";toast("Seedance 영문 프롬프트를 만들었습니다.")}
     function download(name,content,type){var b=new Blob([content],{type:(type||"text/plain")+";charset=utf-8"}),u=URL.createObjectURL(b),a=document.createElement("a");a.href=u;a.download=name;a.click();setTimeout(function(){URL.revokeObjectURL(u)},500)}
-    function projectObject(){return{version:1,exportedAt:new Date().toISOString(),state:state,images:images,prompt:promptText}}
+    function projectObject(){return{version:1,exportedAt:new Date().toISOString(),state:state,images:images,reviewImages:reviewImages,prompt:promptText}}
     function saveProject(){
       try{var arr=JSON.parse(localStorage.getItem(STORE)||"[]");arr=arr.filter(function(p){return p.state.projectName!==state.projectName});arr.unshift(Object.assign({id:Date.now(),updatedAt:new Date().toISOString()},projectObject()));localStorage.setItem(STORE,JSON.stringify(arr.slice(0,6)));toast("이 브라우저에 프로젝트를 저장했습니다.")}
       catch(e){toast("이미지 용량이 커서 저장하지 못했습니다. JSON 다운로드를 사용해 주세요.",true)}
     }
-    function loadProjectData(p){state=Object.assign({},state,p.state||{});images=Array.isArray(p.images)?p.images:[];promptText=p.prompt||"";renderFields();renderImages();if(promptText){$("prompt").value=promptText;$("prompt").classList.remove("hidden");$("empty").classList.add("hidden");$("copyBtn").disabled=false;$("txtBtn").disabled=false;$("charCount").textContent=promptText.length.toLocaleString()+" characters"}else{$("prompt").classList.add("hidden");$("empty").classList.remove("hidden")}closeModal();toast("프로젝트를 불러왔습니다.")}
+    function loadProjectData(p){state=Object.assign({},state,p.state||{});images=Array.isArray(p.images)?p.images:[];reviewImages=Array.isArray(p.reviewImages)?p.reviewImages:[];promptText=p.prompt||"";renderFields();renderImages();renderReviewImages();if(promptText){$("prompt").value=promptText;$("prompt").classList.remove("hidden");$("empty").classList.add("hidden");$("copyBtn").disabled=false;$("txtBtn").disabled=false;$("charCount").textContent=promptText.length.toLocaleString()+" characters"}else{$("prompt").classList.add("hidden");$("empty").classList.remove("hidden")}closeModal();toast("프로젝트를 불러왔습니다.")}
     function showProjects(){var arr=[];try{arr=JSON.parse(localStorage.getItem(STORE)||"[]")}catch(e){};$("projectList").innerHTML=arr.length?arr.map(function(p,i){return'<article class="project"><div><b>'+escapeHtml(p.state&&p.state.projectName||"이름 없는 프로젝트")+'</b><small>'+new Date(p.updatedAt).toLocaleString("ko-KR")+'</small></div><button class="btn" data-load="'+i+'">불러오기</button><button class="btn danger" data-delete="'+i+'">삭제</button></article>'}).join(""):'<p style="padding:35px;text-align:center;color:var(--muted);font-size:12px">저장된 프로젝트가 없습니다.</p>';$("modal").classList.remove("hidden");document.querySelectorAll("[data-load]").forEach(function(b){b.onclick=function(){loadProjectData(arr[Number(b.dataset.load)])}});document.querySelectorAll("[data-delete]").forEach(function(b){b.onclick=function(){arr.splice(Number(b.dataset.delete),1);localStorage.setItem(STORE,JSON.stringify(arr));showProjects()}})}
     function closeModal(){$("modal").classList.add("hidden")}
     function reset(){if(!confirm("현재 입력 내용을 모두 지울까요?"))return;location.reload()}
     $("imageBtn").onclick=function(){$("imageInput").click()};$("imageInput").onchange=function(){addFiles(this.files);this.value=""};$("drop").ondragover=function(e){e.preventDefault();this.classList.add("drag")};$("drop").ondragleave=function(){this.classList.remove("drag")};$("drop").ondrop=function(e){e.preventDefault();this.classList.remove("drag");addFiles(e.dataTransfer.files)};
+    $("reviewImageBtn").onclick=function(){$("reviewImageInput").click()};$("reviewImageInput").onchange=function(){addReviewFiles(this.files);this.value=""};$("reviewDrop").ondragover=function(e){e.preventDefault();this.classList.add("drag")};$("reviewDrop").ondragleave=function(){this.classList.remove("drag")};$("reviewDrop").ondrop=function(e){e.preventDefault();this.classList.remove("drag");addReviewFiles(e.dataTransfer.files)};
+    $("analyzeReviewsBtn").onclick=analyzeReviews;$("voiceDraftBtn").onclick=draftVoiceCopy;
     $("analyzeBtn").onclick=analyzeProduct;$("applyBtn").onclick=applyAnalysis;$("uncheckBtn").onclick=function(){document.querySelectorAll("[data-analysis]").forEach(function(c){c.checked=false})};
     $("audioSegments").onclick=function(e){if(!e.target.dataset.mode)return;state.audioMode=e.target.dataset.mode;toggleAudio()};$("generateBtn").onclick=generate;
     $("prompt").oninput=function(){promptText=this.value;$("charCount").textContent=promptText.length.toLocaleString()+" characters"};
@@ -367,7 +453,7 @@
     $("exportBtn").onclick=function(){download((state.projectName||"seedance-project")+".json",JSON.stringify(projectObject(),null,2),"application/json");toast("프로젝트 파일을 다운로드했습니다.")};
     $("importBtn").onclick=function(){$("projectInput").click()};$("projectInput").onchange=function(){var f=this.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var p=JSON.parse(String(r.result));if(!p.state)throw new Error();loadProjectData(p)}catch(e){toast("올바른 프로젝트 파일이 아닙니다.",true)}};r.readAsText(f);this.value=""};
     $("saveBtn").onclick=saveProject;$("loadBtn").onclick=showProjects;$("newBtn").onclick=reset;$("closeModal").onclick=closeModal;$("modal").onclick=function(e){if(e.target===$("modal"))closeModal()};
-    renderFields();renderImages();updateMeta();loadAISettings();
+    renderFields();renderImages();renderReviewImages();updateMeta();loadAISettings();
   })();
   </script>
 </body>
