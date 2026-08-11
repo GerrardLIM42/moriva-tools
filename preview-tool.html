@@ -551,7 +551,7 @@ function getSyncCfg(){
   }catch(e){}
   return null;
 }
-const SHARE_MEDIA_SIZE_LIMIT = 60 * 1024 * 1024; // 약 60MB (base64 JSON 기준, GitHub 업로드 시 부풀어도 100MB 이내로 유지)
+const SHARE_MEDIA_SIZE_LIMIT = 18 * 1024 * 1024; // 약 18MB (GitHub Contents API는 이보다 크면 "파일이 너무 큽니다" 오류로 자주 거부하므로 안전 마진을 둠)
 let lastShareDroppedVideo = false;
 async function uploadMediaForShare(cfg){
   let thumbs = state.thumbs, details = state.details;
