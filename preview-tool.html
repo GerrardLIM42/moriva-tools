@@ -551,7 +551,7 @@ function getSyncCfg(){
   }catch(e){}
   return null;
 }
-const SHARE_MEDIA_SIZE_LIMIT = 20 * 1024 * 1024; // 약 20MB (GitHub REST API는 문서상 100MB까지 허용한다지만 실제로는 20~25MB 안팎에서 "input too large" 오류가 발생해 안전한 값으로 낮춤)
+const SHARE_MEDIA_SIZE_LIMIT = 150 * 1024 * 1024; // 약 150MB (GitHub Release Asset은 파일당 2GB까지 허용 — Contents/Blob API의 용량 벽과 무관. 폰 다운로드 속도를 고려해 넉넉하되 과도하지 않은 값으로 설정)
 const SHARE_COMPRESS_STEPS = [ {maxDim:900, quality:.7}, {maxDim:640, quality:.5}, {maxDim:480, quality:.4} ]; // 공유 전송 전용 압축 단계(원본 데이터는 그대로 유지, 전송용 사본만 단계적으로 더 압축)
 async function recompressForShare(src, maxDim, quality){
   if (!src || src.indexOf('data:image/gif')===0 || src.indexOf('data:image/webp')===0) return src; // GIF와 WebP는 애니메이션이 깨지므로 그대로 둠
