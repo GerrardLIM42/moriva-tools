@@ -605,12 +605,12 @@ async function uploadMediaForShare(cfg){
 
 /* 큰 용량(수십MB)도 안정적으로 커밋하기 위해 Contents API 단일 PUT 대신 Git Data API(blob/tree/commit/ref)를 사용 */
 async function ghApiRequest(url, cfg, options){
-  const res = await fetch(url, Object.assign({
-    headers: Object.assign({
-      'Authorization': 'token ' + cfg.token,
-      'Accept': 'application/vnd.github+json'
-    }, (options && options.headers) || {})
-  }, options || {}));
+  options = options || {};
+  const headers = Object.assign({
+    'Authorization': 'token ' + cfg.token,
+    'Accept': 'application/vnd.github+json'
+  }, options.headers || {});
+  const res = await fetch(url, Object.assign({}, options, { headers: headers }));
   if (!res.ok){
     const body = await res.json().catch(()=>({}));
     throw new Error(body.message || ('GitHub API 오류 (' + res.status + ')'));
