@@ -551,7 +551,7 @@ function getSyncCfg(){
   }catch(e){}
   return null;
 }
-const SHARE_MEDIA_SIZE_LIMIT = 18 * 1024 * 1024; // 약 18MB (GitHub Contents API는 이보다 크면 "파일이 너무 큽니다" 오류로 자주 거부하므로 안전 마진을 둠)
+const SHARE_MEDIA_SIZE_LIMIT = 45 * 1024 * 1024; // 약 45MB (Git Blob API로 업로드하므로 Contents API 단일 PUT보다 훨씬 넉넉한 한도를 둘 수 있음)
 const SHARE_COMPRESS_STEPS = [ {maxDim:900, quality:.7}, {maxDim:640, quality:.5}, {maxDim:480, quality:.4} ]; // 공유 전송 전용 압축 단계(원본 데이터는 그대로 유지, 전송용 사본만 단계적으로 더 압축)
 async function recompressForShare(src, maxDim, quality){
   if (!src || src.indexOf('data:image/gif')===0 || src.indexOf('data:image/webp')===0) return src; // GIF와 WebP는 애니메이션이 깨지므로 그대로 둠
@@ -599,25 +599,60 @@ async function uploadMediaForShare(cfg){
     throw new Error(`이미지·동영상 용량이 너무 커요(약 ${mb}MB). 동영상 길이를 줄이거나 이미지 개수를 줄인 뒤 다시 시도해주세요.`);
   }
   const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8); const shareOwner = location.hostname.split('.')[0] || cfg.owner; const shareRepo = location.pathname.split('/').filter(Boolean)[0] || cfg.repo;
-  const url = `https://api.github.com/repos/${encodeURIComponent(shareOwner)}/${encodeURIComponent(shareRepo)}/contents/shares/${id}.json`;
-  const res = await fetch(url, {
-    method: 'PUT',
-    headers: {
+  await uploadViaBlobAPI(cfg, shareOwner, shareRepo, 'shares/' + id + '.json', payload, 'MORIVA preview share ' + id);
+  return { id, owner: shareOwner, repo: shareRepo, branch: cfg.branch || 'main' };
+}
+
+/* 큰 용량(수십MB)도 안정적으로 커밋하기 위해 Contents API 단일 PUT 대신 Git Data API(blob/tree/commit/ref)를 사용 */
+async function ghApiRequest(url, cfg, options){
+  const res = await fetch(url, Object.assign({
+    headers: Object.assign({
       'Authorization': 'token ' + cfg.token,
-      'Accept': 'application/vnd.github+json',
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      message: 'MORIVA preview share ' + id,
-      content: b64enc(payload),
-      branch: cfg.branch || 'main'
-    })
-  });
+      'Accept': 'application/vnd.github+json'
+    }, (options && options.headers) || {})
+  }, options || {}));
   if (!res.ok){
     const body = await res.json().catch(()=>({}));
-    throw new Error(body.message || ('업로드 실패 (' + res.status + ')'));
+    throw new Error(body.message || ('GitHub API 오류 (' + res.status + ')'));
   }
-  return { id, owner: shareOwner, repo: shareRepo, branch: cfg.branch || 'main' };
+  return res.json();
+}
+async function uploadViaBlobAPI(cfg, shareOwner, shareRepo, path, content, message){
+  const branch = cfg.branch || 'main';
+  const base = 'https://api.github.com/repos/' + encodeURIComponent(shareOwner) + '/' + encodeURIComponent(shareRepo);
+  let lastErr = null;
+  for (let attempt = 0; attempt < 3; attempt++){
+    try{
+      const ref = await ghApiRequest(base + '/git/refs/heads/' + encodeURIComponent(branch), cfg);
+      const baseCommitSha = ref.object.sha;
+      const baseCommit = await ghApiRequest(base + '/git/commits/' + baseCommitSha, cfg);
+      const blob = await ghApiRequest(base + '/git/blobs', cfg, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: b64enc(content), encoding: 'base64' })
+      });
+      const tree = await ghApiRequest(base + '/git/trees', cfg, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base_tree: baseCommit.tree.sha, tree: [{ path: path, mode: '100644', type: 'blob', sha: blob.sha }] })
+      });
+      const commit = await ghApiRequest(base + '/git/commits', cfg, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: message, tree: tree.sha, parents: [baseCommitSha] })
+      });
+      await ghApiRequest(base + '/git/refs/heads/' + encodeURIComponent(branch), cfg, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sha: commit.sha, force: false })
+      });
+      return commit.sha;
+    }catch(e){
+      lastErr = e;
+      await new Promise(r=>setTimeout(r, 400 + attempt*400));
+    }
+  }
+  throw lastErr;
 }
 
 function setShareStatus(text, kind){
