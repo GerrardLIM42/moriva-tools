@@ -1,7 +1,7 @@
 /* MORIVA 공용 "저장 보관함"
  *
  * 도구마다 작업 내용을 이름을 붙여 저장해 두고, 나중에 다시 불러오거나 삭제할 수 있게 한다.
- * 마진 계산기 · 상품명 생성기 · 가격 세팅 도구가 같은 모양·같은 사용법으로 쓴다.
+ * 마진 계산기 · 상품명 생성기 · 가격 세팅 도구 · 상품페이지 미리보기 도구가 같은 모양·같은 사용법으로 쓴다.
  *
  * 사용법
  *   MorivaSaves.init({
@@ -13,14 +13,80 @@
  *     summary  : function(data){ return "" } // (선택) 목록에 함께 보여 줄 한 줄 설명
  *   });
  *
- * 저장 위치는 이 브라우저의 localStorage이며, 동기화를 켜 두었다면
- * 다른 브라우저·휴대폰에서도 같은 목록이 보인다.
- * (키 이름에 key·token이 들어가지 않아 동기화 대상에 포함된다)
+ * 저장 위치는 이 브라우저의 IndexedDB다. localStorage(브라우저당 5~10MB 한도)를 쓰던
+ * 예전 버전 데이터가 남아 있으면 처음 열 때 자동으로 IndexedDB로 옮기고 localStorage는
+ * 비운다. IndexedDB는 사실상 용량 제한이 없어 이미지·동영상이 포함된 항목(예: 상품페이지
+ * 미리보기 도구)도 "저장 공간 부족" 오류 없이 저장된다.
+ * 단, 기기 간 동기화(moriva-sync.js)는 localStorage 스냅샷만 GitHub로 백업하므로,
+ * IndexedDB로 옮겨진 뒤에는 이미지가 포함된 저장 항목이 다른 기기로 자동 동기화되지는
+ * 않는다(텍스트 위주로 가벼운 도구의 저장 항목은 영향 없음).
+ * IndexedDB를 쓸 수 없는 환경(사생활 보호 모드 등)에서는 예전처럼 localStorage로
+ * 자동 대체된다.
  */
 (function () {
   "use strict";
 
   var MAX_ITEMS = 100;
+
+  /* ── 저장소: IndexedDB(용량 제한 사실상 없음), 실패 시 localStorage로 대체 ── */
+  var DB_NAME = "moriva_saves_db_v1";
+  var DB_STORE = "lists";
+  var dbPromise = null;
+
+  function openDb() {
+    if (dbPromise) return dbPromise;
+    dbPromise = new Promise(function (resolve, reject) {
+      if (!window.indexedDB) { reject(new Error("IndexedDB 미지원")); return; }
+      var req;
+      try { req = indexedDB.open(DB_NAME, 1); } catch (e) { reject(e); return; }
+      req.onupgradeneeded = function (e) {
+        var db = e.target.result;
+        if (!db.objectStoreNames.contains(DB_STORE)) db.createObjectStore(DB_STORE, { keyPath: "storeKey" });
+      };
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error || new Error("IndexedDB 열기 실패")); };
+      req.onblocked = function () { reject(new Error("IndexedDB 열기 지연")); };
+    });
+    return dbPromise;
+  }
+
+  function idbGet(storeKey) {
+    return openDb().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction(DB_STORE, "readonly");
+        var req = tx.objectStore(DB_STORE).get(storeKey);
+        req.onsuccess = function () { resolve(req.result ? req.result.items : null); };
+        req.onerror = function () { reject(req.error); };
+      });
+    });
+  }
+
+  function idbSet(storeKey, list) {
+    return openDb().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction(DB_STORE, "readwrite");
+        tx.objectStore(DB_STORE).put({ storeKey: storeKey, items: list });
+        tx.oncomplete = function () { resolve(); };
+        tx.onerror = function () { reject(tx.error); };
+        tx.onabort = function () { reject(tx.error || new Error("저장 중단")); };
+      });
+    });
+  }
+
+  // localStorage 에 남아 있는 예전 저장 목록을 한 번만 IndexedDB로 옮기고
+  // localStorage 쪽은 비워서 브라우저 저장 공간을 즉시 확보한다.
+  function migrateLegacy(storeKey) {
+    var legacy = null;
+    try {
+      var raw = localStorage.getItem(storeKey);
+      if (raw) { var v = JSON.parse(raw); if (Array.isArray(v)) legacy = v; }
+    } catch (e) {}
+    if (!legacy || !legacy.length) return Promise.resolve(null);
+    return idbSet(storeKey, legacy).then(function () {
+      try { localStorage.removeItem(storeKey); } catch (e) {}
+      return legacy;
+    }).catch(function () { return legacy; });
+  }
 
   function injectCss() {
     if (document.getElementById("moriva-saves-css")) return;
@@ -102,24 +168,36 @@
     injectCss();
 
     var title = opt.title || "작업";
-    var items = read();
+    var items = [];
 
-    function read() {
+    function loadLocalSync() {
       try {
         var v = JSON.parse(localStorage.getItem(opt.storeKey) || "[]");
         return Array.isArray(v) ? v : [];
       } catch (e) { return []; }
     }
-    function write(list) {
+
+    // 예전 localStorage 저장분을 IndexedDB로 옮기고(옮길 게 있었다면),
+    // IndexedDB에 있는 최신 목록을 읽어 돌려준다. IndexedDB를 쓸 수 없으면
+    // localStorage 값을 그대로 돌려준다.
+    function loadItems() {
+      return migrateLegacy(opt.storeKey).then(function (migrated) {
+        return idbGet(opt.storeKey).then(function (v) {
+          return Array.isArray(v) ? v : (migrated || []);
+        });
+      }).catch(function () {
+        return loadLocalSync();
+      });
+    }
+
+    function writeLegacyFallback(list) {
       var attempt = list.slice();
       var pruned = 0;
       while (attempt.length > 0) {
         try {
           localStorage.setItem(opt.storeKey, JSON.stringify(attempt));
-          items = attempt;
-          paint();
           if (pruned > 0) say("저장 공간이 부족해 오래된 저장 " + pruned + "개를 자동으로 정리하고 저장했습니다.");
-          return true;
+          return attempt;
         } catch (e) {
           if (attempt.length <= 1) break;
           attempt.pop();
@@ -127,9 +205,22 @@
         }
       }
       alert("이 항목 하나만으로도 브라우저 저장 공간을 초과합니다. 이미지 개수를 줄이거나 다른 브라우저를 사용해 주세요.");
-      items = read();
-      paint();
-      return false;
+      return null;
+    }
+
+    // 목록을 저장한다. IndexedDB를 우선 쓰고(용량 제한이 사실상 없다),
+    // 쓸 수 없는 환경에서만 예전 방식(localStorage, 5~10MB 한도)으로 대체한다.
+    function write(list) {
+      return idbSet(opt.storeKey, list).then(function () {
+        items = list;
+        paint();
+        return true;
+      }).catch(function () {
+        var saved = writeLegacyFallback(list);
+        items = saved || loadLocalSync();
+        paint();
+        return !!saved;
+      });
     }
 
     /* ── 화면 요소 ── */
@@ -228,13 +319,13 @@
         next.unshift(entry);
         next = next.slice(0, MAX_ITEMS);
       }
-      if (write(next)) say("저장했습니다");
+      write(next).then(function (ok) { if (ok) say("저장했습니다"); });
     });
 
     bar.querySelector(".mvs-open").addEventListener("click", function () {
-      items = read();
       paint();
       ov.classList.add("show");
+      loadItems().then(function (list) { items = list; paint(); });
     });
 
     ov.querySelector(".mvs-x").addEventListener("click", function () { ov.classList.remove("show"); });
@@ -264,6 +355,7 @@
     });
 
     paint();
+    loadItems().then(function (list) { items = list; paint(); });
   }
 
   window.MorivaSaves = { init: init };
