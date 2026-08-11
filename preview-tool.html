@@ -554,7 +554,7 @@ function getSyncCfg(){
 const SHARE_MEDIA_SIZE_LIMIT = 18 * 1024 * 1024; // 약 18MB (GitHub Contents API는 이보다 크면 "파일이 너무 큽니다" 오류로 자주 거부하므로 안전 마진을 둠)
 const SHARE_COMPRESS_STEPS = [ {maxDim:900, quality:.7}, {maxDim:640, quality:.5}, {maxDim:480, quality:.4} ]; // 공유 전송 전용 압축 단계(원본 데이터는 그대로 유지, 전송용 사본만 단계적으로 더 압축)
 async function recompressForShare(src, maxDim, quality){
-  if (!src || src.indexOf('data:image/gif')===0) return src; // GIF는 애니메이션이 깨지므로 그대로 둠
+  if (!src || src.indexOf('data:image/gif')===0 || src.indexOf('data:image/webp')===0) return src; // GIF와 WebP는 애니메이션이 깨지므로 그대로 둠
   try{
     const img = await loadImageEl(src);
     const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
@@ -745,7 +745,7 @@ function loadImageEl(src){
 }
 async function fileToStoredDataURL(file, maxDim, quality){
   const raw = await fileToDataURL(file);
-  if (!file.type || file.type.indexOf('image/')!==0 || file.type==='image/gif') return raw;
+  if (!file.type || file.type.indexOf('image/')!==0 || file.type==='image/gif' || file.type==='image/webp') return raw;
   try{
     const img = await loadImageEl(raw);
     const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
