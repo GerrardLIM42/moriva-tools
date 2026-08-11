@@ -599,8 +599,49 @@ async function uploadMediaForShare(cfg){
     throw new Error(`이미지·동영상 용량이 너무 커요(약 ${mb}MB). 동영상 길이를 줄이거나 이미지 개수를 줄인 뒤 다시 시도해주세요.`);
   }
   const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8); const shareOwner = location.hostname.split('.')[0] || cfg.owner; const shareRepo = location.pathname.split('/').filter(Boolean)[0] || cfg.repo;
-  await uploadViaBlobAPI(cfg, shareOwner, shareRepo, 'shares/' + id + '.json', payload, 'MORIVA preview share ' + id);
-  return { id, owner: shareOwner, repo: shareRepo, branch: cfg.branch || 'main' };
+  const downloadUrl = await uploadViaReleaseAsset(cfg, shareOwner, shareRepo, id + '.json', payload);
+  return { id, owner: shareOwner, repo: shareRepo, branch: cfg.branch || 'main', url: downloadUrl };
+}
+
+/* GitHub Release 첨부파일(Release Asset)로 업로드 — 파일당 2GB까지 허용되고 실질적인 용량 제한이 없어 Contents/Blob API의 "input too large" 벽을 근본적으로 피할 수 있음 */
+const MEDIA_RELEASE_TAG = 'media-shares';
+async function ensureMediaRelease(cfg, shareOwner, shareRepo){
+  const base = 'https://api.github.com/repos/' + encodeURIComponent(shareOwner) + '/' + encodeURIComponent(shareRepo);
+  const found = await fetch(base + '/releases/tags/' + encodeURIComponent(MEDIA_RELEASE_TAG), {
+    headers: { 'Authorization': 'token ' + cfg.token, 'Accept': 'application/vnd.github+json' }
+  });
+  if (found.ok) return found.json();
+  return ghApiRequest(base + '/releases', cfg, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      tag_name: MEDIA_RELEASE_TAG,
+      target_commitish: cfg.branch || 'main',
+      name: '공유용 미디어 저장소 (자동 생성 — 삭제하지 마세요)',
+      body: '이 릴리스는 미리보기 도구의 "링크/QR로 폰에서 보기" 기능이 이미지·동영상을 첨부파일로 저장하기 위해 자동으로 만든 것입니다. 지우면 기존 공유 링크가 깨져요.',
+      draft: false,
+      prerelease: true
+    })
+  });
+}
+async function uploadViaReleaseAsset(cfg, shareOwner, shareRepo, assetName, content){
+  const release = await ensureMediaRelease(cfg, shareOwner, shareRepo);
+  const uploadUrl = 'https://uploads.github.com/repos/' + encodeURIComponent(shareOwner) + '/' + encodeURIComponent(shareRepo) + '/releases/' + release.id + '/assets?name=' + encodeURIComponent(assetName);
+  const res = await fetch(uploadUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': 'token ' + cfg.token,
+      'Accept': 'application/vnd.github+json',
+      'Content-Type': 'application/json'
+    },
+    body: content
+  });
+  if (!res.ok){
+    const body = await res.json().catch(()=>({}));
+    throw new Error(body.message || ('업로드 실패 (' + res.status + ')'));
+  }
+  const asset = await res.json();
+  return asset.browser_download_url;
 }
 
 /* 큰 용량(수십MB)도 안정적으로 커밋하기 위해 Contents API 단일 PUT 대신 Git Data API(blob/tree/commit/ref)를 사용 */
@@ -741,7 +782,7 @@ function showMediaBanner(text, kind){
 async function loadSharedMedia(ref, attempt){
   attempt = attempt || 1;
   showMediaBanner('📥 공유된 이미지·동영상 불러오는 중…', 'busy');
-  const url = `https://raw.githubusercontent.com/${encodeURIComponent(ref.owner)}/${encodeURIComponent(ref.repo)}/${encodeURIComponent(ref.branch || 'main')}/shares/${ref.id}.json?_=${Date.now()}`;
+  const url = ref.url || `https://raw.githubusercontent.com/${encodeURIComponent(ref.owner)}/${encodeURIComponent(ref.repo)}/${encodeURIComponent(ref.branch || 'main')}/shares/${ref.id}.json?_=${Date.now()}`;
   try{
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) throw new Error('status ' + res.status);
