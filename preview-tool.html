@@ -604,6 +604,7 @@ async function uploadMediaForShare(cfg){
 }
 
 /* GitHub Release 첨부파일(Release Asset)로 업로드 — 파일당 2GB까지 허용되고 실질적인 용량 제한이 없어 Contents/Blob API의 "input too large" 벽을 근본적으로 피할 수 있음 */
+const MEDIA_SHARE_PROXY = 'https://misty-cherry-c949.moriva-hyeoncl.workers.dev/';
 const MEDIA_RELEASE_TAG = 'media-shares';
 async function ensureMediaRelease(cfg, shareOwner, shareRepo){
   const base = 'https://api.github.com/repos/' + encodeURIComponent(shareOwner) + '/' + encodeURIComponent(shareRepo);
@@ -782,7 +783,7 @@ function showMediaBanner(text, kind){
 async function loadSharedMedia(ref, attempt){
   attempt = attempt || 1;
   showMediaBanner('📥 공유된 이미지·동영상 불러오는 중…', 'busy');
-  const url = ref.url || `https://raw.githubusercontent.com/${encodeURIComponent(ref.owner)}/${encodeURIComponent(ref.repo)}/${encodeURIComponent(ref.branch || 'main')}/shares/${ref.id}.json?_=${Date.now()}`;
+  const directUrl = ref.url || `https://raw.githubusercontent.com/${encodeURIComponent(ref.owner)}/${encodeURIComponent(ref.repo)}/${encodeURIComponent(ref.branch || 'main')}/shares/${ref.id}.json?_=${Date.now()}`; const url = MEDIA_SHARE_PROXY + '?url=' + encodeURIComponent(directUrl);
   try{
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) throw new Error('status ' + res.status);
