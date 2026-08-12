@@ -773,7 +773,7 @@ function applyShareParam(){
 }
 
 function showMediaBanner(text, kind){
-  const el = document.getElementById('media-load-banner');
+ const el = document.getElementById('media-load-banner');
   if (!el) return;
   el.textContent = text;
   el.style.display = text ? 'block' : 'none';
@@ -794,7 +794,7 @@ async function loadSharedMedia(ref, attempt){
     uid = (allIds.length ? Math.max.apply(null, allIds) : 0) + 1;
     showMediaBanner('✅ 이미지·동영상을 불러왔어요', 'ok');
     setTimeout(()=>showMediaBanner(''), 2200);
-    renderControls(); render();
+    renderControls(); render(); if(document.getElementById('fs-overlay').classList.contains('open')) renderFullscreen();
   } catch(e){
     if (attempt < 4){
       setTimeout(()=>loadSharedMedia(ref, attempt+1), 1500 * attempt);
