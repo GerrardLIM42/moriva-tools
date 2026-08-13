@@ -1982,6 +1982,20 @@ function updOrderCell(pid, rid, oid, field, value){
    "자동 분배" 총 개수 칸으로 복사한다. 자동으로 리뷰 진행일까지 채우지는
    않고 숫자만 넘겨주므로, 옵션관리 탭에서 일수를 정하고 직접
    "자동 분배 적용"을 누르거나 필요하면 수동으로 조정하면 된다. */
+  function updOrderBoxCount(pid, rid, oid, value){
+      const p = getProduct(pid); if(!p) return;
+      const round = (p.orders||[]).find(r=>r.id===rid); if(!round) return;
+      const row = ordRow(round, oid);
+      const box = Number(row.boxSize)||0;
+      if(box<=0){ alert('박스 수를 입력하려면 먼저 "박스당 개수"를 입력해 주세요.'); renderView(); return; }
+      const cleaned = String(value).replace(/[^0-9]/g,'');
+      const count = cleaned===''?0:Number(cleaned);
+      const extra = Number(row.extra)||0;
+      row.adj = Math.max(0, count*box - extra);
+      const base = ordBase(round);
+      if(base>0) row.ratio = String(Math.round((row.adj+extra)/base*1000)/10);
+      saveState(); renderView();
+  }
 function copyExtraToReviewTotal(pid, rid, oid){
   const p = getProduct(pid); if(!p) return;
   const round = (p.orders||[]).find(r=>r.id===rid); if(!round) return;
@@ -2270,6 +2284,8 @@ function renderOrdersView(area){
           onchange="updOrderCell('${p.id}','${rd.id}','${o.id}','extra',this.value)">${isPri?`<button class="ord-step" type="button" title="이 추가분 수량을 옵션관리 탭의 리뷰스케줄 '총 개수'로 복사" onclick="copyExtraToReviewTotal('${p.id}','${rd.id}','${o.id}')">→리뷰</button>`:''}</span></td>
         <td><input class="ord-in" inputmode="numeric" value="${escAttr(String(ordRow(rd,o.id).boxSize))}" placeholder="-"
           onchange="updOrderCell('${p.id}','${rd.id}','${o.id}','boxSize',this.value)"></td>
+          <td><input class="ord-in" inputmode="numeric" value="${c.box>0?Math.round(c.finalQty/c.box):''}" placeholder="-" title="박스 수를 바꾸면 이 옵션의 최종 주문 수량과 판매비율(%)이 함께 갱신됩니다"
+            onchange="updOrderBoxCount('${p.id}','${rd.id}','${o.id}',this.value)"></td>
         <td class="ord-final">${fmtC(c.finalQty)}${c.box>0&&c.finalQty>0?`<div class="ord-boxinfo">${fmtC(c.finalQty/c.box)}박스</div>`:''}</td>
       </tr>`;
     }).join('');
@@ -2299,7 +2315,7 @@ function renderOrdersView(area){
         ${rd.includeExtra&&extraSum>0?`<span class="ord-basehint">배분 기준 ${fmtC(baseQty)}개 = 총 ${fmtC(rd.totalQty)} − 추가 ${fmtC(extraSum)}</span>`:''}
       </div>
       <div class="ord-scroll"><table class="ord-table">
-        <thead><tr><th>옵션명</th><th>판매비율</th><th>비율수량</th><th>수량 조정 (10개 단위)</th><th>주력옵션 추가</th><th>박스당 개수</th><th>최종 주문</th></tr></thead>
+        <thead><tr><th>옵션명</th><th>판매비율</th><th>비율수량</th><th>수량 조정 (10개 단위)</th><th>주력옵션 추가</th><th>박스당 개수</th><th>박스 수</th><th>최종 주문</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
     </div>`;
