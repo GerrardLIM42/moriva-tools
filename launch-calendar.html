@@ -2117,10 +2117,14 @@ function palletLayerSvg(calc){
   let boxes = '';
   if(calc.layout === 'pinwheel'){
     const a = calc.pinA*scale, b = calc.pinB*scale;
-    const rects = [ [0,0,a,b], [a,0,b,a], [b,a,a,b], [0,b,b,a] ];
-    rects.forEach(([rx,ry,rw,rh])=>{
+    const labelAB = `${fmtC(calc.pinA)}×${fmtC(calc.pinB)}`, labelBA = `${fmtC(calc.pinB)}×${fmtC(calc.pinA)}`;
+    const rects = [ [0,0,a,b,labelAB], [a,0,b,a,labelBA], [b,a,a,b,labelAB], [0,b,b,a,labelBA] ];
+    rects.forEach(([rx,ry,rw,rh,label])=>{
       const x = pad+rx, y = pad+ry;
       boxes += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${Math.max(0,rw-2).toFixed(1)}" height="${Math.max(0,rh-2).toFixed(1)}" rx="2" fill="#e9edf7" stroke="#4a5b8c" stroke-width="1"/>`;
+      if(rw>34 && rh>14){
+        boxes += `<text x="${(x+rw/2).toFixed(1)}" y="${(y+rh/2+3).toFixed(1)}" text-anchor="middle" font-size="8" fill="#33415c" font-weight="700">${label}</text>`;
+      }
     });
     const holeSide = a-b;
     if(holeSide>3){
@@ -2264,17 +2268,35 @@ function palletIsoSvg(calc){
   let svg = '';
   svg += block(0,BASE, 0,BASE, 0,PH, '#e8d69a','#c9a227','#b8911f');         // 팔레트(전체 1100×1100)
   svg += block(offX,offX+W, offY,offY+D, PH,PH+BH, '#d7e0f5','#8fa3d6','#7690c9'); // 박스 더미(팔레트 중앙)
-  /* 윗면 격자선(열×행) — 박스 더미 영역에만 */
+  /* 윗면 격자선(열×행) — 박스 더미 영역에만. 핀휠(교차) 배치는 4개 박스가
+     90도씩 엇갈린 모양을 그대로 선으로 그려서 교차 적재임을 보여준다. */
   let grid = '';
-  for(let c=1;c<calc.cols;c++){
-    const x = offX + c*calc.footprintW;
-    const p1 = proj(x,offY,PH+BH), p2 = proj(x,offY+D,PH+BH);
-    grid += `<line x1="${p1[0]}" y1="${p1[1]}" x2="${p2[0]}" y2="${p2[1]}" stroke="#5a6ea8" stroke-width="0.6" opacity="0.7"/>`;
-  }
-  for(let r=1;r<calc.rows;r++){
-    const y = offY + r*calc.footprintD;
-    const p1 = proj(offX,y,PH+BH), p2 = proj(offX+W,y,PH+BH);
-    grid += `<line x1="${p1[0]}" y1="${p1[1]}" x2="${p2[0]}" y2="${p2[1]}" stroke="#5a6ea8" stroke-width="0.6" opacity="0.7"/>`;
+  if(calc.layout === 'pinwheel'){
+    const a = calc.pinA, b = calc.pinB;
+    const rects3d = [
+      [offX,offY,offX+a,offY+b],
+      [offX+a,offY,offX+a+b,offY+a],
+      [offX+b,offY+a,offX+a+b,offY+a+b],
+      [offX,offY+b,offX+b,offY+a+b]
+    ];
+    rects3d.forEach(([x0,y0,x1,y1])=>{
+      const pts = [[x0,y0],[x1,y0],[x1,y1],[x0,y1],[x0,y0]];
+      for(let i=0;i<4;i++){
+        const p1 = proj(pts[i][0],pts[i][1],PH+BH), p2 = proj(pts[i+1][0],pts[i+1][1],PH+BH);
+        grid += `<line x1="${p1[0]}" y1="${p1[1]}" x2="${p2[0]}" y2="${p2[1]}" stroke="#5a6ea8" stroke-width="0.8" opacity="0.9"/>`;
+      }
+    });
+  } else {
+    for(let c=1;c<calc.cols;c++){
+      const x = offX + c*calc.footprintW;
+      const p1 = proj(x,offY,PH+BH), p2 = proj(x,offY+D,PH+BH);
+      grid += `<line x1="${p1[0]}" y1="${p1[1]}" x2="${p2[0]}" y2="${p2[1]}" stroke="#5a6ea8" stroke-width="0.6" opacity="0.7"/>`;
+    }
+    for(let r=1;r<calc.rows;r++){
+      const y = offY + r*calc.footprintD;
+      const p1 = proj(offX,y,PH+BH), p2 = proj(offX+W,y,PH+BH);
+      grid += `<line x1="${p1[0]}" y1="${p1[1]}" x2="${p2[0]}" y2="${p2[1]}" stroke="#5a6ea8" stroke-width="0.6" opacity="0.7"/>`;
+    }
   }
   /* 옆면(오른쪽, x=offX+W): 단수 구분선(가로) + 행 구분선(세로) */
   for(let i=1;i<calc.layers;i++){
@@ -2451,10 +2473,12 @@ function renderOrdersView(area){
           <div style="text-align:center;">
             <div style="font-size:10.5px;color:var(--sub);margin-bottom:3px;"><b style="color:#2b3a67;">②</b> 옆면 적재 (좌우 여유)</div>
             ${palletSideSvg(calc)}
+            ${calc && calc.layout==='pinwheel'?`<div style="font-size:9px;color:#9a6d00;margin-top:3px;">교차(핀휠) 배치 · ${calc.layers}단</div>`:''}
           </div>
           <div style="text-align:center;">
             <div style="font-size:10.5px;color:var(--sub);margin-bottom:3px;"><b style="color:#2b3a67;">③</b> 3차원 보기 (사방 여유)</div>
             ${palletIsoSvg(calc)}
+            ${calc && calc.layout==='pinwheel'?`<div style="font-size:9px;color:#9a6d00;margin-top:3px;">${fmtC(calc.pinA)}×${fmtC(calc.pinB)}mm 박스를 90도씩 엇갈려 ${calc.layers}단 교차 적재</div>`:''}
           </div>
         </div>
         ${calc ? `<div class="card" style="flex:1;min-width:220px;font-size:12px;line-height:1.85;background:#f8f9fc;box-shadow:none;padding:12px 14px;margin:0;">
