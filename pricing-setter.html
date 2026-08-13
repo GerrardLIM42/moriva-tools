@@ -140,6 +140,12 @@
   .hint-note{font-size:10px; color:var(--ink-faint); margin-top:6px; line-height:1.5;}
   .vat-toggle-row{display:flex; align-items:center; gap:7px; font-size:13px; color:var(--ink); font-weight:600; cursor:pointer; margin-top:2px;}
   .vat-toggle-row input{width:15px; height:15px; cursor:pointer; accent-color:var(--navy);}
+  .fixed-toggle-row{display:flex; align-items:center; gap:7px; font-size:12px; color:var(--ink); font-weight:600; cursor:pointer; margin-top:2px;}
+  .fixed-toggle-row input{width:15px; height:15px; cursor:pointer; accent-color:var(--navy); flex-shrink:0;}
+  .control label.fixed-toggle-row{display:flex; margin-bottom:0;}
+  .step-value input:disabled{opacity:.5; cursor:not-allowed;}
+  .rate-input input:disabled{opacity:.45; cursor:not-allowed;}
+  select:disabled{opacity:.45; cursor:not-allowed;}
 
   /* ---- 비교표 ---- */
   .compare-wrap{
@@ -708,6 +714,7 @@
   <footer class="note">
     기본 로직 — 판매가 = 최종소비자가 + 즉시할인 + 다운할인 · 정상가 = 판매가 ÷ (1 − 표시할인율), 100원 단위 반올림.<br>
     최종소비자가가 기준값입니다. 최종소비자가는 직접 입력할 때만 바뀌고, 즉시할인·판매가·다운할인 중 어떤 값을 수정해도 최종소비자가는 그대로 유지된 채 그 변화가 판매가를 거쳐 정상가에 반영됩니다.<br>
+    '정상가·판매가 고정' 토글을 켜면 반대로 정상가·판매가가 고정되고, 즉시할인·다운할인을 조정하면 그 변화가 최종소비자가에 그대로 반영됩니다.<br>
     마진 계산 — 원가(₩) = 중국 원가(¥) × 간편비율(기본 300원, 관부가세·배송비 버퍼 포함 추정) · 정산예상액 = 최종소비자가 − 판매수수료 − 로켓그로스 물류비 · 부가세 = 최종소비자가 ÷ 11(일반과세자 매출세액 기준 간편 추정, 매입세액공제 미반영) · 마진 = 정산예상액 − 원가(₩) − 부가세. 막대그래프는 최종소비자가를 원가·판매수수료·물류비·부가세·순마진 비율로 나눠 보여줍니다. 실제 정산·세금 기준은 사업자 유형과 판매 정책에 따라 달라질 수 있어 참고용 추정치입니다.
   </footer>
 </div>
@@ -770,13 +777,20 @@
             <option value="1000">1,000원 단위</option>
           </select>
         </div>
+        <div class="control">
+          <label>최종소비자가 조정 방식</label>
+          <label class="fixed-toggle-row" for="c${uid}-fixedToggle">
+            <input type="checkbox" id="c${uid}-fixedToggle">
+            정상가·판매가 고정 (할인으로 최종가 조정)
+          </label>
+        </div>
       </div>
 
       <div class="ladder">
         <div class="step step-normal" id="c${uid}-rowNormal">
           <div class="step-fill" id="c${uid}-fillNormal" style="width:100%"></div>
           <div class="step-content">
-            <span class="step-label">정상가 <span class="tag">필수 · 등록가</span></span>
+            <span class="step-label">정상가 <span class="tag">필수 · 등록가</span> <span class="tag anchor" id="c${uid}-normalAnchorTag" style="display:none;">기준값</span></span>
             <div class="step-value"><span class="won">₩</span><input type="text" inputmode="numeric" id="c${uid}-inputNormal" value="30,000"></div>
           </div>
         </div>
@@ -789,7 +803,7 @@
         <div class="step step-sale" id="c${uid}-rowSale">
           <div class="step-fill" id="c${uid}-fillSale" style="width:100%"></div>
           <div class="step-content">
-            <span class="step-label">판매가 <span class="tag-sub">(최종 판매가)</span></span>
+            <span class="step-label">판매가 <span class="tag-sub">(최종 판매가)</span> <span class="tag anchor" id="c${uid}-saleAnchorTag" style="display:none;">기준값</span></span>
             <div class="step-value"><span class="won">₩</span><input type="text" inputmode="numeric" id="c${uid}-inputSale" value="15,000"></div>
           </div>
         </div>
@@ -816,7 +830,7 @@
         <div class="step step-final" id="c${uid}-rowFinal">
           <div class="step-fill" id="c${uid}-fillFinal" style="width:100%"></div>
           <div class="step-content">
-            <span class="step-label">최종소비자가 <span class="tag-sub">(고객 실결제가)</span> <span class="tag anchor">기준값</span></span>
+            <span class="step-label">최종소비자가 <span class="tag-sub">(고객 실결제가)</span> <span class="tag anchor" id="c${uid}-finalAnchorTag">기준값</span></span>
             <div class="step-value"><span class="won">₩</span><input type="text" inputmode="numeric" id="c${uid}-inputFinal" value="8,900"></div>
           </div>
         </div>
@@ -908,7 +922,10 @@
       targetRate: (typeof opts.targetRate === 'number') ? opts.targetRate : 50,
       roundUnit: (typeof opts.roundUnit === 'number') ? opts.roundUnit : 100,
       costCny: (typeof opts.costCny === 'number') ? opts.costCny : 0,
-      logisticsFee: (typeof opts.logisticsFee === 'number') ? opts.logisticsFee : 2500
+      logisticsFee: (typeof opts.logisticsFee === 'number') ? opts.logisticsFee : 2500,
+      fixed: (typeof opts.fixed === 'boolean') ? opts.fixed : false,
+      fixedNormalPrice: (typeof opts.fixedNormalPrice === 'number') ? opts.fixedNormalPrice : null,
+      fixedSalePrice: (typeof opts.fixedSalePrice === 'number') ? opts.fixedSalePrice : null
     };
 
     const g = (id) => document.getElementById(`c${uid}-${id}`);
@@ -916,6 +933,8 @@
       label: g('label'),
       normal: g('inputNormal'), sale: g('inputSale'), instant: g('inputInstant'),
       down: g('inputDown'), final: g('inputFinal'),
+      fixedToggle: g('fixedToggle'),
+      normalAnchorTag: g('normalAnchorTag'), saleAnchorTag: g('saleAnchorTag'), finalAnchorTag: g('finalAnchorTag'),
       rateSlider: g('rateSlider'), rateInput: g('rateInput'), roundUnit: g('roundUnit'),
       fillSub: g('fillSub'),
       subValue: g('subValue'), displayRateLabel: g('displayRateLabel'),
@@ -933,6 +952,7 @@
       remove: g('remove')
     };
     els.roundUnit.value = String(state.roundUnit);
+    els.fixedToggle.checked = state.fixed;
     (function initLogisticsSelect(){
       const presets = ['1800','2500','3500','5000','7500'];
       const feeStr = String(state.logisticsFee);
@@ -947,6 +967,13 @@
     })();
 
     function derive(){
+      if (state.fixed && state.fixedNormalPrice != null && state.fixedSalePrice != null){
+        const salePrice = state.fixedSalePrice;
+        const normalPrice = state.fixedNormalPrice;
+        state.finalPrice = Math.max(0, salePrice - state.instantDiscount - state.downDiscount);
+        const subAfterInstant = salePrice - state.instantDiscount;
+        return { salePrice, normalPrice, subAfterInstant };
+      }
       const salePrice = state.finalPrice + state.instantDiscount + state.downDiscount;
       const rate = Math.min(95, Math.max(0, state.targetRate)) / 100;
       const rawNormal = rate < 1 ? salePrice / (1 - rate) : salePrice;
@@ -980,6 +1007,16 @@
 
       if (active !== els.rateSlider) els.rateSlider.value = state.targetRate;
       if (active !== els.rateInput) els.rateInput.value = state.targetRate;
+
+      els.normal.disabled = state.fixed;
+      els.sale.disabled = state.fixed;
+      els.final.disabled = state.fixed;
+      els.rateSlider.disabled = state.fixed;
+      els.rateInput.disabled = state.fixed;
+      els.roundUnit.disabled = state.fixed;
+      els.normalAnchorTag.style.display = state.fixed ? '' : 'none';
+      els.saleAnchorTag.style.display = state.fixed ? '' : 'none';
+      els.finalAnchorTag.style.display = state.fixed ? 'none' : '';
 
       const max = Math.max(normalPrice, 1);
       els.fillSub.style.width = Math.min(100, (subAfterInstant / max) * 100) + '%';
@@ -1043,6 +1080,26 @@
     function onDown(e){ state.downDiscount = parseNum(e.target.value); render(); }
     els.down.addEventListener('input', onDown);
     els.down.addEventListener('change', onDown);
+
+    function onToggleFixed(e){
+      if (e.target.checked){
+        const d = derive();
+        state.fixedNormalPrice = d.normalPrice;
+        state.fixedSalePrice = d.salePrice;
+        state.fixed = true;
+      } else {
+        const salePrice = state.fixedSalePrice;
+        const normalPrice = state.fixedNormalPrice;
+        if (salePrice > 0 && normalPrice > 0){
+          state.targetRate = Math.min(95, Math.max(0, Math.round((1 - salePrice / normalPrice) * 1000) / 10));
+        }
+        state.fixed = false;
+        state.fixedNormalPrice = null;
+        state.fixedSalePrice = null;
+      }
+      render();
+    }
+    els.fixedToggle.addEventListener('change', onToggleFixed);
 
     function onSale(e){
       const newSale = parseNum(e.target.value);
