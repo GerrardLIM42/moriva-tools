@@ -2048,9 +2048,9 @@ function setOrderCover(pid, value){
 
 /* ── 파렛트 적재 계산 ──
    규정: 팔레트 1100×1100mm(오버행 금지, 규격 내 적재), 팔레트 높이 포함 최대 1700mm.
-   박스를 눕히거나(원래 방향) 옆면으로 세우거나 하는 3가지 축 방향을 모두 계산하고,
-   각 방향마다 바닥 배치 회전(가로/세로 90도)까지 함께 따져서 총 박스 수가 가장
-   많아지는 조합을 자동으로 고른다(오차는 무시하고 최대 적재 우선). */
+   박스를 눕히거나 옆면으로 세우는 3가지 축 방향의 균일 격자 배치와, 두 변을 90도씩
+   엇갈리게 배치해 4개를 정사각형으로 채우는 교차(핀휠) 배치까지 모두 계산해서
+   총 박스 수가 가장 많아지는 조합을 자동으로 고른다(오차는 무시하고 최대 적재 우선). */
 function palletCalc(boxW, boxD, boxH, palletHeight){
   boxW = Number(boxW)||0; boxD = Number(boxD)||0; boxH = Number(boxH)||0;
   palletHeight = Number(palletHeight)||0;
@@ -2062,6 +2062,9 @@ function palletCalc(boxW, boxD, boxH, palletHeight){
     { footA: boxW, footB: boxH, layerHeight: boxD, stood: true }
   ];
   let best = null;
+  function consider(cand){
+    if(!best || cand.totalBoxes > best.totalBoxes || (cand.totalBoxes === best.totalBoxes && (cand.overhangMm||0) < (best.overhangMm||0))) best = cand;
+  }
   orientations.forEach(o=>{
     const colsA = Math.floor(PALLET_BASE_MM/o.footA), rowsA = Math.floor(PALLET_BASE_MM/o.footB);
     const colsB = Math.floor(PALLET_BASE_MM/o.footB), rowsB = Math.floor(PALLET_BASE_MM/o.footA);
@@ -2073,12 +2076,32 @@ function palletCalc(boxW, boxD, boxH, palletHeight){
     const totalBoxes = perLayer*layers;
     const usedHeight = palletHeight + layers*o.layerHeight;
     const usedW = cols*footprintW, usedD = rows*footprintD;
-    const cand = { boxW, boxD, boxH, palletHeight, cols, rows, perLayer, perLayerAlt: rotated?perLayerA:perLayerB, layers, totalBoxes,
+    consider({ layout:'grid', boxW, boxD, boxH, palletHeight, cols, rows, perLayer, perLayerAlt: rotated?perLayerA:perLayerB, layers, totalBoxes,
       footprintW, footprintD, layerHeight: o.layerHeight, stood: o.stood, usedW, usedD,
       spareW: PALLET_BASE_MM-usedW, spareD: PALLET_BASE_MM-usedD,
-      usedHeight, spareHeight: PALLET_MAX_HEIGHT_MM - usedHeight, rotated,
-      tooWide: footprintW>PALLET_BASE_MM && footprintD>PALLET_BASE_MM, tooTall: layers<=0 };
-    if(!best || cand.totalBoxes > best.totalBoxes) best = cand;
+      usedHeight, spareHeight: PALLET_MAX_HEIGHT_MM - usedHeight, rotated, overhangMm: 0,
+      tooWide: footprintW>PALLET_BASE_MM && footprintD>PALLET_BASE_MM, tooTall: layers<=0 });
+  });
+  const edges = [boxW, boxD, boxH];
+  const pinwheelSets = [[0,1,2],[0,2,1],[1,2,0]];
+  pinwheelSets.forEach(([ai,bi,hi])=>{
+    let a = edges[ai], b = edges[bi];
+    const h = edges[hi];
+    if(b > a){ const t=a; a=b; b=t; }
+    const pinSide = a + b;
+    if(pinSide > PALLET_BASE_MM * 1.05) return;
+    const layers = Math.floor(usableHeight / h);
+    if(layers <= 0) return;
+    const totalBoxes = 4 * layers;
+    const usedHeight = palletHeight + layers*h;
+    consider({ layout:'pinwheel', boxW, boxD, boxH, palletHeight,
+      pinA: a, pinB: b, cols: null, rows: null, perLayer: 4, perLayerAlt: 4, layers, totalBoxes,
+      footprintW: pinSide, footprintD: pinSide, layerHeight: h, stood: hi!==2,
+      usedW: pinSide, usedD: pinSide,
+      spareW: PALLET_BASE_MM-pinSide, spareD: PALLET_BASE_MM-pinSide,
+      usedHeight, spareHeight: PALLET_MAX_HEIGHT_MM-usedHeight, rotated:false,
+      overhangMm: Math.max(0, pinSide - PALLET_BASE_MM),
+      tooWide:false, tooTall:false });
   });
   return best;
 }
@@ -2089,18 +2112,32 @@ function palletLayerSvg(calc){
     return `<div class="empty" style="padding:16px;font-size:12px;">박스 가로·세로·높이(mm)를 입력하면 적재도가 표시됩니다.</div>`;
   }
   const size = 188, pad = 32, scale = size/PALLET_BASE_MM;
-  const bw = calc.footprintW*scale, bd = calc.footprintD*scale;
-  const usedWpx = calc.cols*bw, usedDpx = calc.rows*bd;
+  const usedWpx = calc.usedW*scale, usedDpx = calc.usedD*scale;
   const hatchId = 'ph'+Math.random().toString(36).slice(2,8);
   let boxes = '';
-  for(let r=0;r<calc.rows;r++){
-    for(let c=0;c<calc.cols;c++){
-      const x = pad + c*bw, y = pad + r*bd;
-      boxes += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${Math.max(0,bw-2).toFixed(1)}" height="${Math.max(0,bd-2).toFixed(1)}" rx="2" fill="#e9edf7" stroke="#4a5b8c" stroke-width="1"/>`;
+  if(calc.layout === 'pinwheel'){
+    const a = calc.pinA*scale, b = calc.pinB*scale;
+    const rects = [ [0,0,a,b], [a,0,b,a], [b,a,a,b], [0,b,b,a] ];
+    rects.forEach(([rx,ry,rw,rh])=>{
+      const x = pad+rx, y = pad+ry;
+      boxes += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${Math.max(0,rw-2).toFixed(1)}" height="${Math.max(0,rh-2).toFixed(1)}" rx="2" fill="#e9edf7" stroke="#4a5b8c" stroke-width="1"/>`;
+    });
+    const holeSide = a-b;
+    if(holeSide>3){
+      const hx = pad+b, hy = pad+b;
+      boxes += `<rect x="${hx.toFixed(1)}" y="${hy.toFixed(1)}" width="${holeSide.toFixed(1)}" height="${holeSide.toFixed(1)}" fill="none" stroke="#c7ccd6" stroke-width="1" stroke-dasharray="3,2"/>`;
     }
-  }
-  if(bw>56 && bd>22){
-    boxes += `<text x="${(pad+bw/2).toFixed(1)}" y="${(pad+bd/2+3).toFixed(1)}" text-anchor="middle" font-size="9" fill="#33415c" font-weight="700">${fmtC(calc.footprintW)}×${fmtC(calc.footprintD)}</text>`;
+  } else {
+    const bw = calc.footprintW*scale, bd = calc.footprintD*scale;
+    for(let r=0;r<calc.rows;r++){
+      for(let c=0;c<calc.cols;c++){
+        const x = pad + c*bw, y = pad + r*bd;
+        boxes += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${Math.max(0,bw-2).toFixed(1)}" height="${Math.max(0,bd-2).toFixed(1)}" rx="2" fill="#e9edf7" stroke="#4a5b8c" stroke-width="1"/>`;
+      }
+    }
+    if(bw>56 && bd>22){
+      boxes += `<text x="${(pad+bw/2).toFixed(1)}" y="${(pad+bd/2+3).toFixed(1)}" text-anchor="middle" font-size="9" fill="#33415c" font-weight="700">${fmtC(calc.footprintW)}×${fmtC(calc.footprintD)}</text>`;
+    }
   }
   let spare = '';
   if(calc.spareW>0){
@@ -2382,6 +2419,7 @@ function renderOrdersView(area){
     let warn = '';
     if(calc && calc.tooWide) warn = `<div class="ord-basehint" style="color:var(--danger);">⚠ 박스 가로·세로가 모두 팔레트(1100mm)보다 커서 규격에 맞지 않습니다.</div>`;
     else if(calc && calc.tooTall) warn = `<div class="ord-basehint" style="color:var(--danger);">⚠ 팔레트 높이(${fmtC(palletHeight)}mm)를 빼면 남는 높이(${fmtC(PALLET_MAX_HEIGHT_MM-palletHeight)}mm)에 이 박스가 1단도 쌓이지 않습니다.</div>`;
+    else if(calc && calc.overhangMm>0) warn = `<div class="ord-basehint" style="color:#9a6d00;">ℹ 교차(핀휠) 배치 시 팔레트 가장자리를 약 ${fmtC(calc.overhangMm)}mm 살짝 벗어납니다 (오차 허용범위로 간주).</div>`;
     const unitsPerBox = ordLastBox(p, o.id);
     const totalUnits = calc ? calc.totalBoxes*unitsPerBox : 0;
     const idw = `boxdim_${o.id}_w`, idd = `boxdim_${o.id}_d`, idh = `boxdim_${o.id}_h`;
@@ -2389,7 +2427,7 @@ function renderOrdersView(area){
       <div class="ord-head" style="margin-bottom:8px;">
         <b>${p.primaryOptionId===o.id?'<span class="ord-pri">★</span> ':''}${escHtml(o.name)}</b>
         <span class="ord-basehint">팔레트 ${fmtC(PALLET_BASE_MM)}×${fmtC(PALLET_BASE_MM)}×${fmtC(palletHeight)}mm</span>
-        ${calc?`<span style="margin-left:auto;font-weight:700;font-size:13px;color:${calc.tooWide?'var(--danger)':'#1f7a4d'};">${calc.tooWide?'⚠ 오버행 발생':'✓ 오버행 없음'}</span>`:''}
+        ${calc?`<span style="margin-left:auto;font-weight:700;font-size:13px;color:${calc.tooWide?'var(--danger)':(calc.overhangMm>0?'#9a6d00':'#1f7a4d')};">${calc.tooWide?'⚠ 오버행 발생':(calc.overhangMm>0?'⚠ 소폭 오버행 ('+fmtC(calc.overhangMm)+'mm)':'✓ 오버행 없음')}</span>`:''}
       </div>
       <div class="ord-head" style="margin-bottom:10px;">
         <label>박스 가로(mm) <input id="${idw}" class="ord-in" style="max-width:80px;" inputmode="numeric" value="${o.boxDimW||''}" placeholder="0"
@@ -2425,9 +2463,9 @@ function renderOrdersView(area){
           <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">팔레트 높이</span><b>${fmtC(calc.palletHeight)}mm</b></div>
           <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">박스 규격</span><b>${fmtC(calc.boxW)}×${fmtC(calc.boxD)}×${fmtC(calc.boxH)}mm</b></div>
           <div style="height:5px;"></div>
-          <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">1단 배치</span><b>${calc.cols}×${calc.rows} = ${calc.perLayer}박스${calc.rotated?' (회전)':''}</b></div>
-          <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">적재 방향</span><b>${calc.stood?`옆면 세워 적재 (${fmtC(calc.footprintW)}×${fmtC(calc.footprintD)}mm 접지)`:'기본 방향'}</b></div>
-          <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">회전 배치 시</span><b>${calc.perLayerAlt}박스${calc.perLayerAlt===calc.perLayer?' (동일)':''}</b></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">1단 배치</span><b>${calc.layout==='pinwheel'?`교차 배치 = ${calc.perLayer}박스`:`${calc.cols}×${calc.rows} = ${calc.perLayer}박스${calc.rotated?' (회전)':''}`}</b></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">적재 방향</span><b>${calc.layout==='pinwheel'?`핀휠 엇갈림 (${fmtC(calc.pinA)}×${fmtC(calc.pinB)}mm)`:(calc.stood?`옆면 세워 적재 (${fmtC(calc.footprintW)}×${fmtC(calc.footprintD)}mm 접지)`:'기본 방향')}</b></div>
+          ${calc.layout!=='pinwheel'?`<div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">회전 배치 시</span><b>${calc.perLayerAlt}박스${calc.perLayerAlt===calc.perLayer?' (동일)':''}</b></div>`:''}
           <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">적재 단수</span><b>${calc.layers}단</b></div>
           <div style="display:flex;justify-content:space-between;align-items:baseline;"><span style="color:var(--sub);">팔레트당 수량</span><b style="color:#9a6d00;font-size:14.5px;">${fmtC(calc.totalBoxes)}박스</b></div>
           ${unitsPerBox>0?`<div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">상품 환산 수량</span><b style="color:#9a6d00;">${fmtC(totalUnits)}개</b></div>`:''}
@@ -2435,10 +2473,11 @@ function renderOrdersView(area){
           <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">박스 적재 높이</span><b>${fmtC(calc.layers*calc.layerHeight)}mm</b></div>
           <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">총 적재 높이</span><b>${fmtC(calc.usedHeight)}mm</b></div>
           <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">1700mm까지 여유</span><b>${fmtC(calc.spareHeight)}mm</b></div>
-          <div style="margin-top:8px;padding:8px 10px;background:#eef7ef;border-radius:8px;">
-            <div style="font-size:10.5px;color:#1f7a4d;">남는 바닥 공간</div>
-            <div style="font-weight:700;font-size:13px;color:#1f7a4d;">가로 ${fmtC(calc.spareW)}mm · 세로 ${fmtC(calc.spareD)}mm</div>
-            <div style="font-size:10px;color:#4a8f63;margin-top:2px;">${calc.tooWide?'⚠ 팔레트 밖으로 돌출됨':'팔레트 밖으로 돌출되는 부분 없음'}</div>
+          <div style="margin-top:8px;padding:8px 10px;background:${calc.spareW>=0?'#eef7ef':'#fdf3e0'};border-radius:8px;">
+            <div style="font-size:10.5px;color:${calc.spareW>=0?'#1f7a4d':'#9a6d00'};">남는 바닥 공간</div>
+            ${calc.spareW>=0?`<div style="font-weight:700;font-size:13px;color:#1f7a4d;">가로 ${fmtC(calc.spareW)}mm · 세로 ${fmtC(calc.spareD)}mm</div>
+            <div style="font-size:10px;color:#4a8f63;margin-top:2px;">팔레트 밖으로 돌출되는 부분 없음</div>`:`<div style="font-weight:700;font-size:13px;color:#9a6d00;">약 ${fmtC(Math.abs(calc.spareW))}mm 초과</div>
+            <div style="font-size:10px;color:#9a6d00;margin-top:2px;">⚠ 교차 배치로 가장자리를 살짝 벗어남 (오차 허용범위)</div>`}
           </div>
         </div>` : ''}
       </div>
