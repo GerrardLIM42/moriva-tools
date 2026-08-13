@@ -1386,6 +1386,10 @@ function renderSettingsView(area){
             <button class="btn" type="button" onclick="addReviewDateRow('${o.id}')">+ 리뷰 진행일 추가</button>
             <button class="btn" type="button" onclick="applyDefaultScheduleForOption('${p.id}','${o.id}')">기본값(4-7-11-16-22) 적용</button>
           </div>
+          <div class="toolbar" style="margin-top:6px;margin-bottom:0;flex-wrap:wrap;gap:12px;">
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:600;"><input type="radio" name="revmode_${o.id}" value="graduated" ${o.autoDistMode!=='flat'?'checked':''} style="width:auto;">점진적으로 상승</label>
+              <label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:600;"><input type="radio" name="revmode_${o.id}" value="flat" ${o.autoDistMode==='flat'?'checked':''} style="width:auto;">매일 동일한 개수</label>
+              </div>
           <div class="toolbar" style="margin-top:6px;margin-bottom:0;align-items:center;flex-wrap:wrap;">
             <span style="font-size:12px;color:var(--sub);">총 <input type="number" id="revtotal_${o.id}" value="${o.autoDistTotal!==undefined&&o.autoDistTotal!==null?o.autoDistTotal:60}" style="width:64px;padding:3px 6px;display:inline-block;">개를 <input type="number" id="revspan_${o.id}" value="${o.autoDistSpan!==undefined&&o.autoDistSpan!==null?o.autoDistSpan:5}" min="1" style="width:44px;padding:3px 6px;display:inline-block;">일간 점진적으로 상승시켜 분배</span>
             <button class="btn primary" type="button" onclick="applyGraduatedScheduleForOption('${p.id}','${o.id}')">자동 분배 적용</button>
@@ -1508,6 +1512,16 @@ function distributeReviewSchedule(total, days){
   for(let k=0;k<remainder && k<order.length;k++){ qty[order[k].i]++; }
   return qty;
 }
+  /* 총 개수를 지정한 일수 동안 매일 같은 수량으로 균등하게 나눈다(나머지는 앞날부터 1개씩 더해 total과 정확히 일치). */
+  function distributeReviewScheduleFlat(total, days){
+      total = Math.max(0, Math.round(Number(total)||0));
+      days = Math.max(1, Math.round(Number(days)||0));
+      const base = Math.floor(total/days);
+      const remainder = total - base*days;
+      const qty = Array.from({length:days}, ()=>base);
+      for(let i=0;i<remainder;i++){ qty[i]++; }
+      return qty;
+  }
 /* "자동 분배 적용" 버튼: 총 배정 개수를 입력한 일수에 걸쳐 점진적으로 늘어나는
    수량으로 나눠 리뷰 진행일 목록을 새로 채운다(합계는 입력한 총 개수와 정확히 일치). */
 function applyGraduatedScheduleForOption(pid, optionId){
@@ -1519,7 +1533,12 @@ function applyGraduatedScheduleForOption(pid, optionId){
   const startDay = startEl ? (Number(startEl.value)||DEFAULT_REVIEW_START) : DEFAULT_REVIEW_START;
   const total = totalEl ? Number(totalEl.value)||0 : 0;
   const span = spanEl ? Math.max(1, Number(spanEl.value)||1) : 5;
-  const qtys = distributeReviewSchedule(total, span);
+const modeEl = document.querySelector('input[name="revmode_'+optionId+'"]:checked');
+      const mode = modeEl ? modeEl.value : 'graduated';
+      const p = getProduct(pid);
+      const opt = p && p.options.find(x=>x.id===optionId);
+      if(opt) opt.autoDistMode = mode;
+      const qtys = mode==='flat' ? distributeReviewScheduleFlat(total, span) : distributeReviewSchedule(total, span);
   list.innerHTML = qtys.map((qty,idx)=>reviewDateRowHtml(startDay+idx, qty, optionId)).join('');
   updateReviewSum(optionId);
 }
@@ -1536,6 +1555,8 @@ function saveOptionSettings(pid){
     if(totalEl) o.autoDistTotal = Number(totalEl.value)||0;
     const spanEl = document.getElementById('revspan_'+o.id);
     if(spanEl) o.autoDistSpan = Math.max(1, Number(spanEl.value)||1);
+    const modeEl = document.querySelector('input[name="revmode_'+o.id+'"]:checked');
+        if(modeEl) o.autoDistMode = modeEl.value;
     const list = document.getElementById('revdates_'+o.id);
     if(list){
       const days = [...list.querySelectorAll('.rd-day')].map(el=>Number(el.value));
