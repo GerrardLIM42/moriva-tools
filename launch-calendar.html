@@ -2048,28 +2048,39 @@ function setOrderCover(pid, value){
 
 /* ── 파렛트 적재 계산 ──
    규정: 팔레트 1100×1100mm(오버행 금지, 규격 내 적재), 팔레트 높이 포함 최대 1700mm.
-   박스를 가로/세로 그대로 두는 경우와 90도 돌리는 경우를 둘 다 계산해서
-   한 층에 더 많이 들어가는 쪽을 자동으로 고른다. */
+   박스를 눕히거나(원래 방향) 옆면으로 세우거나 하는 3가지 축 방향을 모두 계산하고,
+   각 방향마다 바닥 배치 회전(가로/세로 90도)까지 함께 따져서 총 박스 수가 가장
+   많아지는 조합을 자동으로 고른다(오차는 무시하고 최대 적재 우선). */
 function palletCalc(boxW, boxD, boxH, palletHeight){
   boxW = Number(boxW)||0; boxD = Number(boxD)||0; boxH = Number(boxH)||0;
   palletHeight = Number(palletHeight)||0;
   if(boxW<=0 || boxD<=0 || boxH<=0) return null;
-  const colsA = Math.floor(PALLET_BASE_MM/boxW), rowsA = Math.floor(PALLET_BASE_MM/boxD);
-  const colsB = Math.floor(PALLET_BASE_MM/boxD), rowsB = Math.floor(PALLET_BASE_MM/boxW);
-  const perLayerA = colsA*rowsA, perLayerB = colsB*rowsB;
-  const rotated = perLayerB > perLayerA;
-  const cols = rotated?colsB:colsA, rows = rotated?rowsB:rowsA, perLayer = rotated?perLayerB:perLayerA;
-  const footprintW = rotated?boxD:boxW, footprintD = rotated?boxW:boxD;
   const usableHeight = Math.max(0, PALLET_MAX_HEIGHT_MM - palletHeight);
-  const layers = Math.floor(usableHeight/boxH);
-  const totalBoxes = perLayer*layers;
-  const usedHeight = palletHeight + layers*boxH;
-  const usedW = cols*footprintW, usedD = rows*footprintD;
-  return { boxW, boxD, boxH, palletHeight, cols, rows, perLayer, perLayerAlt: rotated?perLayerA:perLayerB, layers, totalBoxes,
-    footprintW, footprintD, usedW, usedD,
-    spareW: PALLET_BASE_MM-usedW, spareD: PALLET_BASE_MM-usedD,
-    usedHeight, spareHeight: PALLET_MAX_HEIGHT_MM - usedHeight, rotated,
-    tooWide: boxW>PALLET_BASE_MM && boxD>PALLET_BASE_MM, tooTall: layers<=0 };
+  const orientations = [
+    { footA: boxW, footB: boxD, layerHeight: boxH, stood: false },
+    { footA: boxH, footB: boxD, layerHeight: boxW, stood: true },
+    { footA: boxW, footB: boxH, layerHeight: boxD, stood: true }
+  ];
+  let best = null;
+  orientations.forEach(o=>{
+    const colsA = Math.floor(PALLET_BASE_MM/o.footA), rowsA = Math.floor(PALLET_BASE_MM/o.footB);
+    const colsB = Math.floor(PALLET_BASE_MM/o.footB), rowsB = Math.floor(PALLET_BASE_MM/o.footA);
+    const perLayerA = colsA*rowsA, perLayerB = colsB*rowsB;
+    const rotated = perLayerB > perLayerA;
+    const cols = rotated?colsB:colsA, rows = rotated?rowsB:rowsA, perLayer = rotated?perLayerB:perLayerA;
+    const footprintW = rotated?o.footB:o.footA, footprintD = rotated?o.footA:o.footB;
+    const layers = Math.floor(usableHeight/o.layerHeight);
+    const totalBoxes = perLayer*layers;
+    const usedHeight = palletHeight + layers*o.layerHeight;
+    const usedW = cols*footprintW, usedD = rows*footprintD;
+    const cand = { boxW, boxD, boxH, palletHeight, cols, rows, perLayer, perLayerAlt: rotated?perLayerA:perLayerB, layers, totalBoxes,
+      footprintW, footprintD, layerHeight: o.layerHeight, stood: o.stood, usedW, usedD,
+      spareW: PALLET_BASE_MM-usedW, spareD: PALLET_BASE_MM-usedD,
+      usedHeight, spareHeight: PALLET_MAX_HEIGHT_MM - usedHeight, rotated,
+      tooWide: footprintW>PALLET_BASE_MM && footprintD>PALLET_BASE_MM, tooTall: layers<=0 };
+    if(!best || cand.totalBoxes > best.totalBoxes) best = cand;
+  });
+  return best;
 }
 /* 한 층의 박스 배치를 위에서 본 그림(SVG)으로 그린다 — 외곽 치수선, 박스 규격 라벨,
    남는 공간 해칭 표시를 포함한다. */
@@ -2138,7 +2149,7 @@ function palletSideSvg(calc){
   const x0 = padX, xBoxStart = x0+marginPx, xBoxEnd = xBoxStart+boxW, x1 = x0+baseW;
   const yFloor = padTop+chartH;
   const palletPx = calc.palletHeight*scaleV;
-  const boxPx = calc.boxH*scaleV;
+  const boxPx = calc.layerHeight*scaleV;
   let layerRects = '';
   for(let i=0;i<calc.layers;i++){
     const y = yFloor - palletPx - (i+1)*boxPx;
@@ -2186,7 +2197,7 @@ function palletIsoSvg(calc){
     return `<div class="empty" style="padding:16px;font-size:12px;">박스 크기를 입력하면 3D 적재도가 표시됩니다.</div>`;
   }
   const BASE = PALLET_BASE_MM;
-  const W = calc.usedW, D = calc.usedD, PH = calc.palletHeight, BH = calc.layers*calc.boxH;
+  const W = calc.usedW, D = calc.usedD, PH = calc.palletHeight, BH = calc.layers*calc.layerHeight;
   const offX = (BASE-W)/2, offY = (BASE-D)/2; // 박스 더미를 팔레트 중앙에 배치
   const COS = 0.866, SIN = 0.5;
   const pad = 22;
@@ -2230,7 +2241,7 @@ function palletIsoSvg(calc){
   }
   /* 옆면(오른쪽, x=offX+W): 단수 구분선(가로) + 행 구분선(세로) */
   for(let i=1;i<calc.layers;i++){
-    const z = PH+i*calc.boxH;
+    const z = PH+i*calc.layerHeight;
     const p1 = proj(offX+W,offY,z), p2 = proj(offX+W,offY+D,z);
     grid += `<line x1="${p1[0]}" y1="${p1[1]}" x2="${p2[0]}" y2="${p2[1]}" stroke="#5a6ea8" stroke-width="0.6" opacity="0.7"/>`;
   }
@@ -2241,7 +2252,7 @@ function palletIsoSvg(calc){
   }
   /* 옆면(앞쪽, y=offY+D): 단수 구분선(가로) + 열 구분선(세로) */
   for(let i=1;i<calc.layers;i++){
-    const z = PH+i*calc.boxH;
+    const z = PH+i*calc.layerHeight;
     const p1 = proj(offX,offY+D,z), p2 = proj(offX+W,offY+D,z);
     grid += `<line x1="${p1[0]}" y1="${p1[1]}" x2="${p2[0]}" y2="${p2[1]}" stroke="#5a6ea8" stroke-width="0.6" opacity="0.7"/>`;
   }
@@ -2415,12 +2426,13 @@ function renderOrdersView(area){
           <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">박스 규격</span><b>${fmtC(calc.boxW)}×${fmtC(calc.boxD)}×${fmtC(calc.boxH)}mm</b></div>
           <div style="height:5px;"></div>
           <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">1단 배치</span><b>${calc.cols}×${calc.rows} = ${calc.perLayer}박스${calc.rotated?' (회전)':''}</b></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">적재 방향</span><b>${calc.stood?`옆면 세워 적재 (${fmtC(calc.footprintW)}×${fmtC(calc.footprintD)}mm 접지)`:'기본 방향'}</b></div>
           <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">회전 배치 시</span><b>${calc.perLayerAlt}박스${calc.perLayerAlt===calc.perLayer?' (동일)':''}</b></div>
           <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">적재 단수</span><b>${calc.layers}단</b></div>
           <div style="display:flex;justify-content:space-between;align-items:baseline;"><span style="color:var(--sub);">팔레트당 수량</span><b style="color:#9a6d00;font-size:14.5px;">${fmtC(calc.totalBoxes)}박스</b></div>
           ${unitsPerBox>0?`<div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">상품 환산 수량</span><b style="color:#9a6d00;">${fmtC(totalUnits)}개</b></div>`:''}
           <div style="border-top:1px solid #e5e7eb;margin-top:5px;padding-top:5px;"></div>
-          <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">박스 적재 높이</span><b>${fmtC(calc.layers*calc.boxH)}mm</b></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">박스 적재 높이</span><b>${fmtC(calc.layers*calc.layerHeight)}mm</b></div>
           <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">총 적재 높이</span><b>${fmtC(calc.usedHeight)}mm</b></div>
           <div style="display:flex;justify-content:space-between;"><span style="color:var(--sub);">1700mm까지 여유</span><b>${fmtC(calc.spareHeight)}mm</b></div>
           <div style="margin-top:8px;padding:8px 10px;background:#eef7ef;border-radius:8px;">
