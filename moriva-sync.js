@@ -56,6 +56,8 @@
   try { cfg = JSON.parse(localStorage.getItem(CFG_KEY)); } catch (e) {}
   var fileSha = null;
   var timer = null;
+  var pushBusy = false;   // 지금 PUT 요청이 진행 중이면 true — 동시에 두 번 저장 시도해 sha 충돌 나는 것 방지
+  var pushQueued = false; // 진행 중일 때 또 저장 요청이 오면 표시해뒀다가 끝나고 한 번 더 실행
 
   /* 동기화에서 빼는 항목
      1) 내부 설정값
@@ -122,44 +124,59 @@
       });
   }
 
-  function pushRemote(isRetry) {
+  /* data.json은 여러 탭·기기가 동시에 건드릴 수 있는 공용 파일이라, GitHub은 저장 직전 sha가
+     최신인지 확인한다(낙관적 동시성 제어). 두 저장 요청이 겹치면 나중 요청의 sha가 곧바로
+     낡아버려 "does not match" 충돌이 난다. 이를 막기 위해
+       1) 이 탭에서는 한 번에 하나의 저장만 진행하고(pushBusy), 그 사이 또 요청이 오면 큐에 쌓았다가
+          끝난 뒤 최신 데이터로 다시 한 번 저장한다.
+       2) 그래도 충돌하면(다른 탭·기기가 먼저 저장한 경우) 최신 sha를 다시 받아와 몇 차례 재시도한다. */
+  function pushRemote() {
     if (!cfg || !cfg.token) return Promise.resolve();
-    status("저장 중…", "busy");
-    var snap = snapshot();
-    var body = {
-      message: "MORIVA sync",
-      content: b64enc(JSON.stringify(snap)),
-      branch: cfg.branch || "main"
-    };
-    if (fileSha) body.sha = fileSha;
-    return fetch(apiUrl(), {
-      method: "PUT",
-      headers: Object.assign({ "Content-Type": "application/json" }, headers()),
-      body: JSON.stringify(body)
-    }).then(function (res) {
-      if ((res.status === 409 || res.status === 422) && !isRetry) {
-        return fetchRemote().then(function () { return pushRemote(true); });
-      }
-      if (!res.ok) {
-        return res.json().catch(function () { return {}; }).then(function (b) {
-          throw new Error(b.message || ("저장 실패 " + res.status));
-        });
-      }
-      return res.json().then(function (d) {
-        fileSha = d.content.sha;
-        origSet.call(localStorage, STAMP_KEY, String(snap.savedAt));
-        status("저장됨 " + new Date().toLocaleTimeString("ko-KR"), "ok");
-      });
-    }).catch(function (err) {
+    if (pushBusy) { pushQueued = true; return Promise.resolve(); }
+    pushBusy = true;
+    return attempt(0).catch(function (err) {
       status("오류: " + err.message, "err");
+    }).then(function () {
+      pushBusy = false;
+      if (pushQueued) { pushQueued = false; pushRemote(); }
     });
+
+    function attempt(retryCount) {
+      status("저장 중…", "busy");
+      var snap = snapshot();
+      var body = {
+        message: "MORIVA sync",
+        content: b64enc(JSON.stringify(snap)),
+        branch: cfg.branch || "main"
+      };
+      if (fileSha) body.sha = fileSha;
+      return fetch(apiUrl(), {
+        method: "PUT",
+        headers: Object.assign({ "Content-Type": "application/json" }, headers()),
+        body: JSON.stringify(body)
+      }).then(function (res) {
+        if ((res.status === 409 || res.status === 422) && retryCount < 3) {
+          return fetchRemote().then(function () { return attempt(retryCount + 1); });
+        }
+        if (!res.ok) {
+          return res.json().catch(function () { return {}; }).then(function (b) {
+            throw new Error(b.message || ("저장 실패 " + res.status));
+          });
+        }
+        return res.json().then(function (d) {
+          fileSha = d.content.sha;
+          origSet.call(localStorage, STAMP_KEY, String(snap.savedAt));
+          status("저장됨 " + new Date().toLocaleTimeString("ko-KR"), "ok");
+        });
+      });
+    }
   }
 
   function schedule() {
     if (!cfg || !cfg.token) return;
     if (timer) clearTimeout(timer);
     status("변경 대기…", "busy");
-    timer = setTimeout(function () { pushRemote(false); }, DELAY);
+    timer = setTimeout(function () { pushRemote(); }, DELAY);
   }
 
   // 셸 자신의 localStorage 변경 감지
@@ -179,6 +196,7 @@
 
   /* 셸 UI가 호출하는 함수 */
   window.MORIVA_SYNC_CONNECT = function (nextCfg) {
+    if (timer) { clearTimeout(timer); timer = null; } // 대기 중이던 자동저장과 겹치지 않도록 취소
     cfg = nextCfg;
     fileSha = null;
     origSet.call(localStorage, CFG_KEY, JSON.stringify(cfg));
@@ -193,7 +211,7 @@
           return;
         }
       }
-      return pushRemote(false);
+      return pushRemote();
     }).catch(function (err) {
       status("오류: " + err.message, "err");
     });
