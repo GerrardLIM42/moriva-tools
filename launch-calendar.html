@@ -321,7 +321,8 @@ function defaultReviewDates(startDay){
   return DEFAULT_REVIEW_SCHEDULE.map((qty, idx)=>({ dayIndex: Number(startDay)+idx, qty }));
 }
 function newOption(name, color){
-  return { id: uid(), name: name || '옵션', color: color || PALETTE[Math.floor(Math.random()*PALETTE.length)], reviewStartDayIndex: DEFAULT_REVIEW_START, reviewDates: [] };
+  return { id: uid(), name: name || '옵션', color: color || PALETTE[Math.floor(Math.random()*PALETTE.length)], reviewStartDayIndex: DEFAULT_REVIEW_START, reviewDates: [],
+    sellerShip: {optionId:'', exposedId:''}, rocket: {optionId:'', exposedId:''} };
 }
 function getOption(product, optionId){ return product.options.find(o=>o.id===optionId); }
 function optionLabel(p, o){ return p.options.length<=1 ? p.name : (p.name+' · '+o.name); }
@@ -386,7 +387,7 @@ function setPrimaryOption(pid, optionId){
 }
 
 function createProduct(name, launchDateStr, color, optionName, image){
-  const p = { id: uid(), name, color, image: image||null, launchDate: launchDateStr, options: [], primaryOptionId: null, maxDayIndex: DEFAULT_MAX_DAY, days: {}, orders: [], orderCoverDays: 40 };
+  const p = { id: uid(), name, color, image: image||null, launchDate: launchDateStr, registeredProductId: '', options: [], primaryOptionId: null, maxDayIndex: DEFAULT_MAX_DAY, days: {}, orders: [], orderCoverDays: 40 };
   const opt = newOption(optionName || '기본옵션', color);
   opt.reviewDates = defaultReviewDates(opt.reviewStartDayIndex);
   p.options = [opt];
@@ -403,6 +404,15 @@ function migrateProduct(p){
   if(!p.orderCoverDays) p.orderCoverDays = 40;
   if(p.options && Array.isArray(p.options)){
     if(p.image===undefined) p.image = null;
+    if(p.registeredProductId===undefined) p.registeredProductId = '';
+    p.options.forEach(o=>{
+      if(!o.sellerShip || typeof o.sellerShip!=='object') o.sellerShip = {optionId:'', exposedId:''};
+      if(!o.rocket || typeof o.rocket!=='object') o.rocket = {optionId:'', exposedId:''};
+      if(o.sellerShip.optionId===undefined) o.sellerShip.optionId = '';
+      if(o.sellerShip.exposedId===undefined) o.sellerShip.exposedId = '';
+      if(o.rocket.optionId===undefined) o.rocket.optionId = '';
+      if(o.rocket.exposedId===undefined) o.rocket.exposedId = '';
+    });
     if(!p.primaryOptionId || !p.options.some(o=>o.id===p.primaryOptionId)) p.primaryOptionId = p.options[0] ? p.options[0].id : null;
     Object.keys(p.days||{}).forEach(k=>{
       const day = p.days[k];
@@ -551,6 +561,12 @@ function applyPickedImage(zone, dataUrl){
     setImageMsg(zone, '이미지를 넣었습니다.', false);
     return;
   }
+  if(target === 'idextract'){
+    idExtractImage = dataUrl;
+    updateIdExtractPreview();
+    setImageMsg(zone, '이미지를 넣었습니다.', false);
+    return;
+  }
   const p = getProduct(zone.getAttribute('data-pid'));
   if(!p){ setImageMsg(zone, '제품을 찾지 못했습니다.', true); return; }
   p.image = dataUrl;
@@ -578,7 +594,7 @@ function clearNewProductImage(){
 
 /* 이미지 넣는 칸을 만들어 주는 공통 조각 */
 function imageInputHtml(target, pid, previewHtml){
-  const idBase = target === 'new' ? 'np' : 'set';
+  const idBase = target === 'new' ? 'np' : (target === 'idextract' ? 'idx' : 'set');
   return `<div class="img-input">
     <div class="img-drop" tabindex="0" data-img-target="${target}" data-pid="${pid || ''}">
       <b>여기를 클릭한 뒤 Ctrl+V</b> 로 복사한 이미지를 붙여넣거나,<br>이미지 파일을 이 상자로 끌어다 놓으세요.
@@ -594,6 +610,229 @@ function imageInputHtml(target, pid, previewHtml){
     ${previewHtml || ''}
   </div>`;
 }
+
+/* ---------------- 제품 ID 스크린샷 자동 입력 (AI Vision) ---------------- */
+/* 다른 MORIVA 도구들과 같은 공유 설정(localStorage: moriva_provider/moriva_keys/moriva_models)을 사용한다. */
+const PROVIDERS = {
+  gemini: {
+    label: "Gemini",
+    defaultModel: "gemini-flash-latest",
+    fallbackModel: "gemini-3.5-flash",
+    keyPlaceholder: "AIzaSy…",
+    help: '키 발급: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio → Get API key</a> (무료 사용량 제공).'
+  },
+  openai: {
+    label: "ChatGPT",
+    defaultModel: "gpt-4o-mini",
+    keyPlaceholder: "sk-…",
+    help: '키 발급: <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com → API keys</a>.'
+  },
+  claude: {
+    label: "Claude",
+    defaultModel: "claude-sonnet-4-6",
+    keyPlaceholder: "sk-ant-api03-…",
+    help: '키 발급: <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com → API Keys</a>.'
+  }
+};
+let idExtractImage = null;
+let idExtractPid = null;
+let aiSendImages = [];
+
+async function callAI(provider, key, model, prompt){
+  if(provider === 'gemini'){
+    const callGemini = async (mdl) => {
+      const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(mdl) + ':generateContent?key=' + encodeURIComponent(key);
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [ ...aiSendImages.map(img => ({ inline_data: { mime_type: img.mediaType, data: img.data } })), { text: prompt } ] }],
+          generationConfig: { maxOutputTokens: 8192, temperature: 0.2 }
+        })
+      });
+      return res.json();
+    };
+    let data = await callGemini(model);
+    if(data.error && /no longer available|not found|is not supported|deprecated/i.test(data.error.message || '')){
+      const fb = PROVIDERS.gemini.fallbackModel;
+      if(model !== fb){ data = await callGemini(fb); }
+    }
+    if(data.error) throw new Error('Gemini: ' + (data.error.message || '오류'));
+    const cand = data.candidates && data.candidates[0];
+    if(!cand || !cand.content) throw new Error('Gemini 응답이 비어 있습니다');
+    const out = (cand.content.parts || []).filter(p => p.text && !p.thought).map(p => p.text).join('');
+    if(!out.trim()) throw new Error('모델이 빈 응답을 반환했습니다. 다시 시도해 주세요.');
+    return out;
+  }
+  if(provider === 'openai'){
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+      body: JSON.stringify({
+        model: model, max_tokens: 1500,
+        messages: [{ role: 'user', content: [ { type: 'text', text: prompt }, ...aiSendImages.map(img => ({ type: 'image_url', image_url: { url: 'data:' + img.mediaType + ';base64,' + img.data } })) ] }]
+      })
+    });
+    const data = await res.json();
+    if(data.error) throw new Error('OpenAI: ' + (data.error.message || res.status));
+    const msg = data.choices && data.choices[0] && data.choices[0].message;
+    if(!msg) throw new Error('OpenAI 응답이 비어 있습니다');
+    return msg.content || '';
+  }
+  const headers = { 'Content-Type': 'application/json' };
+  if(key){ headers['x-api-key'] = key; headers['anthropic-version'] = '2023-06-01'; headers['anthropic-dangerous-direct-browser-access'] = 'true'; }
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST', headers,
+    body: JSON.stringify({
+      model: model, max_tokens: key ? 1500 : 1000,
+      messages: [{ role: 'user', content: [ ...aiSendImages.map(img => ({ type: 'image', source: { type: 'base64', media_type: img.mediaType, data: img.data } })), { type: 'text', text: prompt } ] }]
+    })
+  });
+  const data = await res.json();
+  if(data.error) throw new Error('Claude: ' + (data.error.message || res.status));
+  return (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
+}
+
+function updateIdExtractPreview(){
+  const wrap = document.getElementById('idx_img_preview');
+  if(!wrap) return;
+  wrap.innerHTML = idExtractImage
+    ? '<img src="' + idExtractImage + '"><button class="btn" type="button" onclick="clearIdExtractImage()">이미지 제거</button>'
+    : '';
+}
+function clearIdExtractImage(){
+  idExtractImage = null;
+  updateIdExtractPreview();
+}
+function showIdxMsg(text, isError){
+  const el = document.getElementById('idx_msg');
+  if(!el) return;
+  el.textContent = text || '';
+  el.style.color = isError ? '#c0392b' : 'var(--sub)';
+}
+function idxProviderChanged(){
+  const pr = document.getElementById('idx_provider').value;
+  let savedKeys = {}, savedModels = {};
+  try{ savedKeys = JSON.parse(localStorage.getItem('moriva_keys')||'{}'); }catch(e){}
+  try{ savedModels = JSON.parse(localStorage.getItem('moriva_models')||'{}'); }catch(e){}
+  const modelEl = document.getElementById('idx_model'), keyEl = document.getElementById('idx_apikey');
+  modelEl.value = savedModels[pr] || '';
+  modelEl.placeholder = PROVIDERS[pr].defaultModel;
+  keyEl.value = savedKeys[pr] || '';
+  keyEl.placeholder = PROVIDERS[pr].keyPlaceholder;
+}
+function openIdExtractModal(pid){
+  idExtractImage = null;
+  idExtractPid = pid;
+  let savedProvider = localStorage.getItem('moriva_provider') || 'gemini';
+  if(!PROVIDERS[savedProvider]) savedProvider = 'gemini';
+  let savedKeys = {}, savedModels = {};
+  try{ savedKeys = JSON.parse(localStorage.getItem('moriva_keys')||'{}'); }catch(e){}
+  try{ savedModels = JSON.parse(localStorage.getItem('moriva_models')||'{}'); }catch(e){}
+  const providerOptions = Object.keys(PROVIDERS).map(k=>`<option value="${k}" ${k===savedProvider?'selected':''}>${PROVIDERS[k].label}</option>`).join('');
+  const body = `<h3>스크린샷으로 ID 자동 입력</h3>
+    <div style="font-size:11.5px;color:var(--sub);margin-bottom:10px;line-height:1.5;">
+      쿠팡 Wing 상품 상세 화면(등록상품ID, 옵션별 "옵션명, 판매방식"의 옵션ID·노출상품ID, "로켓그로스 상품"의 옵션ID·노출상품ID)이 보이도록 캡처해서 붙여넣으면 AI가 읽어서 자동으로 채워줍니다. 채운 뒤에도 값을 직접 확인·수정할 수 있습니다.
+    </div>
+    <div class="row2">
+      <div class="field"><label>AI 서비스</label><select id="idx_provider" onchange="idxProviderChanged()">${providerOptions}</select></div>
+      <div class="field"><label>모델 (비워두면 기본값)</label><input id="idx_model" placeholder="${PROVIDERS[savedProvider].defaultModel}" value="${escAttr(savedModels[savedProvider]||'')}"></div>
+    </div>
+    <div class="field"><label>API 키</label><input id="idx_apikey" type="password" placeholder="${PROVIDERS[savedProvider].keyPlaceholder}" value="${escAttr(savedKeys[savedProvider]||'')}"></div>
+    <div class="field"><label>스크린샷</label>
+      ${imageInputHtml('idextract', pid, '<div class="img-upload-preview" id="idx_img_preview"></div>')}
+    </div>
+    <div id="idx_msg" style="font-size:12px;margin-top:4px;"></div>
+    <div class="modal-actions"><button class="btn" onclick="closeModal()">취소</button><button class="btn primary" id="idx_go" onclick="runIdExtraction()">분석해서 채우기</button></div>`;
+  showModal(body);
+}
+function normalizeOptName(s){
+  return String(s||'').toLowerCase().replace(/\s+/g,'').replace(/[\/\-_,·]/g,'');
+}
+function matchOptionByName(p, name){
+  const target = normalizeOptName(name);
+  if(!target) return null;
+  let found = p.options.find(o=>normalizeOptName(o.name)===target);
+  if(found) return found;
+  found = p.options.find(o=>{
+    const on = normalizeOptName(o.name);
+    return on && (target.indexOf(on)>=0 || on.indexOf(target)>=0);
+  });
+  return found || null;
+}
+function applyIdExtraction(p, parsed){
+  const results = { matched: [], unmatched: [] };
+  if(parsed.registeredProductId!==undefined && parsed.registeredProductId!==null && String(parsed.registeredProductId).trim()){
+    p.registeredProductId = String(parsed.registeredProductId).trim();
+  }
+  const extractedOptions = Array.isArray(parsed.options) ? parsed.options : [];
+  extractedOptions.forEach(eo=>{
+    const match = matchOptionByName(p, eo && eo.name);
+    if(!match){ results.unmatched.push((eo && eo.name) || '(이름없음)'); return; }
+    if(!match.sellerShip) match.sellerShip = {optionId:'', exposedId:''};
+    if(!match.rocket) match.rocket = {optionId:'', exposedId:''};
+    if(eo.sellerShip){
+      if(eo.sellerShip.optionId) match.sellerShip.optionId = String(eo.sellerShip.optionId).trim();
+      if(eo.sellerShip.exposedId) match.sellerShip.exposedId = String(eo.sellerShip.exposedId).trim();
+    }
+    if(eo.rocket){
+      if(eo.rocket.optionId) match.rocket.optionId = String(eo.rocket.optionId).trim();
+      if(eo.rocket.exposedId) match.rocket.exposedId = String(eo.rocket.exposedId).trim();
+    }
+    results.matched.push(match.name);
+  });
+  return results;
+}
+async function runIdExtraction(){
+  const pid = idExtractPid;
+  const p = getProduct(pid);
+  if(!p) return;
+  if(!idExtractImage){ showIdxMsg('스크린샷을 먼저 첨부해 주세요.', true); return; }
+  const provider = document.getElementById('idx_provider').value;
+  const key = document.getElementById('idx_apikey').value.trim();
+  const model = document.getElementById('idx_model').value.trim() || PROVIDERS[provider].defaultModel;
+  if(!key && provider !== 'claude'){ showIdxMsg(PROVIDERS[provider].label + ' API 키를 입력해 주세요.', true); return; }
+  try{
+    localStorage.setItem('moriva_provider', provider);
+    const sk = JSON.parse(localStorage.getItem('moriva_keys')||'{}');
+    sk[provider] = key; localStorage.setItem('moriva_keys', JSON.stringify(sk));
+    const mdlVal = document.getElementById('idx_model').value.trim();
+    if(mdlVal){
+      const sm = JSON.parse(localStorage.getItem('moriva_models')||'{}');
+      sm[provider] = mdlVal; localStorage.setItem('moriva_models', JSON.stringify(sm));
+    }
+  }catch(e){}
+  const goBtn = document.getElementById('idx_go');
+  if(goBtn){ goBtn.disabled = true; goBtn.textContent = '분석 중…'; }
+  showIdxMsg('스크린샷을 분석하고 있습니다…', false);
+  const optionNames = p.options.map(o=>o.name);
+  const prompt = '다음은 쿠팡 Wing 판매자 관리자 화면의 상품 상세 스크린샷이다. 이 화면에는 상품의 "등록상품ID"와, 옵션별로 "옵션명, 판매방식"(판매자배송) 섹션과 "로켓그로스 상품" 섹션에 각각 옵션ID/노출상품ID가 나와 있다.\n' +
+    '화면에서 보이는 값을 정확히 읽어서 다음 압축 JSON 하나만 출력해라(마크다운 코드블록 없이, 다른 설명 없이):\n' +
+    '{"registeredProductId":"등록상품ID숫자","options":[{"name":"옵션명(화면에 보이는 그대로)","sellerShip":{"optionId":"판매자배송 옵션ID","exposedId":"판매자배송 노출상품ID"},"rocket":{"optionId":"로켓그로스 옵션ID","exposedId":"로켓그로스 노출상품ID"}}]}\n' +
+    '규칙: 화면에 없는 값은 빈 문자열("")로 둔다. 옵션이 여러 개면 options 배열에 모두 포함한다. 숫자는 문자열로 그대로(콤마 등 구분자 없이) 적는다. ' +
+    '참고로 이 상품에는 다음과 같은 옵션명이 이미 등록돼 있을 수 있다 — 화면의 옵션명이 이와 다르게 보여도 화면에 보이는 대로 적어라: ' + optionNames.join(', ');
+  try{
+    aiSendImages = [{ data: idExtractImage.split(',')[1], mediaType: (idExtractImage.match(/^data:([^;]+);/)||[])[1] || 'image/jpeg' }];
+    const raw = await callAI(provider, key, model, prompt);
+    let text = raw.trim().replace(/^```json/i,'').replace(/^```/,'').replace(/```$/,'').trim();
+    const s = text.indexOf('{'), e = text.lastIndexOf('}');
+    if(s<0 || e<0) throw new Error('AI 응답에서 JSON을 찾지 못했습니다.');
+    const parsed = JSON.parse(text.slice(s, e+1));
+    const results = applyIdExtraction(p, parsed);
+    saveState();
+    closeModal();
+    renderAll();
+    let msg = results.matched.length ? ('다음 옵션에 자동 입력했습니다: ' + results.matched.join(', ')) : '일치하는 옵션을 찾지 못했습니다.';
+    if(results.unmatched.length) msg += '\n매칭 실패(직접 확인 필요): ' + results.unmatched.join(', ');
+    alert(msg);
+  }catch(err){
+    showIdxMsg('분석 실패: ' + (err && err.message || err), true);
+  }finally{
+    const btn = document.getElementById('idx_go');
+    if(btn){ btn.disabled = false; btn.textContent = '분석해서 채우기'; }
+  }
+}
+
 
 function readImageAsDataURL(file, maxDim, callback){
   const reader = new FileReader();
@@ -1406,6 +1645,21 @@ function renderSettingsView(area){
         <input type="text" id="oname_${o.id}" value="${escAttr(o.name)}" placeholder="옵션명 (예: 블랙/L)">
         ${p.options.length>1?`<button class="btn danger" type="button" onclick="handleRemoveOption('${p.id}','${o.id}')">옵션 삭제</button>`:''}
       </div>
+      <div class="field" style="margin:8px 0 10px;">
+        <label style="font-size:11px;color:var(--sub);">쿠팡 옵션ID · 노출상품ID — 상품은 판매자배송/로켓그로스로 각각 중복 등록되므로 따로 입력합니다 (판매자배송 재고는 보통 0)</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div style="border:1px solid var(--line);border-radius:6px;padding:6px 8px;">
+            <div style="font-size:10.5px;font-weight:700;color:var(--sub);margin-bottom:4px;">판매자배송</div>
+            <input id="oss_optid_${o.id}" placeholder="옵션ID" value="${escAttr((o.sellerShip&&o.sellerShip.optionId)||'')}" style="margin-bottom:4px;">
+            <input id="oss_expid_${o.id}" placeholder="노출상품ID" value="${escAttr((o.sellerShip&&o.sellerShip.exposedId)||'')}">
+          </div>
+          <div style="border:1px solid var(--line);border-radius:6px;padding:6px 8px;">
+            <div style="font-size:10.5px;font-weight:700;color:var(--sub);margin-bottom:4px;">로켓그로스</div>
+            <input id="ork_optid_${o.id}" placeholder="옵션ID" value="${escAttr((o.rocket&&o.rocket.optionId)||'')}" style="margin-bottom:4px;">
+            <input id="ork_expid_${o.id}" placeholder="노출상품ID" value="${escAttr((o.rocket&&o.rocket.exposedId)||'')}">
+          </div>
+        </div>
+      </div>
       ${reviewSection}
     </div>`;
   }).join('');
@@ -1415,6 +1669,12 @@ function renderSettingsView(area){
     <div class="row2">
       <div class="field"><label>제품명</label><input id="set_name" value="${escAttr(p.name)}"></div>
       <div class="field"><label>런칭일 (0일차 = 상품등록일)</label><input type="date" id="set_launch" value="${p.launchDate}"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>등록상품ID (쿠팡 Wing)</label><input id="set_regid" value="${escAttr(p.registeredProductId||'')}" placeholder="예: 16336665347"></div>
+      <div class="field" style="display:flex;align-items:flex-end;">
+        <button class="btn" type="button" onclick="openIdExtractModal('${p.id}')" style="width:100%;">📷 스크린샷으로 ID 자동 입력</button>
+      </div>
     </div>
     <div class="field"><label>제품 이미지</label>
       ${imageInputHtml('product', p.id, previewHtml)}
@@ -1453,6 +1713,8 @@ function saveSettings(pid){
   const p = getProduct(pid);
   p.name = document.getElementById('set_name').value || p.name;
   p.launchDate = document.getElementById('set_launch').value || p.launchDate;
+  const regEl = document.getElementById('set_regid');
+  if(regEl) p.registeredProductId = regEl.value.trim();
   saveState();
   renderAll();
 }
@@ -1557,6 +1819,14 @@ function saveOptionSettings(pid){
     if(spanEl) o.autoDistSpan = Math.max(1, Number(spanEl.value)||1);
     const modeEl = document.querySelector('input[name="revmode_'+o.id+'"]:checked');
         if(modeEl) o.autoDistMode = modeEl.value;
+    if(!o.sellerShip) o.sellerShip = {optionId:'', exposedId:''};
+    if(!o.rocket) o.rocket = {optionId:'', exposedId:''};
+    const ssOptEl = document.getElementById('oss_optid_'+o.id), ssExpEl = document.getElementById('oss_expid_'+o.id);
+    const rkOptEl = document.getElementById('ork_optid_'+o.id), rkExpEl = document.getElementById('ork_expid_'+o.id);
+    if(ssOptEl) o.sellerShip.optionId = ssOptEl.value.trim();
+    if(ssExpEl) o.sellerShip.exposedId = ssExpEl.value.trim();
+    if(rkOptEl) o.rocket.optionId = rkOptEl.value.trim();
+    if(rkExpEl) o.rocket.exposedId = rkExpEl.value.trim();
     const list = document.getElementById('revdates_'+o.id);
     if(list){
       const days = [...list.querySelectorAll('.rd-day')].map(el=>Number(el.value));
@@ -2595,7 +2865,7 @@ document.addEventListener('click', function(e){
 document.addEventListener('change', function(e){
   const el = e.target;
   if(!el || el.type !== 'file') return;
-  if(el.id !== 'set_image_file' && el.id !== 'np_image_file') return;
+  if(el.id !== 'set_image_file' && el.id !== 'np_image_file' && el.id !== 'idx_image_file') return;
   const box = el.closest('.img-input');
   const drop = box && box.querySelector('.img-drop');
   const file = el.files && el.files[0];
