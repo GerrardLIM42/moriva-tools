@@ -621,7 +621,7 @@ connectBtn.addEventListener("click", function () {
 });
 refreshBtn.addEventListener("click", fetchAnalyses);
 tokenInput.addEventListener("keydown", function (e) {
-  if (e.key === "Enter") { saveToken(tokenInput.value.trim()); fetchAnalyses(); }
+  if (e.key === "Enter" && !e.isComposing) { saveToken(tokenInput.value.trim()); fetchAnalyses(); }
 });
 
 if (loadToken()) fetchAnalyses();
