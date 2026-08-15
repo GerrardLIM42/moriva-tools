@@ -116,6 +116,7 @@
     </div>
 
     <label class="checkbox-label"><input type="checkbox" id="skipWing"> 쿠팡윙 판매량 추정 생략 (로그인 없이 원가·판매가·추세만 확인)</label>
+    <p class="status-line" id="wingStatusLine" style="margin:2px 0 0 24px;font-size:12px;">쿠팡윙 확장 프로그램 확인 중...</p>
     <label class="checkbox-label"><input type="checkbox" id="runHeadless"> 브라우저 창 숨기기 (로그인 세션이 이미 저장되어 있을 때만 권장)</label>
 
     <div class="run-log" id="runLog" hidden></div>
@@ -302,6 +303,28 @@ function checkConnection(){
     });
 }
 
+/* ---------- 쿠팡윙 확장 프로그램 연결 상태 (선택 사항 — 판매량 추정용) ---------- */
+function checkWingExtension(){
+  if (typeof fetch !== "function") return;
+  fetch(API_BASE + "/api/wing/status", { cache: "no-store" })
+    .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error("bad status")); })
+    .then(function (d) {
+      var line = $("#wingStatusLine");
+      if (d.connected) {
+        line.textContent = "쿠팡윙 확장 프로그램 연결됨 — 판매량 자동 추정을 사용합니다.";
+        line.className = "status-line ok";
+      } else {
+        line.textContent = "쿠팡윙 확장 프로그램이 연결되지 않았습니다 (선택 사항). 크롬에 확장 프로그램을 설치하고 쿠팡윙 로그인 탭을 열어두면 판매량을 자동으로 추정합니다. 설치하지 않아도 나머지 분석은 정상 진행됩니다.";
+        line.className = "status-line";
+      }
+    })
+    .catch(function () {
+      var line = $("#wingStatusLine");
+      line.textContent = "쿠팡윙 확장 프로그램 상태를 확인할 수 없습니다.";
+      line.className = "status-line";
+    });
+}
+
 $("#runBtn").addEventListener("click", function () {
   var categoryRaw = $("#categoryId").value.trim();
   var m = categoryRaw.match(/(\d+)/);
@@ -378,6 +401,8 @@ function pollRunStatus(){
 (function init(){
   renderResults();
   checkConnection();
+  checkWingExtension();
+  setInterval(checkWingExtension, 5000);
 })();
 </script>
 </body>
