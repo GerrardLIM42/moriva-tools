@@ -73,6 +73,12 @@
   .go-toast a{color:#fff;text-decoration:underline;font-weight:800;}
 
   .footnote{font-size:10.5px;color:var(--sub);line-height:1.6;border-top:1px dashed var(--border);padding-top:10px;margin-top:6px;}
+
+  textarea#runKeywords{width:100%;min-height:90px;padding:10px 12px;border:1px solid var(--border);border-radius:9px;font-size:13px;font-family:inherit;background:#fff;color:var(--text);resize:vertical;}
+  .run-toolbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:10px;}
+  .run-toolbar label{font-size:12px;color:var(--sub);display:flex;align-items:center;gap:6px;cursor:pointer;}
+  .run-log{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:12px 14px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;white-space:pre-wrap;color:#3E5266;min-height:50px;max-height:220px;overflow:auto;margin-top:12px;}
+  .divider-or{text-align:center;font-size:11px;color:var(--sub);margin:2px 0 14px;}
 </style>
 </head>
 <body>
@@ -80,8 +86,22 @@
   <h1>아이템 소싱 <span style="font-weight:400;color:var(--sub);font-size:13px;">(1688)</span></h1>
   <p class="lead">PC에서 실행하는 <b>소싱 스카우터</b> 프로그램(itemscout.io 연동, 로그인 세션은 내 컴퓨터에만 저장됩니다)의 "아이템 소싱" 결과 CSV를 여기로 가져오면 보기 좋게 정리하고, 마음에 드는 항목을 바로 "소싱 후보"로 보낼 수 있습니다.</p>
 
+  <div class="card" id="runCard">
+    <div class="sec-label">1. 지금 실행하기</div>
+    <p class="status-line" id="connStatusLine">PC의 소싱 스카우터 프로그램에 연결하는 중...</p>
+    <label for="runKeywords">키워드 (한 줄에 하나씩)</label>
+    <textarea id="runKeywords" placeholder="다이소파라솔&#10;다이소캠핑테이블&#10;위글위글보냉백"></textarea>
+    <div class="run-toolbar">
+      <label><input type="checkbox" id="runHeadless"> 브라우저 창 숨기기 (로그인 세션이 이미 저장되어 있을 때만 권장)</label>
+      <button id="runBtn" type="button" class="gold" disabled>지금 실행</button>
+    </div>
+    <div class="run-log" id="runLog" hidden></div>
+  </div>
+
+  <div class="divider-or">또는</div>
+
   <div class="card">
-    <div class="sec-label">1. 결과 불러오기</div>
+    <div class="sec-label">2. 저장된 CSV 불러오기</div>
     <p class="hint">소싱 스카우터 실행 후 웹 화면(<code>http://127.0.0.1:8765/item</code>)에서 키워드로 검색하면 <code>reports</code> 폴더에 <code>items_날짜시간.csv</code> 파일이 만들어집니다. 그 파일을 아래에서 선택하거나, 파일을 열어 내용을 복사해 붙여넣으세요.</p>
     <div class="upload-row">
       <input type="file" id="csvFile" accept=".csv,text/csv" hidden>
@@ -118,6 +138,8 @@
 "use strict";
 var DATA_KEY = "moriva-item-sourcing-data";
 var QUEUE_KEY = "moriva-item-sourcing-queue";
+var API_BASE = "http://127.0.0.1:8765";
+var pollTimer = null;
 
 var groups = [];              // [{keyword, items:[...]}]
 var selected = new Set();     // item._uid 집합
@@ -391,6 +413,114 @@ $("#goToastLink").addEventListener("click", function (e) {
   }, 150);
 });
 
+/* ---------- 실행 모드: PC의 소싱 스카우터 프로그램을 직접 호출 ---------- */
+function checkConnection(){
+  if (typeof fetch !== "function") {
+    var line0 = $("#connStatusLine");
+    line0.textContent = "이 브라우저에서는 실행 연결 기능을 사용할 수 없습니다. 아래 \"CSV 불러오기\"를 이용하세요.";
+    line0.className = "status-line error";
+    $("#runBtn").disabled = true;
+    return;
+  }
+  fetch(API_BASE + "/api/ping", { cache: "no-store" })
+    .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error("bad status")); })
+    .then(function () {
+      var line = $("#connStatusLine");
+      line.textContent = "PC의 소싱 스카우터 프로그램에 연결되었습니다. 키워드를 입력하고 실행하세요.";
+      line.className = "status-line ok";
+      $("#runBtn").disabled = false;
+    })
+    .catch(function () {
+      var line = $("#connStatusLine");
+      line.textContent = "PC에서 소싱 스카우터 프로그램(webapp.py)을 먼저 실행해주세요. 실행 후 이 페이지를 새로고침하면 연결됩니다. 연결이 어렵다면 아래 \"CSV 불러오기\"를 이용하세요.";
+      line.className = "status-line error";
+      $("#runBtn").disabled = true;
+    });
+}
+
+$("#runBtn").addEventListener("click", function () {
+  var keywords = $("#runKeywords").value.split("\n").map(function (s) { return s.trim(); }).filter(Boolean);
+  if (!keywords.length) { setStatus("키워드를 한 개 이상 입력해주세요.", "error"); return; }
+  var btn = $("#runBtn");
+  var logEl = $("#runLog");
+  btn.disabled = true;
+  logEl.hidden = false;
+  logEl.textContent = "실행 요청 중...";
+  fetch(API_BASE + "/api/item/run", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ keywords: keywords, headless: $("#runHeadless").checked })
+  })
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, body: d }; }); })
+    .then(function (res) {
+      if (!res.ok || !res.body.ok) throw new Error((res.body && res.body.error) || "실행에 실패했습니다.");
+      pollRunStatus();
+    })
+    .catch(function (e) {
+      logEl.textContent = "오류: " + e.message;
+      btn.disabled = false;
+    });
+});
+
+function pollRunStatus(){
+  clearTimeout(pollTimer);
+  fetch(API_BASE + "/api/item/status", { cache: "no-store" })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      var logEl = $("#runLog");
+      var btn = $("#runBtn");
+      logEl.textContent = (d.log && d.log.length ? d.log.join("\n") : "시작하는 중...");
+      logEl.scrollTop = logEl.scrollHeight;
+      if (d.error) {
+        logEl.textContent += "\n\n오류: " + d.error;
+        btn.disabled = false;
+        return;
+      }
+      if (d.done) {
+        btn.disabled = false;
+        if (d.results && d.results.length) ingestApiResults(d.results);
+        return;
+      }
+      pollTimer = setTimeout(pollRunStatus, 1500);
+    })
+    .catch(function () {
+      $("#runLog").textContent += "\n(상태 확인 실패 - 연결이 끊겼을 수 있습니다)";
+      $("#runBtn").disabled = false;
+    });
+}
+
+function ingestApiResults(results){
+  var uidSeq = 0;
+  groups = results.map(function (r) {
+    return {
+      keyword: r.keyword,
+      items: (r.items || []).map(function (it, idx) {
+        return {
+          _uid: "it" + (uidSeq++),
+          rank: idx + 1,
+          name: it.name || "",
+          cny: (it.cny === undefined) ? null : it.cny,
+          krw: (it.krw === undefined) ? null : it.krw,
+          repurchase: (it.repurchase_pct === undefined) ? null : it.repurchase_pct,
+          sales: (it.sales === undefined) ? null : it.sales,
+          rating: (it.rating === undefined) ? null : it.rating,
+          moq: (it.moq === undefined) ? null : it.moq,
+          link: it.link || "",
+          keyword: r.keyword
+        };
+      })
+    };
+  });
+  selected = new Set();
+  var total = groups.reduce(function (s, g) { return s + g.items.length; }, 0);
+  setStatus("실행 결과 · 키워드 " + groups.length + "개, 소싱 후보 " + total + "개를 불러왔습니다.", "ok");
+  try { localStorage.setItem(DATA_KEY, JSON.stringify(groups)); } catch (e) {}
+  $("#clearBtn").hidden = false;
+  renderResults();
+  var wrap = $("#resultsWrap");
+  if (wrap && typeof wrap.scrollIntoView === "function") wrap.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 /* ---------- 초기화: 이전에 불러온 결과 복원 ---------- */
 (function init(){
   try {
@@ -403,6 +533,7 @@ $("#goToastLink").addEventListener("click", function (e) {
     }
   } catch (e) {}
   renderResults();
+  checkConnection();
 })();
 </script>
 </body>
