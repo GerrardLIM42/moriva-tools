@@ -810,6 +810,7 @@
     <button class="btn ghost" id="restore-btn">📂 복원</button>
     <input type="file" id="restore-input" accept="application/json,.json" hidden />
     <button class="btn amber" id="add-btn">+ 신규 항목 추가</button>
+    <button class="btn ghost" id="import-queue-btn" hidden>📥 가져온 항목 (<span id="import-queue-count">0</span>)</button>
   </section>
 
   <div class="view-toggle-row">
@@ -3744,8 +3745,12 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
       form.reset();
       const presetFolder = presetData && typeof presetData.folder === 'string' ? presetData.folder : '';
       const presetCategory = presetData && presetData.category ? presetData.category : 'ACTIVE';
+      const presetLink = presetData && presetData.link ? presetData.link : '';
+      const presetCny = presetData && presetData.cny ? Number(presetData.cny) || 0 : 0;
+      const presetMemo = presetData && presetData.memo ? presetData.memo : '';
       fillFolderSelect(presetFolder);
       $('#f-folder-new').value = '';
+      $('#f-link').value = presetLink;
       $('#f-status').value = '검토중';
       $('#f-yearly-sales').value = '';
       $('#f-seller-years').value = '';
@@ -3770,7 +3775,8 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
       $('#f-marketship').value = 0;
       $('#f-ad').value = 7;
       $('#f-return').value = 3;
-      draftOptions = [{ id: uid(), name:'', cny:0, sell:0, image:'', _mode:'margin', _targetMarginPct:'' }];
+      $('#f-memo').value = presetMemo;
+      draftOptions = [{ id: uid(), name:'', cny:presetCny, sell:0, image:'', _mode:'margin', _targetMarginPct:'' }];
     }
     renderOptionsList();
     refreshAutoFields();
@@ -3960,6 +3966,38 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
 
   $('#cancel-btn').addEventListener('click', closeForm);
   $('#add-btn').addEventListener('click', () => openForm(null));
+
+  // ── 아이템 소싱 도구에서 보낸 항목 가져오기 ──
+  const IMPORT_QUEUE_KEY = 'moriva-item-sourcing-queue';
+  function getImportQueue(){
+    try{ return JSON.parse(localStorage.getItem(IMPORT_QUEUE_KEY) || '[]'); }catch(e){ return []; }
+  }
+  function setImportQueue(list){
+    try{
+      if(list && list.length) localStorage.setItem(IMPORT_QUEUE_KEY, JSON.stringify(list));
+      else localStorage.removeItem(IMPORT_QUEUE_KEY);
+    }catch(e){}
+  }
+  function refreshImportQueueBtn(){
+    const q = getImportQueue();
+    const btn = $('#import-queue-btn');
+    if(!btn) return;
+    if(q.length > 0){
+      btn.hidden = false;
+      $('#import-queue-count').textContent = q.length;
+    } else {
+      btn.hidden = true;
+    }
+  }
+  $('#import-queue-btn').addEventListener('click', () => {
+    const q = getImportQueue();
+    if(!q.length) return;
+    const next = q.shift();
+    setImportQueue(q);
+    refreshImportQueueBtn();
+    openForm(null, { folder: next.folder || '', category: 'ACTIVE', link: next.link || '', cny: next.cny || 0, memo: next.memo || '' });
+    if(q.length > 0) showToast(`가져온 항목을 불러왔습니다. 저장 후 남은 ${q.length}개도 이어서 불러오세요.`);
+  });
 
   const taxTypeSel = $('#tax-type-select');
   taxTypeSel.value = taxType;
@@ -4239,6 +4277,15 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     renderAll();
     if(items.length > 0){
       showToast(`이전에 저장된 ${items.length}개 항목을 불러왔습니다.`);
+    }
+    refreshImportQueueBtn();
+    const pendingQueue = getImportQueue();
+    if(pendingQueue.length > 0){
+      const first = pendingQueue.shift();
+      setImportQueue(pendingQueue);
+      refreshImportQueueBtn();
+      openForm(null, { folder: first.folder || '', category: 'ACTIVE', link: first.link || '', cny: first.cny || 0, memo: first.memo || '' });
+      showToast(`아이템 소싱 도구에서 가져온 항목을 채웠습니다.${pendingQueue.length > 0 ? ' (남은 ' + pendingQueue.length + '개는 버튼으로 이어서 불러오세요)' : ''}`);
     }
   }
   init();
