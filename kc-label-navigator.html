@@ -583,7 +583,7 @@ $("q").addEventListener("input",()=>{
   clearTimeout(liveTimer);
   liveTimer=setTimeout(liveShow, 250);
 });
-$("q").addEventListener("keydown",e=>{if(e.key==="Enter") run();});
+$("q").addEventListener("keydown",e=>{if(e.key==="Enter" && !e.isComposing) run();});
 $("goBtn").addEventListener("click",run);
 $("provider").addEventListener("change",()=>{
   PROVIDER=$("provider").value;
