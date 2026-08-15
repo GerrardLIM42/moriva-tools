@@ -453,7 +453,7 @@
   .card.winner{ border-color:var(--jade); box-shadow:0 0 0 1.5px var(--jade) inset; }
   .card.selected{ box-shadow:0 0 0 2px var(--amber) inset; }
   .card.starred{ border-color:#F5A623; }
-  .winner-tag{ font-size:11px; font-weight:800; color:var(--jade); white-space:nowrap; margin-left:auto; }
+  .winner-tag{ font-size:11px; font-weight:800; color:var(--jade); white-space:nowrap; }
   .star-btn{
     background:none; border:none; cursor:pointer; font-size:17px; line-height:1;
     color:#ccc; padding:0 2px; transition:color .15s, transform .15s; margin-left:auto;
@@ -485,7 +485,8 @@
   .qe-arrow{ font-size:16px; color:var(--mist); margin-top:14px; }
   .qe-margin-readout{ font-size:11.5px; font-weight:700; margin-top:5px; min-height:16px; }
   .qe-actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
-  .card-top-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .card-top-row{ display:flex; align-items:flex-start; gap:8px; }
+  .card-top-badges{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; flex:1 1 auto; min-width:0; }
   .card-select{ display:flex; align-items:center; gap:6px; font-size:11px; color:var(--mist); font-weight:700; cursor:pointer; }
   .card-select input{ width:14px; height:14px; accent-color:var(--amber); cursor:pointer; margin:0; }
   .img-wrap{ position:relative; aspect-ratio:1/1; border-radius:8px; overflow:hidden; background:var(--paper-dim); }
@@ -3460,14 +3461,16 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     return `
       <div class="card ${isWinner ? 'winner' : ''} ${isSelected ? 'selected' : ''} ${it.starred ? 'starred' : ''}">
         <div class="card-top-row">
-          <label class="card-select">
-            <input type="checkbox" data-select="${it.id}" ${isSelected ? 'checked' : ''} />
-            <span>선택</span>
-          </label>
-          <span class="cat-pill" style="background:${meta.hex}" title="${meta.label}">${meta.icon}</span>
-          ${hasMultiOptions ? `<span class="opt-pill" title="옵션 ${it.options.length}개">🎨 옵션 ${it.options.length}</span>` : ''}
-          ${c.promoActive ? `<span class="opt-pill promo-pill" title="로켓그로스 비용 제로 프로모션">🎁 ${c.promo === '90' ? '첫90일' : '+270일'}</span>` : ''}
-          ${isWinner ? '<span class="winner-tag" title="이 폴더 최고 마진">🏆 최고 마진</span>' : ''}
+          <div class="card-top-badges">
+            <label class="card-select">
+              <input type="checkbox" data-select="${it.id}" ${isSelected ? 'checked' : ''} />
+              <span>선택</span>
+            </label>
+            <span class="cat-pill" style="background:${meta.hex}" title="${meta.label}">${meta.icon}</span>
+            ${hasMultiOptions ? `<span class="opt-pill" title="옵션 ${it.options.length}개">🎨 옵션 ${it.options.length}</span>` : ''}
+            ${c.promoActive ? `<span class="opt-pill promo-pill" title="로켓그로스 비용 제로 프로모션">🎁 ${c.promo === '90' ? '첫90일' : '+270일'}</span>` : ''}
+            ${isWinner ? '<span class="winner-tag" title="이 폴더 최고 마진">🏆 최고 마진</span>' : ''}
+          </div>
           <button type="button" class="star-btn ${it.starred ? 'on' : ''}" data-star="${it.id}" title="${it.starred ? '별표 해제' : '별표 추가'}">${it.starred ? '★' : '☆'}</button>
         </div>
         <div class="img-wrap">
