@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>아이템 소싱</title>
+<link rel="icon" type="image/png" href="./favicon.png">
+<link rel="apple-touch-icon" href="./favicon.png">
+<style>
+  :root{
+    --bg:#F6F3EC; --panel:#FFFDF8; --border:#DCD5C3; --text:#1B2A3D;
+    --sub:#8B95A1; --accent:#1B2A3D; --gold:#C9961A;
+    --danger:#B8453A; --good:#4F7864; --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Malgun Gothic",sans-serif;background:var(--bg);color:var(--text);}
+  .page{max-width:1080px;margin:0 auto;padding:26px 20px 90px;}
+  h1{font-size:20px;margin:0 0 4px;}
+  .lead{color:var(--sub);font-size:13px;line-height:1.6;margin:0 0 20px;}
+
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:14px;}
+  .sec-label{font-size:11.5px;font-weight:700;color:var(--sub);margin-bottom:7px;}
+  .hint{font-size:11.5px;color:var(--sub);line-height:1.7;margin:0 0 10px;}
+  code{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:11px;}
+
+  .upload-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  button{padding:9px 14px;border:none;border-radius:9px;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;}
+  button:hover{background:#0F1B2C;}
+  button.ghost{background:#fff;border:1px solid var(--border);color:var(--sub);}
+  button.ghost:hover{background:var(--bg);}
+  button.gold{background:var(--gold);color:#fff;}
+  button.gold:hover{background:#B9860F;}
+  button:disabled{opacity:.45;cursor:default;}
+  button.ghost:disabled:hover{background:#fff;}
+
+  textarea#pasteArea{width:100%;min-height:130px;margin-top:10px;padding:10px 12px;border:1px solid var(--border);border-radius:9px;font-size:12px;font-family:ui-monospace,Menlo,Consolas,monospace;background:#fff;color:var(--text);resize:vertical;}
+  .status-line{margin-top:9px;font-size:12px;color:var(--sub);}
+  .status-line.ok{color:var(--good);}
+  .status-line.error{color:var(--danger);}
+
+  .empty{border:1px dashed var(--border);border-radius:var(--radius);padding:34px 20px;text-align:center;color:var(--sub);font-size:13px;line-height:1.7;}
+
+  .kw-section{margin-bottom:22px;}
+  .kw-head{display:flex;align-items:baseline;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+  .kw-head h2{font-size:15px;margin:0;}
+  .kw-head .cnt{font-size:11.5px;color:var(--sub);}
+  .kw-head label{margin-left:auto;font-size:11.5px;color:var(--sub);display:flex;align-items:center;gap:5px;cursor:pointer;}
+
+  .item-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;}
+  .item-card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px 13px;display:flex;flex-direction:column;gap:8px;position:relative;}
+  .item-card.selected{border-color:var(--gold);box-shadow:0 0 0 1.5px var(--gold) inset;}
+  .item-top{display:flex;align-items:flex-start;gap:8px;}
+  .item-top input[type=checkbox]{width:16px;height:16px;margin-top:1px;flex-shrink:0;cursor:pointer;accent-color:var(--gold);}
+  .item-rank{font-size:10.5px;color:var(--sub);font-weight:700;flex-shrink:0;}
+  .item-name{font-size:12.5px;font-weight:700;line-height:1.4;flex:1;word-break:break-all;}
+  .price-row{font-size:15px;font-weight:800;}
+  .price-row .cny{color:var(--sub);font-size:11.5px;font-weight:600;margin-left:5px;}
+  .chip-row{display:flex;flex-wrap:wrap;gap:5px;}
+  .chip{font-size:10.5px;background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:3px 8px;color:#3E5266;}
+  .chip.low{color:var(--danger);border-color:var(--danger);}
+  .item-link{font-size:11px;color:var(--gold);font-weight:700;text-decoration:none;margin-top:auto;}
+  .item-link:hover{text-decoration:underline;}
+
+  .select-bar{position:sticky;bottom:14px;margin-top:16px;background:var(--accent);color:#fff;border-radius:12px;padding:11px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 6px 18px rgba(0,0,0,.18);}
+  .select-bar.hidden{display:none;}
+  .select-bar span{font-size:12.5px;font-weight:700;}
+  .select-bar .spacer{flex:1;}
+  .select-bar button.ghost{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25);color:#fff;}
+  .select-bar button.ghost:hover{background:rgba(255,255,255,.22);}
+
+  .go-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--good);color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:12px;box-shadow:0 6px 18px rgba(0,0,0,.2);z-index:50;opacity:0;pointer-events:none;transition:opacity .2s;}
+  .go-toast.show{opacity:1;pointer-events:auto;}
+  .go-toast a{color:#fff;text-decoration:underline;font-weight:800;}
+
+  .footnote{font-size:10.5px;color:var(--sub);line-height:1.6;border-top:1px dashed var(--border);padding-top:10px;margin-top:6px;}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>아이템 소싱 <span style="font-weight:400;color:var(--sub);font-size:13px;">(1688)</span></h1>
+  <p class="lead">PC에서 실행하는 <b>소싱 스카우터</b> 프로그램(itemscout.io 연동, 로그인 세션은 내 컴퓨터에만 저장됩니다)의 "아이템 소싱" 결과 CSV를 여기로 가져오면 보기 좋게 정리하고, 마음에 드는 항목을 바로 "소싱 후보"로 보낼 수 있습니다.</p>
+
+  <div class="card">
+    <div class="sec-label">1. 결과 불러오기</div>
+    <p class="hint">소싱 스카우터 실행 후 웹 화면(<code>http://127.0.0.1:8765/item</code>)에서 키워드로 검색하면 <code>reports</code> 폴더에 <code>items_날짜시간.csv</code> 파일이 만들어집니다. 그 파일을 아래에서 선택하거나, 파일을 열어 내용을 복사해 붙여넣으세요.</p>
+    <div class="upload-row">
+      <input type="file" id="csvFile" accept=".csv,text/csv" hidden>
+      <button id="uploadBtn" type="button" class="gold">CSV 파일 선택</button>
+      <button id="pasteToggleBtn" type="button" class="ghost">텍스트로 붙여넣기</button>
+      <button id="clearBtn" type="button" class="ghost" hidden>불러온 결과 지우기</button>
+    </div>
+    <textarea id="pasteArea" hidden placeholder="CSV 내용을 여기에 붙여넣으세요 (첫 줄: 키워드,순위,상품명,위안화가격,원화환산가,재구매율(%),판매량,평점,최소구매수량,1688링크)"></textarea>
+    <div class="upload-row" id="pasteBtnRow" hidden style="margin-top:8px;">
+      <button id="parseBtn" type="button">붙여넣은 내용 불러오기</button>
+    </div>
+    <p id="statusLine" class="status-line"></p>
+  </div>
+
+  <div id="resultsWrap"></div>
+
+  <p class="footnote">CSV 처리는 이 브라우저 안에서만 이루어지며 서버로 전송되지 않습니다. 불러온 결과와 선택 상태는 이 브라우저에 임시 저장되어, 새로고침해도 유지됩니다.</p>
+</div>
+
+<div class="select-bar hidden" id="selectBar">
+  <span id="selectCount">0개 선택됨</span>
+  <div class="spacer"></div>
+  <button type="button" class="ghost" id="selectAllBtn">전체 선택</button>
+  <button type="button" class="ghost" id="selectNoneBtn">선택 해제</button>
+  <button type="button" class="gold" id="sendBtn">소싱 후보로 보내기</button>
+</div>
+
+<div class="go-toast" id="goToast">
+  <span id="goToastMsg"></span>
+  <a href="#" id="goToastLink">소싱 후보 열기 →</a>
+</div>
+
+<script>
+"use strict";
+var DATA_KEY = "moriva-item-sourcing-data";
+var QUEUE_KEY = "moriva-item-sourcing-queue";
+
+var groups = [];              // [{keyword, items:[...]}]
+var selected = new Set();     // item._uid 집합
+
+function $(sel){ return document.querySelector(sel); }
+
+function setStatus(msg, cls){
+  var el = $("#statusLine");
+  el.textContent = msg || "";
+  el.className = "status-line" + (cls ? " " + cls : "");
+}
+
+/* ---------- CSV 파싱 (따옴표로 묶인 필드 안의 콤마/줄바꿈까지 처리) ---------- */
+function parseCsv(text){
+  text = text.replace(/^﻿/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  var rows = [];
+  var row = [];
+  var field = "";
+  var inQuotes = false;
+  for (var i = 0; i < text.length; i++) {
+    var c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else field += c;
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ',') { row.push(field); field = ""; }
+      else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ""; }
+      else field += c;
+    }
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  return rows.filter(function (r) { return r.length > 1 || (r[0] && r[0].trim() !== ""); });
+}
+
+function toNum(s){
+  if (s === undefined || s === null) return null;
+  s = String(s).replace(/,/g, "").trim();
+  if (s === "") return null;
+  var n = Number(s);
+  return isNaN(n) ? null : n;
+}
+
+function buildGroupsFromRows(rows){
+  if (!rows.length) return [];
+  var header = rows[0].map(function (h) { return h.trim(); });
+  var idx = {
+    keyword: header.indexOf("키워드"),
+    rank: header.indexOf("순위"),
+    name: header.indexOf("상품명"),
+    cny: header.indexOf("위안화가격"),
+    krw: header.indexOf("원화환산가"),
+    repurchase: header.indexOf("재구매율(%)"),
+    sales: header.indexOf("판매량"),
+    rating: header.indexOf("평점"),
+    moq: header.indexOf("최소구매수량"),
+    link: header.indexOf("1688링크")
+  };
+  if (idx.keyword < 0 || idx.name < 0 || idx.link < 0) {
+    throw new Error("CSV 형식을 알아볼 수 없습니다. 소싱 스카우터에서 만든 items_*.csv 파일이 맞는지 확인해주세요.");
+  }
+  var byKeyword = {};
+  var order = [];
+  var uidSeq = 0;
+  for (var r = 1; r < rows.length; r++) {
+    var row = rows[r];
+    if (!row || !row[idx.name]) continue;
+    var kw = (row[idx.keyword] || "(키워드 없음)").trim();
+    if (!byKeyword[kw]) { byKeyword[kw] = []; order.push(kw); }
+    byKeyword[kw].push({
+      _uid: "it" + (uidSeq++),
+      rank: toNum(row[idx.rank]),
+      name: (row[idx.name] || "").trim(),
+      cny: toNum(row[idx.cny]),
+      krw: toNum(row[idx.krw]),
+      repurchase: toNum(row[idx.repurchase]),
+      sales: toNum(row[idx.sales]),
+      rating: toNum(row[idx.rating]),
+      moq: toNum(row[idx.moq]),
+      link: (row[idx.link] || "").trim(),
+      keyword: kw
+    });
+  }
+  return order.map(function (kw) { return { keyword: kw, items: byKeyword[kw] }; });
+}
+
+/* ---------- 렌더링 ---------- */
+function won(n){ return n === null ? "-" : "₩" + Math.round(n).toLocaleString("ko-KR"); }
+function cnyStr(n){ return n === null ? "-" : "¥" + n.toFixed(2); }
+
+function itemCardHtml(it){
+  var isSel = selected.has(it._uid);
+  var chips = [];
+  if (it.repurchase !== null) chips.push('<span class="chip' + (it.repurchase < 30 ? ' low' : '') + '">재구매율 ' + it.repurchase + '%</span>');
+  if (it.sales !== null) chips.push('<span class="chip">판매량 ' + it.sales.toLocaleString("ko-KR") + '</span>');
+  if (it.rating !== null) chips.push('<span class="chip">평점 ' + it.rating + '</span>');
+  if (it.moq !== null) chips.push('<span class="chip">최소 ' + it.moq.toLocaleString("ko-KR") + '개</span>');
+  return (
+    '<div class="item-card' + (isSel ? ' selected' : '') + '" data-uid="' + it._uid + '">' +
+      '<div class="item-top">' +
+        '<input type="checkbox" data-uid="' + it._uid + '" ' + (isSel ? "checked" : "") + '>' +
+        (it.rank !== null ? '<span class="item-rank">#' + it.rank + '</span>' : "") +
+        '<span class="item-name">' + escapeHtml(it.name) + '</span>' +
+      '</div>' +
+      '<div class="price-row">' + won(it.krw) + '<span class="cny">' + cnyStr(it.cny) + '</span></div>' +
+      '<div class="chip-row">' + chips.join("") + '</div>' +
+      (it.link ? '<a class="item-link" href="' + escapeAttr(it.link) + '" target="_blank" rel="noopener">1688에서 보기 ↗</a>' : "") +
+    '</div>'
+  );
+}
+
+function escapeHtml(s){
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  });
+}
+function escapeAttr(s){ return escapeHtml(s); }
+
+function renderResults(){
+  var wrap = $("#resultsWrap");
+  if (!groups.length) {
+    wrap.innerHTML = '<div class="empty">아직 불러온 결과가 없습니다. 위에서 CSV 파일을 선택하거나 붙여넣어 주세요.</div>';
+    updateSelectBar();
+    return;
+  }
+  var html = "";
+  groups.forEach(function (g, gi) {
+    html += '<div class="kw-section">' +
+      '<div class="kw-head"><h2>' + escapeHtml(g.keyword) + '</h2>' +
+      '<span class="cnt">' + g.items.length + '개 후보</span>' +
+      '<label><input type="checkbox" class="kw-select-all" data-gi="' + gi + '"> 이 키워드 전체 선택</label>' +
+      '</div>' +
+      '<div class="item-grid">' + g.items.map(itemCardHtml).join("") + '</div>' +
+    '</div>';
+  });
+  wrap.innerHTML = html;
+  updateSelectBar();
+}
+
+function updateSelectBar(){
+  var bar = $("#selectBar");
+  var n = selected.size;
+  if (n === 0) { bar.classList.add("hidden"); return; }
+  bar.classList.remove("hidden");
+  $("#selectCount").textContent = n + "개 선택됨";
+}
+
+/* ---------- 이벤트 ---------- */
+document.addEventListener("click", function (e) {
+  var cb = e.target.closest('input[type=checkbox][data-uid]');
+  if (cb) {
+    var uid = cb.getAttribute("data-uid");
+    if (cb.checked) selected.add(uid); else selected.delete(uid);
+    cb.closest(".item-card").classList.toggle("selected", cb.checked);
+    updateSelectBar();
+    return;
+  }
+  var kwAll = e.target.closest('input.kw-select-all');
+  if (kwAll) {
+    var gi = parseInt(kwAll.getAttribute("data-gi"), 10);
+    groups[gi].items.forEach(function (it) {
+      if (kwAll.checked) selected.add(it._uid); else selected.delete(it._uid);
+    });
+    renderResults();
+    return;
+  }
+});
+
+$("#uploadBtn").addEventListener("click", function () { $("#csvFile").click(); });
+$("#csvFile").addEventListener("change", function () {
+  var f = this.files && this.files[0];
+  if (!f) return;
+  var reader = new FileReader();
+  reader.onload = function () { loadCsvText(reader.result, f.name); };
+  reader.onerror = function () { setStatus("파일을 읽지 못했습니다.", "error"); };
+  reader.readAsText(f, "utf-8");
+});
+
+$("#pasteToggleBtn").addEventListener("click", function () {
+  var ta = $("#pasteArea");
+  var row = $("#pasteBtnRow");
+  var hide = !ta.hidden;
+  ta.hidden = hide; row.hidden = hide;
+  if (!hide) ta.focus();
+});
+$("#parseBtn").addEventListener("click", function () {
+  var txt = $("#pasteArea").value;
+  if (!txt.trim()) { setStatus("붙여넣은 내용이 없습니다.", "error"); return; }
+  loadCsvText(txt, "붙여넣은 내용");
+});
+
+$("#clearBtn").addEventListener("click", function () {
+  groups = []; selected = new Set();
+  try { localStorage.removeItem(DATA_KEY); } catch (e) {}
+  renderResults();
+  setStatus("불러온 결과를 지웠습니다.");
+  $("#clearBtn").hidden = true;
+});
+
+function loadCsvText(text, label){
+  try {
+    var rows = parseCsv(text);
+    var g = buildGroupsFromRows(rows);
+    if (!g.length) { setStatus("CSV에서 항목을 찾지 못했습니다.", "error"); return; }
+    groups = g;
+    selected = new Set();
+    var total = g.reduce(function (s, x) { return s + x.items.length; }, 0);
+    setStatus(label + " · 키워드 " + g.length + "개, 소싱 후보 " + total + "개를 불러왔습니다.", "ok");
+    try { localStorage.setItem(DATA_KEY, JSON.stringify(groups)); } catch (e) {}
+    $("#clearBtn").hidden = false;
+    renderResults();
+  } catch (err) {
+    setStatus(err.message || "CSV를 불러오지 못했습니다.", "error");
+  }
+}
+
+$("#selectAllBtn").addEventListener("click", function () {
+  groups.forEach(function (g) { g.items.forEach(function (it) { selected.add(it._uid); }); });
+  renderResults();
+});
+$("#selectNoneBtn").addEventListener("click", function () {
+  selected = new Set();
+  renderResults();
+});
+
+$("#sendBtn").addEventListener("click", function () {
+  if (!selected.size) return;
+  var picked = [];
+  groups.forEach(function (g) {
+    g.items.forEach(function (it) {
+      if (!selected.has(it._uid)) return;
+      var memoBits = [];
+      if (it.repurchase !== null) memoBits.push("재구매율 " + it.repurchase + "%");
+      if (it.sales !== null) memoBits.push("판매량 " + it.sales.toLocaleString("ko-KR"));
+      if (it.rating !== null) memoBits.push("평점 " + it.rating);
+      if (it.moq !== null) memoBits.push("최소구매수량 " + it.moq.toLocaleString("ko-KR") + "개");
+      memoBits.push("키워드: " + it.keyword);
+      memoBits.push("아이템 소싱 도구에서 가져옴");
+      picked.push({
+        folder: it.name.slice(0, 60),
+        link: it.link,
+        cny: it.cny || 0,
+        memo: memoBits.join(" · ")
+      });
+    });
+  });
+  var existing = [];
+  try { existing = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]"); } catch (e) {}
+  existing = existing.concat(picked);
+  try { localStorage.setItem(QUEUE_KEY, JSON.stringify(existing)); } catch (e) {
+    setStatus("저장 공간이 부족해 일부만 전달되었을 수 있습니다.", "error");
+  }
+  showGoToast(picked.length);
+});
+
+function showGoToast(n){
+  var toast = $("#goToast");
+  $("#goToastMsg").textContent = n + "개를 소싱 후보로 보냈습니다.";
+  toast.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(function () { toast.classList.remove("show"); }, 6000);
+}
+$("#goToastLink").addEventListener("click", function (e) {
+  e.preventDefault();
+  try { window.parent.postMessage({ type: "moriva-go", id: "sourcing-manifest" }, "*"); } catch (err) {}
+  // 독립 창으로 열려 있을 때(부모 프레임이 없을 때)를 대비한 대체 이동
+  setTimeout(function () {
+    if (window.parent === window) location.href = "sourcing-manifest.html";
+  }, 150);
+});
+
+/* ---------- 초기화: 이전에 불러온 결과 복원 ---------- */
+(function init(){
+  try {
+    var saved = localStorage.getItem(DATA_KEY);
+    if (saved) {
+      groups = JSON.parse(saved);
+      $("#clearBtn").hidden = false;
+      var total = groups.reduce(function (s, x) { return s + x.items.length; }, 0);
+      setStatus("이전에 불러온 결과 (키워드 " + groups.length + "개, 소싱 후보 " + total + "개)를 이어서 보여줍니다.");
+    }
+  } catch (e) {}
+  renderResults();
+})();
+</script>
+</body>
+</html>
