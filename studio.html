@@ -303,6 +303,7 @@
 .generated-gallery { display:grid; gap:14px; }.gallery-heading { display:flex; justify-content:space-between; align-items:flex-end; gap:20px; padding:20px; border-radius:16px; background:linear-gradient(135deg,#071a35,#12375b); color:#fff; }.gallery-heading > div:first-child { display:flex; flex-direction:column; gap:5px; }.gallery-heading > div:first-child span { color:#d8ae49; font-size:calc(7px * var(--page-scale, 1)); font-weight:800; letter-spacing:.16em; }.gallery-heading h3 { margin:0; font-size:calc(17px * var(--page-scale, 1)); }.gallery-heading p { margin:0; color:#aab6c3; font-size:calc(9px * var(--page-scale, 1)); }.gallery-heading > div:last-child { display:grid; grid-template-columns:auto auto; align-items:center; gap:3px 7px; }.gallery-heading > div:last-child strong { color:#fff; font-size:calc(17px * var(--page-scale, 1)); }.gallery-heading > div:last-child span { color:#aab6c3; font-size:calc(8px * var(--page-scale, 1)); }
 .gallery-empty { min-height:240px; display:grid; place-content:center; justify-items:center; gap:7px; text-align:center; border:1px dashed #d9dde4; border-radius:16px; background:#fafbfc; }.gallery-empty > span { width:42px; height:42px; display:grid; place-items:center; border-radius:13px; background:var(--gold-soft); color:#9b6c05; font-size:calc(18px * var(--page-scale, 1)); }.gallery-empty strong { font-size:calc(13px * var(--page-scale, 1)); }.gallery-empty p { margin:0; color:#858c9a; font-size:calc(9px * var(--page-scale, 1)); }
 .gallery-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }.gallery-card { min-width:0; overflow:hidden; border:1px solid var(--line); border-radius:16px; background:#fff; box-shadow:0 8px 25px rgba(30,40,70,.05); }.gallery-card-label { padding:13px 15px; display:flex; flex-direction:column; gap:3px; border-bottom:1px solid var(--line); }.gallery-card-label span { color:var(--violet); font-size:calc(7px * var(--page-scale, 1)); font-weight:800; letter-spacing:.13em; }.gallery-card-label strong { font-size:calc(11px * var(--page-scale, 1)); }.gallery-card > img { display:block; width:100%; aspect-ratio:1/1; object-fit:contain; background:#eef1f3; }.gallery-card.detail > img { aspect-ratio:2/3; }.gallery-card-body { padding:13px; display:grid; gap:9px; }.gallery-card-body > label { display:flex; align-items:center; gap:6px; color:#476452; font-size:calc(8px * var(--page-scale, 1)); font-weight:750; }.gallery-card-body textarea { width:100%; min-height:82px; resize:vertical; border:1px solid #dce0e6; border-radius:9px; padding:10px; font:500 calc(9px * var(--page-scale, 1))/1.55 var(--font-geist-sans),sans-serif; }.gallery-card-body > div { display:flex; justify-content:space-between; align-items:center; gap:8px; }.gallery-card-body a { text-decoration:none; border:1px solid #dce1e7; border-radius:8px; color:#526074; padding:8px 10px; font-size:calc(8px * var(--page-scale, 1)); font-weight:750; }.gallery-card-body button,.gallery-stitch { border:0; border-radius:8px; background:var(--navy); color:#fff; padding:9px 11px; font-size:calc(8px * var(--page-scale, 1)); font-weight:800; cursor:pointer; }.gallery-card-body button:disabled { opacity:.55; cursor:wait; }.gallery-stitch { justify-self:end; background:var(--amber); color:var(--navy); padding:11px 15px; }
+.gallery-ref-zone { display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:8px; border:1.5px dashed #d3d8e0; border-radius:9px; background:#fafbfc; transition:background .15s,border-color .15s; }.gallery-ref-zone.is-dragging { background:#eef3ff; border-color:var(--violet); }.gallery-ref-thumb { position:relative; width:38px; height:38px; border-radius:7px; overflow:hidden; border:1px solid #dce0e6; flex:0 0 auto; }.gallery-ref-thumb img { width:100%; height:100%; object-fit:cover; display:block; }.gallery-ref-thumb button { position:absolute; top:0; right:0; width:15px; height:15px; border:0; border-radius:0 0 0 6px; background:rgba(20,24,34,.72); color:#fff; font-size:10px; line-height:15px; padding:0; cursor:pointer; }.gallery-ref-add { flex:0 0 auto; border:1px dashed #c7cdd8; border-radius:7px; background:#fff; color:#5b6472; font-size:calc(8px * var(--page-scale, 1)); font-weight:700; padding:8px 10px; cursor:pointer; }.gallery-ref-add:hover { background:#f2f4f7; }.gallery-ref-hint { margin:0; color:#9099a8; font-size:calc(7.5px * var(--page-scale, 1)); line-height:1.5; }
 .generated-actions { padding:15px 20px; display:flex; align-items:center; justify-content:space-between; gap:18px; }.generated-actions p { margin:0; color:#70798a; font-size:calc(9px * var(--page-scale, 1)); }.generated-actions a { flex:0 0 auto; text-decoration:none; border-radius:10px; background:var(--navy); color:white; padding:10px 13px; font-size:calc(9px * var(--page-scale, 1)); font-weight:750; }
 
 .toast { position:fixed; z-index:80; left:50%; bottom:26px; transform:translateX(-50%); background:#20283d; color:#fff; border-radius:12px; padding:12px 16px; display:flex; align-items:center; gap:9px; box-shadow:0 14px 40px rgba(22,29,50,.24); font-size:calc(11px * var(--page-scale, 1)); animation:toast-in .2s ease-out; }
@@ -550,6 +551,7 @@ body { background:#f4f6f7; }
    ══════════════════════════════════════════════════════════ */
 
 var MAX_IMAGES = 20;
+var MAX_GALLERY_REFS = 2;   // 수정 요청 하나당 첨부 가능한 참고 이미지 수
 var DETAIL_PAGE_WIDTH = 780; // 쿠팡 상세페이지 권장 작업 폭. OpenAI 이미지 API는 이 폭을 직접 생성할 수 없어(1024/1536 고정 사이즈만 지원) 생성 후 이 폭으로 다시 축소한다.
 var MAX_REVIEW_TEXT = 12000;
 
@@ -583,6 +585,7 @@ var state = {
   selectedDetails: [],
   openSections: [],
   galleryEdits: {},
+  galleryEditRefs: {},   // 수정 요청마다 첨부/붙여넣은 참고 이미지: key -> [{id,dataUrl}]
   tab: "thumbnail",
   processing: null,
   generating: false,
@@ -961,14 +964,17 @@ function renderUploadCards() {
   }
 }
 
-/* 전역 붙여넣기 → 현재 활성 영역 */
+/* 전역 붙여넣기 → 현재 활성 영역 (수정 요청 칸에 붙여넣으면 그 카드의 참고 이미지로 들어간다) */
 document.addEventListener("paste", function (e) {
   if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) {
     var f = e.clipboardData && e.clipboardData.files;
     if (!f || !f.length) return;
   }
   var files = e.clipboardData && e.clipboardData.files;
-  if (files && files.length) addFiles(state.activeBucket, files);
+  if (!files || !files.length) return;
+  var editKey = e.target && e.target.tagName === "TEXTAREA" && e.target.getAttribute("data-edit");
+  if (editKey) { addGalleryEditRefs(editKey, files); return; }
+  addFiles(state.activeBucket, files);
 });
 
 
@@ -1123,7 +1129,7 @@ var INSTRUCTIONS = [
 "- 모든 섹션에 제품 실물 사진이 나올 필요는 없다. 각 detail_sections 항목의 includesProduct를 그 섹션의 성격에 맞게 true/false로 정한다. 제품을 직접 보여줘야 하는 섹션(정면·디테일·사용 장면 등)만 true로 하고, 브랜드 스토리·인증·소재 설명·라이프스타일 무드처럼 제품 실물이 없어도 되는 섹션은 false로 표시한다. 전체 섹션 중 일부만 제품이 등장해도 되며, 제품이 자연스럽게 여러 번 반복 등장하지 않도록 전체 흐름을 보고 배분한다. includesProduct가 false인 섹션의 prompt에는 제품 실물 사진을 억지로 등장시키지 않는다는 지시를 포함한다.",
 "- 모든 섹션의 폭은 780px로 고정하되, 세로 길이는 섹션마다 다를 수 있다. length 필드를 대부분 'standard'(정사각형에 가까운 기본 길이)로 두고, 표·비교·프로세스 설명처럼 내용상 세로로 더 길어야 하는 섹션에만 'tall'(더 긴 세로형)을 선택한다. length를 'tall'로 늘려서 여백 없이 정보를 욱여넣는 용도로 쓰지 않는다 — 오히려 여백을 넉넉히 유지한 채로 자연스럽게 더 길어지는 구성에만 사용한다.",
 "- MORIVA 로고(M 심볼·워드마크)는 상세페이지 전체에서 첫 번째 섹션과 마지막 섹션에만 넣는다. 중간 섹션들의 prompt에는 로고나 브랜드명을 넣지 않는다는 지시를 명시적으로 포함한다.",
-"- 제공된 MORIVA 브랜드 가이드를 공식 기준으로 사용한다. 브랜드명은 영문 ‘MORIVA’, 한글 ‘모리바’, 슬로건은 ‘Better Life, Better Move’로 정확히 표기한다.",
+"- 제공된 MORIVA 브랜드 가이드를 공식 기준으로 사용한다. 브랜드명은 영문 'MORIVA', 한글 '모리바', 슬로건은 'Better Life, Better Move'로 정확히 표기한다.",
 "- M 심볼과 워드마크의 형태·비율·간격을 임의로 재설계하지 않는다. 로고가 들어가는 첫 번째·마지막 상세 섹션과 모든 썸네일 프롬프트에 로고 위치, 안전 여백, 가독성 규칙을 명시한다.",
 "- MORIVA 브랜드 팔레트인 딥 네이비 #071A35, 화이트, 골드 #C9961A를 일관되게 적용한다.",
 "- 썸네일에서는 제품이 주인공이 되도록 로고를 작고 절제되게 배치한다.",
@@ -1131,7 +1137,7 @@ var INSTRUCTIONS = [
 "- 상위 판매자의 설득 원리는 참고하되 결과는 독창적으로 재구성한다."
 ].join("\n");
 
-var IMAGE_RULES = "\n\n[참조 이미지 적용 규칙]\nproduct-reference 이미지는 실제 제품 및 현재 수정 대상의 기준이다. 첫 번째 이미지가 기존 생성 결과인 경우 그 구성은 유지하고 사용자가 요청한 부분만 수정한다. 제품의 고유 형태, 패키지 디자인, 색상, 비율, 부품 수와 위치를 정확히 보존하며 존재하지 않는 기능이나 구성품을 만들지 않는다. main-reference-locked 이미지가 포함된 경우 이는 확정된 실제 제품 사진이다. 이 이미지 속 제품의 형태·색상·질감·비율·구성 요소를 그대로 사용하고 어떤 이유로도 다시 그리거나 다른 형태로 바꾸지 않는다. 배경, 텍스트, 레이아웃, 장식 요소만 지시에 맞게 새로 구성한다. brand-reference 이미지는 MORIVA의 공식 브랜드 가이드다. 브랜드명은 영문 ‘MORIVA’, 한글 ‘모리바’, 슬로건은 ‘Better Life, Better Move’로 정확히 유지한다. 브랜드를 표시하는 장면에서는 가이드의 M 심볼과 워드마크를 왜곡·재설계·오탈자 없이 참고하고, 딥 네이비 #071A35, 화이트, 골드 #C9961A의 시각 체계를 일관되게 적용한다.\n\n[여백과 가독성]\n화면 안에 정보를 과도하게 채우지 않고 여백을 넉넉히 둔다. 작은 글씨로 많은 문구·수치·표를 빽빽하게 나열하지 않고, 핵심 메시지 1가지를 큰 타이포로 강조한다. 모바일 세로 화면과 PC 화면 모두에서 한눈에 읽히는 정도의 글자 크기와 여백을 유지한다.";
+var IMAGE_RULES = "\n\n[참조 이미지 적용 규칙]\nproduct-reference 이미지는 실제 제품 및 현재 수정 대상의 기준이다. 첫 번째 이미지가 기존 생성 결과인 경우 그 구성은 유지하고 사용자가 요청한 부분만 수정한다. 제품의 고유 형태, 패키지 디자인, 색상, 비율, 부품 수와 위치를 정확히 보존하며 존재하지 않는 기능이나 구성품을 만들지 않는다. main-reference-locked 이미지가 포함된 경우 이는 확정된 실제 제품 사진이다. 이 이미지 속 제품의 형태·색상·질감·비율·구성 요소를 그대로 사용하고 어떤 이유로도 다시 그리거나 다른 형태로 바꾸지 않는다. 배경, 텍스트, 레이아웃, 장식 요소만 지시에 맞게 새로 구성한다. brand-reference 이미지는 MORIVA의 공식 브랜드 가이드다. 브랜드명은 영문 'MORIVA', 한글 '모리바', 슬로건은 'Better Life, Better Move'로 정확히 유지한다. 브랜드를 표시하는 장면에서는 가이드의 M 심볼과 워드마크를 왜곡·재설계·오탈자 없이 참고하고, 딥 네이비 #071A35, 화이트, 골드 #C9961A의 시각 체계를 일관되게 적용한다.\n\n[여백과 가독성]\n화면 안에 정보를 과도하게 채우지 않고 여백을 넉넉히 둔다. 작은 글씨로 많은 문구·수치·표를 빽빽하게 나열하지 않고, 핵심 메시지 1가지를 큰 타이포로 강조한다. 모바일 세로 화면과 PC 화면 모두에서 한눈에 읽히는 정도의 글자 크기와 여백을 유지한다.";
 
 function imgItems(arr) {
   return arr.map(function (u) { return { type:"input_image", image_url:u, detail:"high" }; });
@@ -1397,7 +1403,7 @@ function generateOne(type, index) {
       state.generatedDetails[index] = image;
       if (state.selectedDetails.indexOf(index) === -1) state.selectedDetails.push(index);
     }
-    showNotice("이미지를 만들었습니다. ‘제작 이미지’ 탭에서 확인하세요.");
+    showNotice("이미지를 만들었습니다. '제작 이미지' 탭에서 확인하세요.");
     scheduleDraftSave();
   }).catch(function (err) {
     showNotice(friendlyErr(err, "이미지 생성 중 오류가 발생했습니다."));
@@ -1407,28 +1413,53 @@ function generateOne(type, index) {
   });
 }
 
+/* 수정 요청에 첨부/붙여넣은 참고 이미지 처리 */
+function addGalleryEditRefs(key, files) {
+  var list = Array.prototype.slice.call(files || []).filter(function (f) { return /^image\//.test(f.type); });
+  if (!list.length) return;
+  var current = state.galleryEditRefs[key] || [];
+  var room = MAX_GALLERY_REFS - current.length;
+  if (room <= 0) { showNotice("참고 이미지는 최대 " + MAX_GALLERY_REFS + "장까지 첨부할 수 있습니다."); return; }
+  list = list.slice(0, room);
+  Promise.all(list.map(function (f) { return optimizeImage(f, "product"); })).then(function (assets) {
+    state.galleryEditRefs[key] = (state.galleryEditRefs[key] || []).concat(assets);
+    renderOutput();
+  }).catch(function (err) {
+    showNotice(friendlyErr(err, "참고 이미지를 처리하지 못했습니다."));
+  });
+}
+function removeGalleryEditRef(key, id) {
+  state.galleryEditRefs[key] = (state.galleryEditRefs[key] || []).filter(function (x) { return x.id !== id; });
+  renderOutput();
+}
+
 /* 수정해서 다시 만들기 */
 function editGalleryImage(type, index) {
   var key = type + "-" + index;
   var current = type === "thumbnail" ? state.generatedThumbnails[index] : state.generatedDetails[index];
   var instruction = (state.galleryEdits[key] || "").trim();
+  var userRefAssets = state.galleryEditRefs[key] || [];
+  var userRefs = userRefAssets.map(function (a) { return a.dataUrl; });
   var item = type === "thumbnail" ? state.result.thumbnails[index] : state.result.detail_sections[index];
   var total = type === "detail" ? state.result.detail_sections.length : 0;
-  if (!current || !instruction) { showNotice("수정하거나 보완할 내용을 입력해주세요."); return; }
+  if (!current || (!instruction && !userRefs.length)) { showNotice("수정 요청 문구나 참고 이미지를 추가해주세요."); return; }
   state.galleryLoading = key;
   renderOutput();
   var basePrompt = type === "detail" ? detailPromptWithRules(item, total) : item.prompt;
+  var instructionText = instruction || "첨부된 참고 이미지의 스타일·구도·문구 배치 방식을 참고해 다시 만든다.";
   var editPrompt = basePrompt +
     "\n\n[현재 생성 이미지 수정 및 프롬프트 보완]\n첫 번째 참조 이미지는 현재 생성 결과다. 전체 제품과 디자인의 일관성은 유지하고 아래 요청을 우선 반영한다.\n\n" +
-    instruction +
+    instructionText +
+    (userRefs.length ? "\n\n추가로 참고 이미지가 " + userRefs.length + "장 더 첨부되어 있다. 이 이미지는 사용자가 원하는 스타일·구도·문구 배치 등을 보여주는 참고 자료일 뿐이며, 그대로 복제하지 말고 위 요청과 함께 참고만 한다." : "") +
     "\n\n요청하지 않은 제품 형태·색상·로고·구성품·핵심 카피는 임의로 변경하지 않는다.";
-  var refs = type === "detail" ? [current].concat(detailReferenceUrls(item)) : [current].concat(productDataUrls());
+  var refs = (type === "detail" ? [current].concat(userRefs, detailReferenceUrls(item)) : [current].concat(userRefs, productDataUrls()));
   var size = type === "detail" ? detailImageSize(item) : "1024x1024";
   var attachMain = type !== "detail" || item.includesProduct !== false;
   requestGeneratedImage(editPrompt, type, refs, size, attachMain).then(function (image) {
     if (type === "thumbnail") state.generatedThumbnails[index] = image;
     else state.generatedDetails[index] = image;
     state.galleryEdits[key] = "";
+    state.galleryEditRefs[key] = [];
     showNotice("수정 요청을 반영한 새 이미지를 만들었습니다.");
     scheduleDraftSave();
   }).catch(function (err) {
@@ -1685,6 +1716,21 @@ function renderOutput() {
     "</article>";
   }
 
+  /* 수정 요청 카드에 들어가는 참고 이미지 첨부/붙여넣기 영역 */
+  function galleryRefZoneHtml(key) {
+    var refs = state.galleryEditRefs[key] || [];
+    var thumbs = refs.map(function (a) {
+      return '<div class="gallery-ref-thumb"><img src="' + a.dataUrl + '" alt="참고 이미지">' +
+        '<button type="button" data-refremove="' + key + '" data-refid="' + a.id + '" aria-label="참고 이미지 삭제">×</button></div>';
+    }).join("");
+    var canAdd = refs.length < MAX_GALLERY_REFS;
+    return '<div class="gallery-ref-zone" data-refzone="' + key + '">' + thumbs +
+      (canAdd ? '<button type="button" class="gallery-ref-add" data-refbtn="' + key + '">' + (refs.length ? "+ 추가" : "📎 참고 이미지") + "</button>" : "") +
+      '<input type="file" accept="image/*" multiple hidden data-refinput="' + key + '">' +
+    "</div>" +
+    '<p class="gallery-ref-hint">참고 이미지를 붙여넣거나(위 입력칸 클릭 후 Ctrl+V) 이 영역에 끌어다 놓아도 됩니다.</p>';
+  }
+
   /* ── 제작 이미지 탭 ── */
   if (state.tab === "gallery") {
     var tKeys = Object.keys(state.generatedThumbnails);
@@ -1711,6 +1757,7 @@ function renderOutput() {
           '<img src="' + state.generatedThumbnails[index] + '" alt="' + esc(item.title) + ' 제작 이미지">' +
           '<div class="gallery-card-body">' +
             '<textarea data-edit="' + key + '" placeholder="수정 요청 또는 프롬프트 보완 내용을 입력하세요. 예: 제품은 유지하고 배경을 더 밝게, 로고 크기 15% 축소">' + esc(state.galleryEdits[key] || "") + "</textarea>" +
+            galleryRefZoneHtml(key) +
             '<div><a href="' + state.generatedThumbnails[index] + '" download="moriva-thumbnail-' + (index + 1) + '.webp">다운로드</a>' +
             '<button type="button" data-regen="thumbnail" data-idx="' + index + '"' + (busy ? " disabled" : "") + ">" + (busy ? "수정 중…" : "수정해서 다시 만들기") + "</button></div>" +
           "</div></article>";
@@ -1724,6 +1771,7 @@ function renderOutput() {
           '<div class="gallery-card-body">' +
             '<label><input type="checkbox" data-selectdetail="' + index + '"' + (state.selectedDetails.indexOf(index) !== -1 ? " checked" : "") + "> 긴 상세페이지에 포함</label>" +
             '<textarea data-edit="' + key + '" placeholder="수정 요청 또는 프롬프트 보완 내용을 입력하세요. 예: 헤드라인은 유지하고 제품 사진을 더 크게 배치">' + esc(state.galleryEdits[key] || "") + "</textarea>" +
+            galleryRefZoneHtml(key) +
             '<div><a href="' + state.generatedDetails[index] + '" download="moriva-detail-' + item.number + '.webp">다운로드</a>' +
             '<button type="button" data-regen="detail" data-idx="' + index + '"' + (busy ? " disabled" : "") + ">" + (busy ? "수정 중…" : "수정해서 다시 만들기") + "</button></div>" +
           "</div></article>";
@@ -1791,6 +1839,34 @@ function bindOutputEvents() {
   });
   host.querySelectorAll("[data-edit]").forEach(function (ta) {
     ta.addEventListener("input", function () { state.galleryEdits[ta.getAttribute("data-edit")] = ta.value; });
+  });
+  /* 수정 요청 카드의 참고 이미지 첨부 버튼/드래그앤드롭 */
+  host.querySelectorAll("[data-refbtn]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var key = b.getAttribute("data-refbtn");
+      var input = host.querySelector('[data-refinput="' + key + '"]');
+      if (input) input.click();
+    });
+  });
+  host.querySelectorAll("[data-refinput]").forEach(function (input) {
+    input.addEventListener("change", function () {
+      addGalleryEditRefs(input.getAttribute("data-refinput"), input.files);
+      input.value = "";
+    });
+  });
+  host.querySelectorAll("[data-refremove]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      removeGalleryEditRef(b.getAttribute("data-refremove"), b.getAttribute("data-refid"));
+    });
+  });
+  host.querySelectorAll("[data-refzone]").forEach(function (zone) {
+    var key = zone.getAttribute("data-refzone");
+    zone.addEventListener("dragover", function (e) { e.preventDefault(); zone.classList.add("is-dragging"); });
+    zone.addEventListener("dragleave", function () { zone.classList.remove("is-dragging"); });
+    zone.addEventListener("drop", function (e) {
+      e.preventDefault(); zone.classList.remove("is-dragging");
+      addGalleryEditRefs(key, e.dataTransfer.files);
+    });
   });
 }
 
