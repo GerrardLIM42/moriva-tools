@@ -82,6 +82,15 @@
         <div class="keyrow" style="margin-top:10px"><p class="help" style="margin:0!important;align-self:center">제품 분석·리뷰 정리 결과를 참고해 대사와 한글 문구 초안을 AI가 만듭니다.</p><button class="btn primary" type="button" id="voiceDraftBtn">AI로 문구 초안 만들기</button></div>
       </section>
 
+      <section class="card" id="videoFeedback">
+        <div class="heading"><span class="num">06</span><div><h2>완성된 영상으로 다시 만들기</h2><p>Seedance로 실제 만든 결과 영상을 올리고 고치고 싶은 점을 적으면, 그 내용을 반영한 새 프롬프트를 만들어 드립니다.</p></div></div>
+        <input class="hidden" id="videoInput" type="file" accept="video/*">
+        <div class="drop" id="videoDrop"><div class="plus">▶</div><strong>결과 영상을 끌어놓거나 선택하세요</strong><span>MP4, WebM, MOV · 1개, 최대 200MB</span><button class="btn gold" type="button" id="videoBtn">영상 선택</button></div>
+        <div class="thumbs hidden" id="videoFrames" style="grid-template-columns:repeat(4,minmax(0,1fr))"></div>
+        <div class="field full" style="margin-top:12px"><label>수정 요청 · 무엇을 바꾸고 싶은지 적어주세요</label><textarea id="videoFeedbackText" placeholder="예: 모델 손동작이 어색해요. 더 자연스럽게 바꿔주세요. 카메라를 조금 더 가까이 당겨주세요. 자막이 나오는 타이밍이 너무 빨라요."></textarea></div>
+        <div class="keyrow" style="margin-top:10px"><p class="help" id="videoFeedbackHelp" style="margin:0!important;align-self:center">먼저 영상을 첨부하고 수정 요청을 입력하세요.</p><button class="btn primary" type="button" id="videoFeedbackBtn" disabled>AI로 새 프롬프트 만들기</button></div>
+      </section>
+
       <button class="make" id="generateBtn"><i>✦</i><b>Seedance 영문 광고 프롬프트 생성</b><small id="makeMeta">15초 · 4:3 · 5 Scenes</small></button>
     </section>
 
@@ -108,6 +117,8 @@
     var analysis=null;
     var images=[];
     var reviewImages=[];
+    var videoFrames=[];
+    var videoMeta=null;
     var promptText="";
     var state={
       projectName:"새 광고 프로젝트",productName:"",brandName:"MORIVA",category:"생활용품",targetAudience:"",customerProblem:"",coreBenefit:"",
@@ -116,7 +127,7 @@
       setting:"Bright, clean Korean apartment interior",modelDescription:"A friendly Korean lifestyle creator with a natural, trustworthy appearance",
       cameraMood:"Natural daylight, stable handheld camera, clean direct cuts",audioMode:"Korean voice-over",
       voiceTone:"Friendly, clear, trustworthy Korean female voice",narration:"",koreanOverlays:"",callToAction:"",mustAvoid:"",additionalDirection:"",
-      complaintReviews:"",praiseReviews:""
+      complaintReviews:"",praiseReviews:"",videoFeedbackText:""
     };
     var productDefs=[
       ["projectName","프로젝트명","input","예: 모리바 세탁시트 광고",""],
@@ -180,6 +191,7 @@
       $("audioFields").innerHTML=audioDefs.map(fieldHtml).join("");
       document.querySelectorAll("[data-key]").forEach(function(el){el.addEventListener("input",function(){state[this.dataset.key]=this.value;updateMeta()})});
       toggleAudio();
+      if($("videoFeedbackText"))$("videoFeedbackText").value=state.videoFeedbackText||"";
     }
     function updateMeta(){$("makeMeta").textContent=state.duration+"초 · "+state.aspectRatio+" · "+state.sceneCount+" Scenes"}
     function toggleAudio(){document.querySelectorAll("[data-wrap=voiceTone],[data-wrap=narration]").forEach(function(el){el.classList.toggle("hidden",state.audioMode==="Silent / visual only")});document.querySelectorAll("#audioSegments button").forEach(function(b){b.classList.toggle("active",b.dataset.mode===state.audioMode)})}
@@ -213,6 +225,118 @@
       $("reviewThumbs").innerHTML=reviewImages.map(function(im,i){return'<article class="thumb"><div class="thumbpic"><img src="'+im.preview+'" alt="'+escapeHtml(im.name)+'"><button data-removereview="'+im.id+'">×</button></div><div class="thumbinfo"><b title="'+escapeHtml(im.name)+'">'+(i+1)+". "+escapeHtml(im.name)+'</b><small>'+im.width+"×"+im.height+'px</small></div></article>'}).join("");
       document.querySelectorAll("[data-removereview]").forEach(function(b){b.onclick=function(){reviewImages=reviewImages.filter(function(im){return im.id!==b.dataset.removereview});renderReviewImages()}});
     }
+    /* ── 결과 영상 첨부 → 장면 프레임 추출 (영상 자체는 저장하지 않고, 캡처한 프레임 이미지만 AI에 보낸다) ── */
+    function extractVideoFrames(file){
+      return new Promise(function(resolve,reject){
+        var COUNT=6;
+        var url=URL.createObjectURL(file);
+        var v=document.createElement("video");
+        v.preload="auto";v.muted=true;v.playsInline=true;v.style.cssText="position:fixed;left:-9999px;top:-9999px;width:1px;height:1px";
+        document.body.appendChild(v);
+        var settled=false;
+        function cleanup(){try{document.body.removeChild(v)}catch(e){}URL.revokeObjectURL(url)}
+        function fail(msg){if(settled)return;settled=true;cleanup();reject(new Error(msg))}
+        var timeoutId=setTimeout(function(){fail("영상을 읽는 데 시간이 너무 오래 걸립니다. 다른 파일로 시도해 주세요.")},25000);
+        v.onerror=function(){fail("영상을 읽지 못했습니다. 지원하는 형식(MP4, WebM, MOV)인지 확인해 주세요.")};
+        v.onloadedmetadata=function(){
+          if(settled)return;
+          if(!v.duration||!isFinite(v.duration)||v.duration<=0){fail("영상 길이를 읽지 못했습니다.");return}
+          var duration=v.duration,frames=[],times=[];
+          for(var i=0;i<COUNT;i++)times.push(Math.min(duration-.05,Math.max(0,duration*((i+.5)/COUNT))));
+          var idx=0;
+          function captureNext(){
+            if(settled)return;
+            if(idx>=times.length){settled=true;clearTimeout(timeoutId);cleanup();resolve({frames:frames,duration:duration});return}
+            v.currentTime=times[idx];
+          }
+          v.onseeked=function(){
+            if(settled)return;
+            try{
+              var max=800,scale=Math.min(1,max/Math.max(v.videoWidth||max,v.videoHeight||max));
+              var c=document.createElement("canvas");
+              c.width=Math.max(1,Math.round((v.videoWidth||max)*scale));
+              c.height=Math.max(1,Math.round((v.videoHeight||max)*scale));
+              c.getContext("2d").drawImage(v,0,0,c.width,c.height);
+              frames.push({id:(crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random()+"-"+idx),preview:c.toDataURL("image/jpeg",.8),time:times[idx]});
+            }catch(e){}
+            idx++;captureNext();
+          };
+          captureNext();
+        };
+        v.src=url;
+      });
+    }
+    async function addVideo(file){
+      if(!file)return;
+      if(file.type&&file.type.indexOf("video/")!==0){toast("영상 파일만 첨부할 수 있습니다.",true);return}
+      if(file.size>200*1024*1024){toast("영상 파일이 너무 큽니다. 200MB 이하로 올려주세요.",true);return}
+      var btn=$("videoBtn");btn.disabled=true;var prevText=btn.textContent;btn.textContent="분석 중…";
+      try{
+        var result=await extractVideoFrames(file);
+        videoFrames=result.frames;
+        videoMeta={name:file.name,size:file.size,duration:result.duration};
+        if(!videoFrames.length)throw new Error("영상에서 장면을 추출하지 못했습니다.");
+        renderVideoFrames();
+        toast("영상에서 장면 "+videoFrames.length+"개를 추출했습니다.");
+      }catch(e){
+        toast(e&&e.message?e.message:"영상을 처리하지 못했습니다.",true);
+      }finally{
+        btn.disabled=false;btn.textContent=prevText;updateVideoFeedbackBtn();
+      }
+    }
+    function renderVideoFrames(){
+      var host=$("videoFrames");
+      if(!videoFrames.length){host.classList.add("hidden");host.innerHTML="";return}
+      host.classList.remove("hidden");
+      var metaLabel=videoMeta?escapeHtml(videoMeta.name)+" · "+Math.round(videoMeta.duration)+"초":"";
+      host.innerHTML='<div class="field full" style="margin:0 0 4px;grid-column:1/-1"><label>'+metaLabel+' <button type="button" class="btn" id="videoClearBtn" style="min-height:24px;padding:0 8px;font-size:9px;margin-left:8px">영상 제거</button></label></div>'+
+        videoFrames.map(function(f,i){return '<div class="thumbpic" style="min-height:90px;border-radius:10px;overflow:hidden"><img src="'+f.preview+'" alt="scene '+(i+1)+'" style="width:100%;height:100%;object-fit:cover"></div>'}).join("");
+      var clearBtn=document.getElementById("videoClearBtn");
+      if(clearBtn)clearBtn.onclick=function(){videoFrames=[];videoMeta=null;renderVideoFrames();updateVideoFeedbackBtn()};
+    }
+    function updateVideoFeedbackBtn(){
+      var provider=$("provider")?$("provider").value:"gemini";
+      var ok=videoFrames.length>0&&$("videoFeedbackText").value.trim()&&(!!$("apiKey").value.trim()||provider==="claude");
+      $("videoFeedbackBtn").disabled=!ok;
+      $("videoFeedbackHelp").textContent=videoFrames.length?"영상에서 장면 "+videoFrames.length+"개를 확인했습니다. 수정 요청을 적고 버튼을 눌러주세요.":"먼저 영상을 첨부하고 수정 요청을 입력하세요.";
+    }
+    async function reviseFromVideo(){
+      var provider=$("provider").value,key=$("apiKey").value.trim(),model=PROVIDERS[provider].defaultModel;
+      var feedback=($("videoFeedbackText").value||"").trim();
+      if(!videoFrames.length)return toast("먼저 결과 영상을 첨부해 주세요.",true);
+      if(!feedback)return toast("무엇을 바꾸고 싶은지 적어 주세요.",true);
+      if(!key&&provider!=="claude")return toast(PROVIDERS[provider].label+" API 키를 입력해 주세요.",true);
+      persistKey();
+      var btn=$("videoFeedbackBtn");btn.disabled=true;var prevText=btn.textContent;btn.textContent="반영 중…";
+      var priorPrompt=promptText||buildPrompt();
+      var sceneCount=Number(state.sceneCount)||5;
+      var context="PREVIOUS PROMPT SENT TO SEEDANCE:\n"+priorPrompt+"\n\nCURRENT CREATIVE SETTINGS\nStyle: "+clean(state.style,"")+"\nSetting: "+clean(state.setting,"")+"\nModel description: "+clean(state.modelDescription,"")+"\nCamera/mood: "+clean(state.cameraMood,"")+"\nNarration lines: "+clean(state.narration,"")+"\nKorean overlays: "+clean(state.koreanOverlays,"")+"\nCall to action: "+clean(state.callToAction,"")+"\nMust avoid: "+clean(state.mustAvoid,"")+"\nAdditional direction: "+clean(state.additionalDirection,"");
+      var instruction="You are a Korean shopping-ad creative director reviewing an actual generated Seedance video against what was requested. The attached images are sampled frames from the ACTUAL result video, in chronological order. Compare them with the previous prompt and settings below, then apply the user's requested changes to produce revised creative direction. Keep all locked product facts, dimensions and quantities unchanged — you are only revising creative/direction fields, never product truth. Only change a field if it is relevant to the requested fix; otherwise return the same value as in CURRENT CREATIVE SETTINGS.\n\n"+context+"\n\nUSER'S REQUESTED CHANGES (Korean, may reference specific moments in the video)\n"+feedback+"\n\nRespond with ONLY a single valid JSON object (no markdown, no commentary) matching exactly this shape:\n{\"style\":string,\"setting\":string,\"modelDescription\":string,\"cameraMood\":string,\"narration\":string[],\"koreanOverlays\":string[],\"callToAction\":string,\"mustAvoid\":string[],\"additionalDirection\":string,\"changeSummary\":string[]}\nnarration and koreanOverlays must each contain exactly "+sceneCount+" short items in scene order — reuse the existing lines unchanged for any scene the user did not ask to change. changeSummary is a short Korean bullet list (2-5 items) explaining what changed and why. Every key must be present.";
+      try{
+        var raw=await callAI(provider,key,model,instruction,videoFrames);
+        var draft=parseLooseJson(raw);
+        if(draft.style)state.style=draft.style;
+        if(draft.setting)state.setting=draft.setting;
+        if(draft.modelDescription)state.modelDescription=draft.modelDescription;
+        if(draft.cameraMood)state.cameraMood=draft.cameraMood;
+        if(Array.isArray(draft.narration)&&draft.narration.length)state.narration=draft.narration.join("\\n");
+        if(Array.isArray(draft.koreanOverlays)&&draft.koreanOverlays.length)state.koreanOverlays=draft.koreanOverlays.join("\\n");
+        if(draft.callToAction)state.callToAction=draft.callToAction;
+        if(Array.isArray(draft.mustAvoid)&&draft.mustAvoid.length)state.mustAvoid=draft.mustAvoid.join("\\n");
+        if(draft.additionalDirection)state.additionalDirection=draft.additionalDirection;
+        renderFields();
+        generate();
+        var summary=Array.isArray(draft.changeSummary)&&draft.changeSummary.length?draft.changeSummary.join(" · "):"";
+        toast("영상 피드백을 반영해 새 프롬프트를 만들었습니다."+(summary?" ("+summary+")":""));
+        $("prompt").scrollIntoView({behavior:"smooth"});
+      }catch(e){
+        var m=e&&e.message?e.message:"프롬프트를 다시 만들지 못했습니다.";
+        if(m==="Failed to fetch")m="브라우저가 API 연결을 차단했습니다. 인터넷 연결을 확인하거나 다른 AI 서비스를 사용해 주세요.";
+        toast(m,true);
+      }finally{
+        btn.disabled=false;btn.textContent=prevText;updateVideoFeedbackBtn();
+      }
+    }
     /* ── 공통 AI 서비스 설정 (다른 도구와 localStorage를 공유한다) ── */
     var PROVIDERS={
       gemini:{label:"Gemini",defaultModel:"gemini-flash-latest",fallbackModel:"gemini-3.6-flash",keyPlaceholder:"AIzaSy…",help:'키 발급: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio → Get API key</a> (무료 사용량 제공).'},
@@ -229,6 +353,7 @@
         $("savekey").checked=!!saved[$("provider").value];
       }catch(e){}
       $("analyzeBtn").disabled=!images.length||(!$("apiKey").value.trim()&&$("provider").value!=="claude");
+      updateVideoFeedbackBtn();
     }
     function loadAISettings(){
       try{
@@ -247,7 +372,7 @@
     }
     $("provider").addEventListener("change",function(){try{localStorage.setItem("moriva_provider",$("provider").value)}catch(e){}applyProvider()});
     $("savekey").addEventListener("change",persistKey);
-    $("apiKey").addEventListener("input",function(){$("analyzeBtn").disabled=!images.length||(!$("apiKey").value.trim()&&$("provider").value!=="claude")});
+    $("apiKey").addEventListener("input",function(){$("analyzeBtn").disabled=!images.length||(!$("apiKey").value.trim()&&$("provider").value!=="claude");updateVideoFeedbackBtn()});
     $("apiKey").addEventListener("change",persistKey);
     $("openAiSettings").addEventListener("click",function(e){e.preventDefault();persistKey();window.parent.postMessage({type:"moriva-go",id:"ai-settings"},"*")});
 
@@ -433,18 +558,25 @@
     }
     function generate(){promptText=buildPrompt();$("prompt").value=promptText;$("prompt").classList.remove("hidden");$("empty").classList.add("hidden");$("copyBtn").disabled=false;$("txtBtn").disabled=false;$("charCount").textContent=promptText.length.toLocaleString()+" characters";toast("Seedance 영문 프롬프트를 만들었습니다.")}
     function download(name,content,type){var b=new Blob([content],{type:(type||"text/plain")+";charset=utf-8"}),u=URL.createObjectURL(b),a=document.createElement("a");a.href=u;a.download=name;a.click();setTimeout(function(){URL.revokeObjectURL(u)},500)}
-    function projectObject(){return{version:1,exportedAt:new Date().toISOString(),state:state,images:images,reviewImages:reviewImages,prompt:promptText}}
+    function projectObject(){return{version:1,exportedAt:new Date().toISOString(),state:state,images:images,reviewImages:reviewImages,videoFrames:videoFrames,videoMeta:videoMeta,prompt:promptText}}
     function saveProject(){
       try{var arr=JSON.parse(localStorage.getItem(STORE)||"[]");arr=arr.filter(function(p){return p.state.projectName!==state.projectName});arr.unshift(Object.assign({id:Date.now(),updatedAt:new Date().toISOString()},projectObject()));localStorage.setItem(STORE,JSON.stringify(arr.slice(0,6)));toast("이 브라우저에 프로젝트를 저장했습니다.")}
       catch(e){toast("이미지 용량이 커서 저장하지 못했습니다. JSON 다운로드를 사용해 주세요.",true)}
     }
-    function loadProjectData(p){state=Object.assign({},state,p.state||{});images=Array.isArray(p.images)?p.images:[];reviewImages=Array.isArray(p.reviewImages)?p.reviewImages:[];promptText=p.prompt||"";renderFields();renderImages();renderReviewImages();if(promptText){$("prompt").value=promptText;$("prompt").classList.remove("hidden");$("empty").classList.add("hidden");$("copyBtn").disabled=false;$("txtBtn").disabled=false;$("charCount").textContent=promptText.length.toLocaleString()+" characters"}else{$("prompt").classList.add("hidden");$("empty").classList.remove("hidden")}closeModal();toast("프로젝트를 불러왔습니다.")}
+    function loadProjectData(p){state=Object.assign({},state,p.state||{});images=Array.isArray(p.images)?p.images:[];reviewImages=Array.isArray(p.reviewImages)?p.reviewImages:[];videoFrames=Array.isArray(p.videoFrames)?p.videoFrames:[];videoMeta=p.videoMeta||null;promptText=p.prompt||"";renderFields();renderImages();renderReviewImages();renderVideoFrames();updateVideoFeedbackBtn();if(promptText){$("prompt").value=promptText;$("prompt").classList.remove("hidden");$("empty").classList.add("hidden");$("copyBtn").disabled=false;$("txtBtn").disabled=false;$("charCount").textContent=promptText.length.toLocaleString()+" characters"}else{$("prompt").classList.add("hidden");$("empty").classList.remove("hidden")}closeModal();toast("프로젝트를 불러왔습니다.")}
     function showProjects(){var arr=[];try{arr=JSON.parse(localStorage.getItem(STORE)||"[]")}catch(e){};$("projectList").innerHTML=arr.length?arr.map(function(p,i){return'<article class="project"><div><b>'+escapeHtml(p.state&&p.state.projectName||"이름 없는 프로젝트")+'</b><small>'+new Date(p.updatedAt).toLocaleString("ko-KR")+'</small></div><button class="btn" data-load="'+i+'">불러오기</button><button class="btn danger" data-delete="'+i+'">삭제</button></article>'}).join(""):'<p style="padding:35px;text-align:center;color:var(--muted);font-size:12px">저장된 프로젝트가 없습니다.</p>';$("modal").classList.remove("hidden");document.querySelectorAll("[data-load]").forEach(function(b){b.onclick=function(){loadProjectData(arr[Number(b.dataset.load)])}});document.querySelectorAll("[data-delete]").forEach(function(b){b.onclick=function(){arr.splice(Number(b.dataset.delete),1);localStorage.setItem(STORE,JSON.stringify(arr));showProjects()}})}
     function closeModal(){$("modal").classList.add("hidden")}
     function reset(){if(!confirm("현재 입력 내용을 모두 지울까요?"))return;location.reload()}
     $("imageBtn").onclick=function(){$("imageInput").click()};$("imageInput").onchange=function(){addFiles(this.files);this.value=""};$("drop").ondragover=function(e){e.preventDefault();this.classList.add("drag")};$("drop").ondragleave=function(){this.classList.remove("drag")};$("drop").ondrop=function(e){e.preventDefault();this.classList.remove("drag");addFiles(e.dataTransfer.files)};
     $("reviewImageBtn").onclick=function(){$("reviewImageInput").click()};$("reviewImageInput").onchange=function(){addReviewFiles(this.files);this.value=""};$("reviewDrop").ondragover=function(e){e.preventDefault();this.classList.add("drag")};$("reviewDrop").ondragleave=function(){this.classList.remove("drag")};$("reviewDrop").ondrop=function(e){e.preventDefault();this.classList.remove("drag");addReviewFiles(e.dataTransfer.files)};
     $("analyzeReviewsBtn").onclick=analyzeReviews;$("voiceDraftBtn").onclick=draftVoiceCopy;
+    $("videoBtn").onclick=function(){$("videoInput").click()};
+    $("videoInput").onchange=function(){var f=this.files[0];addVideo(f);this.value=""};
+    $("videoDrop").ondragover=function(e){e.preventDefault();this.classList.add("drag")};
+    $("videoDrop").ondragleave=function(){this.classList.remove("drag")};
+    $("videoDrop").ondrop=function(e){e.preventDefault();this.classList.remove("drag");var f=e.dataTransfer.files&&e.dataTransfer.files[0];if(f)addVideo(f)};
+    $("videoFeedbackText").addEventListener("input",function(){state.videoFeedbackText=this.value;updateVideoFeedbackBtn()});
+    $("videoFeedbackBtn").onclick=reviseFromVideo;
     $("analyzeBtn").onclick=analyzeProduct;$("applyBtn").onclick=applyAnalysis;$("uncheckBtn").onclick=function(){document.querySelectorAll("[data-analysis]").forEach(function(c){c.checked=false})};
     $("audioSegments").onclick=function(e){if(!e.target.dataset.mode)return;state.audioMode=e.target.dataset.mode;toggleAudio()};$("generateBtn").onclick=generate;
     $("prompt").oninput=function(){promptText=this.value;$("charCount").textContent=promptText.length.toLocaleString()+" characters"};
@@ -453,7 +585,7 @@
     $("exportBtn").onclick=function(){download((state.projectName||"seedance-project")+".json",JSON.stringify(projectObject(),null,2),"application/json");toast("프로젝트 파일을 다운로드했습니다.")};
     $("importBtn").onclick=function(){$("projectInput").click()};$("projectInput").onchange=function(){var f=this.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var p=JSON.parse(String(r.result));if(!p.state)throw new Error();loadProjectData(p)}catch(e){toast("올바른 프로젝트 파일이 아닙니다.",true)}};r.readAsText(f);this.value=""};
     $("saveBtn").onclick=saveProject;$("loadBtn").onclick=showProjects;$("newBtn").onclick=reset;$("closeModal").onclick=closeModal;$("modal").onclick=function(e){if(e.target===$("modal"))closeModal()};
-    renderFields();renderImages();renderReviewImages();updateMeta();loadAISettings();
+    renderFields();renderImages();renderReviewImages();renderVideoFrames();updateVideoFeedbackBtn();updateMeta();loadAISettings();
   })();
   </script>
 </body>
