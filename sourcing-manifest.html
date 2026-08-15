@@ -3749,7 +3749,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
       const presetCny = presetData && presetData.cny ? Number(presetData.cny) || 0 : 0;
       const presetMemo = presetData && presetData.memo ? presetData.memo : '';
       fillFolderSelect(presetFolder);
-      $('#f-folder-new').value = '';
+      $('#f-folder-new').value = ($('#f-folder-select').value === '__NEW__') ? presetFolder : '';
       $('#f-link').value = presetLink;
       $('#f-status').value = '검토중';
       $('#f-yearly-sales').value = '';
