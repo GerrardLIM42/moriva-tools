@@ -1484,7 +1484,7 @@ function openImageEditor(opts){
     if(val) applyResult(val);
   });
   overlay.querySelector('#imgModalUrl').addEventListener('keydown', function(e){
-    if(e.key === 'Enter'){ var val = e.target.value.trim(); if(val) applyResult(val); }
+    if(e.key === 'Enter' && !e.isComposing){ var val = e.target.value.trim(); if(val) applyResult(val); }
   });
 
   var pasteZone = overlay.querySelector('#imgModalPaste');
@@ -2216,6 +2216,7 @@ function renderProduct(p){
     });
     newKwInput.addEventListener('keydown', function(e){
       if(e.key === 'Enter'){
+        if(e.isComposing) return;
         e.preventDefault();
         if(addKeywordsToProduct(p, newKwInput.value)){
           persistEdits(p);
