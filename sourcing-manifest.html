@@ -485,8 +485,8 @@
   .qe-arrow{ font-size:16px; color:var(--mist); margin-top:14px; }
   .qe-margin-readout{ font-size:11.5px; font-weight:700; margin-top:5px; min-height:16px; }
   .qe-actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
-  .card-top-row{ display:flex; align-items:flex-start; gap:8px; }
-  .card-top-badges{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; flex:1 1 auto; min-width:0; }
+  .card-top-row{ display:flex; align-items:flex-start; gap:6px; }
+  .card-top-badges{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; flex:1 1 auto; min-width:0; }
   .card-select{ display:flex; align-items:center; gap:6px; font-size:11px; color:var(--mist); font-weight:700; cursor:pointer; }
   .card-select input{ width:14px; height:14px; accent-color:var(--amber); cursor:pointer; margin:0; }
   .img-wrap{ position:relative; aspect-ratio:1/1; border-radius:8px; overflow:hidden; background:var(--paper-dim); }
@@ -3462,9 +3462,8 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
       <div class="card ${isWinner ? 'winner' : ''} ${isSelected ? 'selected' : ''} ${it.starred ? 'starred' : ''}">
         <div class="card-top-row">
           <div class="card-top-badges">
-            <label class="card-select">
-              <input type="checkbox" data-select="${it.id}" ${isSelected ? 'checked' : ''} />
-              <span>선택</span>
+            <label class="card-select" title="선택">
+              <input type="checkbox" data-select="${it.id}" ${isSelected ? 'checked' : ''} aria-label="선택" />
             </label>
             <span class="cat-pill" style="background:${meta.hex}" title="${meta.label}">${meta.icon}</span>
             ${hasMultiOptions ? `<span class="opt-pill" title="옵션 ${it.options.length}개">🎨 옵션 ${it.options.length}</span>` : ''}
