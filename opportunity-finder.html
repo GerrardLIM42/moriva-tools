@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>기회 발굴</title>
+<link rel="icon" type="image/png" href="./favicon.png">
+<link rel="apple-touch-icon" href="./favicon.png">
+<style>
+  :root{
+    --bg:#F6F3EC; --panel:#FFFDF8; --border:#DCD5C3; --text:#1B2A3D;
+    --sub:#8B95A1; --accent:#1B2A3D; --gold:#C9961A;
+    --danger:#B8453A; --good:#4F7864; --warn:#B9860F; --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Malgun Gothic",sans-serif;background:var(--bg);color:var(--text);}
+  .page{max-width:1080px;margin:0 auto;padding:26px 20px 90px;}
+  h1{font-size:20px;margin:0 0 4px;}
+  .lead{color:var(--sub);font-size:13px;line-height:1.6;margin:0 0 20px;}
+
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:14px;}
+  .sec-label{font-size:11.5px;font-weight:700;color:var(--sub);margin-bottom:7px;}
+  .hint{font-size:11.5px;color:var(--sub);line-height:1.7;margin:0 0 10px;}
+  code{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:11px;}
+
+  label{font-size:12px;font-weight:700;color:var(--text);display:block;margin:10px 0 5px;}
+  label.checkbox-label{display:flex;align-items:center;gap:6px;font-weight:400;color:var(--sub);cursor:pointer;margin:8px 0 0;}
+  input[type=text],input[type=number]{width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:9px;font-size:13px;font-family:inherit;background:#fff;color:var(--text);}
+  input[type=text]:focus,input[type=number]:focus{outline:2px solid var(--gold);outline-offset:1px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .row3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;}
+
+  button{padding:9px 14px;border:none;border-radius:9px;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;}
+  button:hover{background:#0F1B2C;}
+  button.ghost{background:#fff;border:1px solid var(--border);color:var(--sub);}
+  button.ghost:hover{background:var(--bg);}
+  button.gold{background:var(--gold);color:#fff;}
+  button.gold:hover{background:#B9860F;}
+  button:disabled{opacity:.45;cursor:default;}
+
+  .status-line{margin-top:9px;font-size:12px;color:var(--sub);}
+  .status-line.ok{color:var(--good);}
+  .status-line.error{color:var(--danger);}
+
+  .run-log{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:12px 14px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;white-space:pre-wrap;color:#3E5266;min-height:50px;max-height:260px;overflow:auto;margin-top:12px;}
+
+  .empty{border:1px dashed var(--border);border-radius:var(--radius);padding:34px 20px;text-align:center;color:var(--sub);font-size:13px;line-height:1.7;}
+
+  .result-card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px;}
+  .result-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
+  .result-head input[type=checkbox]{width:16px;height:16px;accent-color:var(--gold);cursor:pointer;}
+  .result-head h3{font-size:15px;margin:0;}
+  .pill{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;}
+  .pill.good{background:#E4EFE3;color:var(--good);}
+  .pill.warn{background:#F5E6CE;color:var(--warn);}
+  .pill.gray{background:var(--bg);color:var(--sub);}
+  .chip-row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;}
+  .chip{font-size:10.5px;background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:3px 8px;color:#3E5266;}
+  .detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px 16px;font-size:12.5px;}
+  .detail-grid .k{color:var(--sub);}
+  .detail-grid .v{font-weight:700;}
+  .detail-grid .v.highlight{color:var(--gold);font-size:14px;}
+  .item-link{font-size:11px;color:var(--gold);font-weight:700;text-decoration:none;}
+  .item-link:hover{text-decoration:underline;}
+
+  .select-bar{position:sticky;bottom:14px;margin-top:16px;background:var(--accent);color:#fff;border-radius:12px;padding:11px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 6px 18px rgba(0,0,0,.18);}
+  .select-bar.hidden{display:none;}
+  .select-bar span{font-size:12.5px;font-weight:700;}
+  .select-bar .spacer{flex:1;}
+  .select-bar button.ghost{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25);color:#fff;}
+  .select-bar button.ghost:hover{background:rgba(255,255,255,.22);}
+
+  .go-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--good);color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:12px;box-shadow:0 6px 18px rgba(0,0,0,.2);z-index:50;opacity:0;pointer-events:none;transition:opacity .2s;}
+  .go-toast.show{opacity:1;pointer-events:auto;}
+  .go-toast a{color:#fff;text-decoration:underline;font-weight:800;}
+
+  .footnote{font-size:10.5px;color:var(--sub);line-height:1.6;border-top:1px dashed var(--border);padding-top:10px;margin-top:6px;}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>기회 발굴 <span style="font-weight:400;color:var(--sub);font-size:13px;">(카테고리 → 저경쟁 키워드 → 1688 원가 → 쿠팡 수요/가격 → 마진)</span></h1>
+  <p class="lead">PC에서 실행하는 <b>소싱 스카우터</b> 프로그램이 아이템스카우트 '아이템발굴'에서 저경쟁 고수요 키워드를 찾고, 3년 추세로 반짝유행을 거른 뒤, 1688 원가와 쿠팡 판매가·예상 판매량으로 마진까지 계산합니다. 로그인 세션은 모두 내 컴퓨터에만 저장됩니다.</p>
+
+  <div class="card" id="runCard">
+    <div class="sec-label">실행하기</div>
+    <p class="status-line" id="connStatusLine">PC의 소싱 스카우터 프로그램에 연결하는 중...</p>
+
+    <label for="categoryId">카테고리 ID 또는 itemscout.io/category/&lt;ID&gt; URL</label>
+    <input type="text" id="categoryId" placeholder="예: 31 (아이템스카우트에서 카테고리 선택 후 URL에서 확인)">
+
+    <div class="row2">
+      <div>
+        <label for="dateFrom">시작 월 (YYYY-MM, 선택)</label>
+        <input type="text" id="dateFrom" placeholder="예: 2026-04">
+      </div>
+      <div>
+        <label for="dateTo">종료 월 (YYYY-MM, 선택)</label>
+        <input type="text" id="dateTo" placeholder="예: 2026-07">
+      </div>
+    </div>
+
+    <div class="row3">
+      <div>
+        <label for="topN">분석할 키워드 수</label>
+        <input type="number" id="topN" value="5" min="1" max="15">
+      </div>
+      <div>
+        <label for="dailyUnits">목표 일 판매량</label>
+        <input type="number" id="dailyUnits" value="10" min="1">
+      </div>
+      <div>
+        <label>&nbsp;</label>
+        <button id="runBtn" type="button" class="gold" disabled style="width:100%;">기회 발굴 시작</button>
+      </div>
+    </div>
+
+    <label class="checkbox-label"><input type="checkbox" id="skipWing"> 쿠팡윙 판매량 추정 생략 (로그인 없이 원가·판매가·추세만 확인)</label>
+    <label class="checkbox-label"><input type="checkbox" id="runHeadless"> 브라우저 창 숨기기 (로그인 세션이 이미 저장되어 있을 때만 권장)</label>
+
+    <div class="run-log" id="runLog" hidden></div>
+  </div>
+
+  <div id="resultsWrap"></div>
+
+  <p class="footnote">키워드마다 3년 추세 확인과 1688·쿠팡 조회가 순서대로 진행되어 시간이 다소 걸릴 수 있습니다 (키워드당 약 30초~1분). 이 페이지는 결과를 표시만 하며, 데이터는 PC의 소싱 스카우터 프로그램에서 직접 처리됩니다.</p>
+</div>
+
+<div class="select-bar hidden" id="selectBar">
+  <span id="selectCount">0개 선택됨</span>
+  <div class="spacer"></div>
+  <button type="button" class="ghost" id="selectAllBtn">전체 선택</button>
+  <button type="button" class="ghost" id="selectNoneBtn">선택 해제</button>
+  <button type="button" class="gold" id="sendBtn">소싱 후보로 보내기</button>
+</div>
+
+<div class="go-toast" id="goToast">
+  <span id="goToastMsg"></span>
+  <a href="#" id="goToastLink">소싱 후보 열기 →</a>
+</div>
+
+<script>
+"use strict";
+var QUEUE_KEY = "moriva-item-sourcing-queue";
+var API_BASE = "http://127.0.0.1:8765";
+var pollTimer = null;
+var results = [];          // 최근 실행 결과
+var selected = new Set();  // keyword 집합
+
+function $(sel){ return document.querySelector(sel); }
+
+function escapeHtml(s){
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  });
+}
+
+function won(n){ return (n === null || n === undefined) ? "-" : "₩" + Math.round(n).toLocaleString("ko-KR"); }
+function num(n){ return (n === null || n === undefined) ? "-" : Math.round(n).toLocaleString("ko-KR"); }
+function cnyStr(n){ return (n === null || n === undefined) ? "-" : "¥" + Number(n).toFixed(2); }
+
+function trendPill(trend){
+  var cls = trend === "꾸준함" ? "good" : (trend === "반짝유행 의심" ? "warn" : "gray");
+  return '<span class="pill ' + cls + '">' + escapeHtml(trend || "확인불가") + '</span>';
+}
+
+/* ---------- 렌더링 ---------- */
+function resultCardHtml(r){
+  var item = r.best_item || {};
+  var price = r.coupang_price || {};
+  var demand = r.demand || {};
+  var margin = r.margin || {};
+  var isSel = selected.has(r.keyword);
+  var chips = [];
+  if (r.search_vol != null) chips.push('<span class="chip">검색수 ' + num(r.search_vol) + '</span>');
+  if (r.product_count != null) chips.push('<span class="chip">상품수 ' + num(r.product_count) + '</span>');
+  if (r.competition != null) chips.push('<span class="chip">경쟁강도 ' + r.competition + '</span>');
+  if (r.opportunity != null) chips.push('<span class="chip">기회점수 ' + num(r.opportunity) + '</span>');
+
+  return (
+    '<div class="result-card" data-kw="' + escapeHtml(r.keyword) + '">' +
+      '<div class="result-head">' +
+        '<input type="checkbox" data-kw="' + escapeHtml(r.keyword) + '" ' + (isSel ? "checked" : "") + '>' +
+        '<h3>' + escapeHtml(r.keyword) + '</h3>' +
+        trendPill(r.trend) +
+      '</div>' +
+      '<div class="chip-row">' + chips.join("") + '</div>' +
+      '<div class="detail-grid">' +
+        '<div><div class="k">쿠팡 상위 판매가</div><div class="v">' + won(price.price) + '</div></div>' +
+        '<div><div class="k">1688 원가</div><div class="v">' + cnyStr(item.cny) + '</div></div>' +
+        '<div><div class="k">쿠팡윙 조회수(28일)</div><div class="v">' + num(demand.views_28d) + '</div></div>' +
+        '<div><div class="k">예상 월 판매량</div><div class="v">' + (demand.monthly_units_est != null ? num(demand.monthly_units_est) + '개' : '-') + '</div></div>' +
+        '<div><div class="k">개당 수익</div><div class="v">' + won(margin.profit_per_unit) + '</div></div>' +
+        '<div><div class="k">마진율</div><div class="v">' + (margin.margin_pct != null ? margin.margin_pct + '%' : '-') + '</div></div>' +
+        '<div><div class="k">예상 월 매출</div><div class="v">' + won(margin.monthly_revenue) + '</div></div>' +
+        '<div><div class="k">예상 월 순수익</div><div class="v highlight">' + won(margin.monthly_net_profit) + '</div></div>' +
+      '</div>' +
+      (item.link ? '<div style="margin-top:10px;"><a class="item-link" href="' + escapeHtml(item.link) + '" target="_blank" rel="noopener">1688에서 보기 ↗</a></div>' : '') +
+    '</div>'
+  );
+}
+
+function renderResults(){
+  var wrap = $("#resultsWrap");
+  if (!results.length) {
+    wrap.innerHTML = "";
+    updateSelectBar();
+    return;
+  }
+  wrap.innerHTML = results.map(resultCardHtml).join("");
+  updateSelectBar();
+}
+
+function updateSelectBar(){
+  var bar = $("#selectBar");
+  var n = selected.size;
+  if (n === 0) { bar.classList.add("hidden"); return; }
+  bar.classList.remove("hidden");
+  $("#selectCount").textContent = n + "개 선택됨";
+}
+
+document.addEventListener("click", function (e) {
+  var cb = e.target.closest('input[type=checkbox][data-kw]');
+  if (cb) {
+    var kw = cb.getAttribute("data-kw");
+    if (cb.checked) selected.add(kw); else selected.delete(kw);
+    updateSelectBar();
+  }
+});
+
+$("#selectAllBtn").addEventListener("click", function () {
+  results.forEach(function (r) { selected.add(r.keyword); });
+  renderResults();
+});
+$("#selectNoneBtn").addEventListener("click", function () {
+  selected = new Set();
+  renderResults();
+});
+
+$("#sendBtn").addEventListener("click", function () {
+  if (!selected.size) return;
+  var picked = [];
+  results.forEach(function (r) {
+    if (!selected.has(r.keyword)) return;
+    var item = r.best_item || {};
+    var margin = r.margin || {};
+    var memoBits = ["기회 발굴 도구에서 가져옴", "키워드: " + r.keyword];
+    if (margin.profit_per_unit != null) memoBits.push("개당수익 " + won(margin.profit_per_unit));
+    if (margin.monthly_net_profit != null) memoBits.push("예상 월순수익 " + won(margin.monthly_net_profit));
+    if (r.trend) memoBits.push("추세: " + r.trend);
+    picked.push({
+      folder: (item.name || r.keyword).slice(0, 60),
+      link: item.link || "",
+      cny: item.cny || 0,
+      memo: memoBits.join(" · ")
+    });
+  });
+  var existing = [];
+  try { existing = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]"); } catch (e) {}
+  existing = existing.concat(picked);
+  try { localStorage.setItem(QUEUE_KEY, JSON.stringify(existing)); } catch (e) {}
+  showGoToast(picked.length);
+});
+
+function showGoToast(n){
+  var toast = $("#goToast");
+  $("#goToastMsg").textContent = n + "개를 소싱 후보로 보냈습니다.";
+  toast.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(function () { toast.classList.remove("show"); }, 6000);
+}
+$("#goToastLink").addEventListener("click", function (e) {
+  e.preventDefault();
+  try { window.parent.postMessage({ type: "moriva-go", id: "sourcing-manifest" }, "*"); } catch (err) {}
+  setTimeout(function () {
+    if (window.parent === window) location.href = "sourcing-manifest.html";
+  }, 150);
+});
+
+/* ---------- PC의 소싱 스카우터 프로그램 연결 ---------- */
+function checkConnection(){
+  if (typeof fetch !== "function") {
+    var line0 = $("#connStatusLine");
+    line0.textContent = "이 브라우저에서는 실행 연결 기능을 사용할 수 없습니다.";
+    line0.className = "status-line error";
+    $("#runBtn").disabled = true;
+    return;
+  }
+  fetch(API_BASE + "/api/ping", { cache: "no-store" })
+    .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error("bad status")); })
+    .then(function () {
+      var line = $("#connStatusLine");
+      line.textContent = "PC의 소싱 스카우터 프로그램에 연결되었습니다. 카테고리를 입력하고 실행하세요.";
+      line.className = "status-line ok";
+      $("#runBtn").disabled = false;
+    })
+    .catch(function () {
+      var line = $("#connStatusLine");
+      line.textContent = "PC에서 소싱 스카우터 프로그램(webapp.py)을 먼저 실행해주세요. 실행 후 이 페이지를 새로고침하면 연결됩니다.";
+      line.className = "status-line error";
+      $("#runBtn").disabled = true;
+    });
+}
+
+$("#runBtn").addEventListener("click", function () {
+  var categoryRaw = $("#categoryId").value.trim();
+  var m = categoryRaw.match(/(\d+)/);
+  var categoryId = m ? parseInt(m[1], 10) : null;
+  if (!categoryId) { alert("카테고리 ID를 확인할 수 없습니다. 숫자 ID 또는 itemscout.io/category/<ID> URL을 입력해주세요."); return; }
+
+  var btn = $("#runBtn");
+  var logEl = $("#runLog");
+  btn.disabled = true;
+  logEl.hidden = false;
+  logEl.textContent = "실행 요청 중...";
+  results = [];
+  selected = new Set();
+  renderResults();
+
+  fetch(API_BASE + "/api/opportunity/run", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      category_id: categoryId,
+      category_label: categoryRaw,
+      date_from: $("#dateFrom").value.trim(),
+      date_to: $("#dateTo").value.trim(),
+      top_n: parseInt($("#topN").value, 10) || 5,
+      daily_units: parseInt($("#dailyUnits").value, 10) || 10,
+      skip_wing: $("#skipWing").checked,
+      headless: $("#runHeadless").checked
+    })
+  })
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, body: d }; }); })
+    .then(function (res) {
+      if (!res.ok || !res.body.ok) throw new Error((res.body && res.body.error) || "실행에 실패했습니다.");
+      pollRunStatus();
+    })
+    .catch(function (e) {
+      logEl.textContent = "오류: " + e.message;
+      btn.disabled = false;
+    });
+});
+
+function pollRunStatus(){
+  clearTimeout(pollTimer);
+  fetch(API_BASE + "/api/opportunity/status", { cache: "no-store" })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      var logEl = $("#runLog");
+      var btn = $("#runBtn");
+      logEl.textContent = (d.log && d.log.length ? d.log.join("\n") : "시작하는 중...");
+      logEl.scrollTop = logEl.scrollHeight;
+      if (d.error) {
+        logEl.textContent += "\n\n오류: " + d.error;
+        btn.disabled = false;
+        return;
+      }
+      if (d.done) {
+        btn.disabled = false;
+        if (d.results && d.results.length) {
+          results = d.results;
+          renderResults();
+          var wrap = $("#resultsWrap");
+          if (wrap && typeof wrap.scrollIntoView === "function") wrap.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+        return;
+      }
+      pollTimer = setTimeout(pollRunStatus, 2000);
+    })
+    .catch(function () {
+      $("#runLog").textContent += "\n(상태 확인 실패 - 연결이 끊겼을 수 있습니다)";
+      $("#runBtn").disabled = false;
+    });
+}
+
+/* ---------- 초기화 ---------- */
+(function init(){
+  renderResults();
+  checkConnection();
+})();
+</script>
+</body>
+</html>
