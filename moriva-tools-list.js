@@ -13,6 +13,7 @@ window.MORIVA_TOOLS = [
     items: [
       { id: "sourcing-dashboard",    icon: "📊", name: "소싱 대시보드",   desc: "소싱 현황을 한눈에 보는 통합 대시보드.", badge: "NEW" },
       { id: "sourcing-manifest",     icon: "🗂️", name: "소싱 후보",       desc: "1688 사입 후보를 링크·이미지와 함께 등록해 비교 검토합니다." },
+      { id: "item-sourcing",         icon: "🧭", name: "아이템 소싱",        desc: "소싱 스카우터(PC)에서 찾은 1688 후보 CSV를 불러와 정리하고, 마음에 드는 항목을 소싱 후보로 바로 보냅니다.", badge: "NEW" },
       { id: "sourcing-price-compare",icon: "💱", name: "소싱 가격비교",   desc: "판매자별 옵션 가격을 비교해 최저가를 자동으로 찾아줍니다." },
       { id: "margin-calculator",     icon: "🧮", name: "마진 계산기",     desc: "수입원가·관부가세·판매비를 반영해 마진율을 계산합니다." },
       { id: "analysis-history",      icon: "🔎", name: "리뷰 분석 기록",   desc: "크롬 확장 프로그램에서 분석한 쿠팡 리뷰 결과를 동기화해서 확인합니다.", badge: "NEW" }
