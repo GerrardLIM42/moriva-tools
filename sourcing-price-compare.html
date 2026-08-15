@@ -750,7 +750,7 @@ document.getElementById('productSaveBtn').addEventListener('click', ()=>{
   render();
 });
 document.getElementById('productNameInput').addEventListener('keydown', (e)=>{
-  if(e.key==='Enter') document.getElementById('productSaveBtn').click();
+  if(e.key==='Enter' && !e.isComposing) document.getElementById('productSaveBtn').click();
 });
 
 /* ---------- Seller modal ---------- */
@@ -777,7 +777,7 @@ document.getElementById('sellerSaveBtn').addEventListener('click', ()=>{
   render();
 });
 document.getElementById('sellerLinkInput').addEventListener('keydown', (e)=>{
-  if(e.key==='Enter') document.getElementById('sellerSaveBtn').click();
+  if(e.key==='Enter' && !e.isComposing) document.getElementById('sellerSaveBtn').click();
 });
 
 /* ---------- Entry modal (option: name + image + price) ---------- */
