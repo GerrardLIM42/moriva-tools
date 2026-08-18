@@ -597,6 +597,124 @@
   .margin-legend .dot.seg-margin{background:var(--green);}
   .margin-legend strong{color:var(--ink); font-family:var(--mono); font-weight:700; font-size:11px;}
 
+  /* ---- 번들(묶음) 구성 섹션 ---- */
+  .bundle-section{
+    margin-top:14px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:14px 16px;
+  }
+  .bundle-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:10px;
+  }
+  .bundle-title{
+    font-size:12.5px;
+    font-weight:700;
+    color:var(--ink);
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .bundle-discount-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    flex-wrap:wrap;
+    background:var(--bg);
+    border-radius:8px;
+    padding:8px 10px;
+    margin-bottom:10px;
+  }
+  .bundle-discount-row label{font-size:11px; color:var(--ink-soft); font-weight:600;}
+  .bundle-discount-row label .hint{font-weight:500; color:var(--ink-faint);}
+  .bundle-discount-row .plain-num-input input{width:56px; font-size:13px;}
+  .bundle-table-wrap{overflow-x:auto;}
+  table.bundle-table{
+    width:100%;
+    min-width:600px;
+    border-collapse:collapse;
+    font-size:11px;
+  }
+  table.bundle-table th{
+    text-align:right;
+    font-size:10px;
+    font-weight:700;
+    color:var(--ink-faint);
+    padding:5px 7px;
+    border-bottom:1px solid var(--line);
+    white-space:nowrap;
+  }
+  table.bundle-table th:first-child, table.bundle-table td:first-child{text-align:left;}
+  table.bundle-table td{
+    text-align:right;
+    padding:6px 7px;
+    border-bottom:1px solid var(--line);
+    font-family:var(--mono);
+    font-weight:600;
+    white-space:nowrap;
+    vertical-align:middle;
+  }
+  table.bundle-table tr:last-child td{border-bottom:none;}
+  table.bundle-table tr.bundle-base-row td{font-weight:700; color:var(--ink);}
+  table.bundle-table td.bundle-tag{font-family:var(--sans); font-weight:700; color:var(--navy-deep);}
+  .bundle-qty-cell{display:flex; align-items:center; justify-content:flex-end; gap:3px;}
+  .bundle-qty-cell span{font-family:var(--sans); font-weight:500; color:var(--ink-soft); font-size:10.5px;}
+  .bundle-qty-input{width:34px; text-align:right;}
+  .bundle-cell-input{display:flex; align-items:center; justify-content:flex-end; gap:2px;}
+  .bundle-cell-input .won{font-size:10px; opacity:.6;}
+  .bundle-price-input, .bundle-logi-input{width:66px; text-align:right;}
+  .bundle-qty-input, .bundle-price-input, .bundle-logi-input{
+    font-family:var(--mono);
+    font-weight:700;
+    font-size:11px;
+    border:1px solid var(--line);
+    border-radius:5px;
+    padding:3px 4px;
+    color:var(--ink);
+    background:var(--surface);
+  }
+  .bundle-price-input:disabled{opacity:.55; cursor:not-allowed; background:var(--bg);}
+  .bundle-remove-btn{
+    font-family:var(--mono);
+    font-size:11px;
+    font-weight:700;
+    color:var(--brick);
+    background:var(--brick-soft);
+    border:none;
+    border-radius:20px;
+    width:20px;
+    height:20px;
+    line-height:1;
+    cursor:pointer;
+  }
+  .bundle-remove-btn:hover{background:#e8c6bf;}
+  .bundle-arrow{font-size:9px; margin-left:2px;}
+  .bundle-arrow.up{color:var(--green);}
+  .bundle-arrow.down{color:var(--brick);}
+  #c-bundle-marginRate.negative, .bundle-table td.negative{color:var(--brick) !important;}
+  .bundle-add-btn{
+    margin-top:10px;
+    width:100%;
+    padding:9px;
+    border:1.5px dashed var(--line);
+    border-radius:9px;
+    background:transparent;
+    color:var(--ink-soft);
+    font-family:var(--sans);
+    font-size:12px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .bundle-add-btn:hover{border-color:var(--navy); color:var(--navy); background:var(--bg);}
+  .bundle-note{font-size:10px; color:var(--ink-faint); margin-top:8px; line-height:1.5;}
+
   .add-card-wrap{
     flex:1 1 360px;
     max-width:420px;
@@ -910,6 +1028,44 @@
           </div>
         </div>
       </div>
+
+      <div class="bundle-section">
+        <div class="bundle-head">
+          <span class="bundle-title">번들(묶음) 구성 <span class="tag-mini">몇 개씩 묶어 팔지 정하고 정산액을 확인</span></span>
+          <label class="fixed-toggle-row" for="c${uid}-bundleAuto">
+            <input type="checkbox" id="c${uid}-bundleAuto" checked>
+            자동 번들 가격 계산
+          </label>
+        </div>
+        <div class="bundle-discount-row" id="c${uid}-bundleDiscountRow">
+          <label>번들 할인율 <span class="hint">(묶음 구매 시 개당 추가 할인 · 0% = 단가 그대로 곱해서 계산)</span></label>
+          <div class="plain-num-input">
+            <input type="text" inputmode="decimal" id="c${uid}-bundleDiscount" value="0">
+            <span>%</span>
+          </div>
+        </div>
+        <div class="bundle-table-wrap">
+          <table class="bundle-table">
+            <thead>
+              <tr><th>구성</th><th>수량</th><th>판매가</th><th>물류비</th><th>정산예상액</th><th>개당 정산액</th><th>마진율</th><th></th></tr>
+            </thead>
+            <tbody id="c${uid}-bundleBody">
+              <tr class="bundle-base-row">
+                <td>기본</td>
+                <td>1개</td>
+                <td id="c${uid}-bundleBaseSale">₩0</td>
+                <td id="c${uid}-bundleBaseLogi">₩0</td>
+                <td id="c${uid}-bundleBaseSettle">₩0</td>
+                <td id="c${uid}-bundleBaseUnit">₩0</td>
+                <td id="c${uid}-bundleBaseMarginRate">0.0%</td>
+                <td></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <button type="button" class="bundle-add-btn" id="c${uid}-bundleAddBtn">＋ 번들 추가</button>
+        <div class="bundle-note">물류비는 기본값이 위 로켓그로스 물류비와 같게 채워지지만, 번들은 무게가 늘어 배송 구간이 바뀔 수 있어 각 줄에서 직접 고칠 수 있습니다.</div>
+      </div>
     </div>`;
   }
 
@@ -925,7 +1081,9 @@
       logisticsFee: (typeof opts.logisticsFee === 'number') ? opts.logisticsFee : 2500,
       fixed: (typeof opts.fixed === 'boolean') ? opts.fixed : false,
       fixedNormalPrice: (typeof opts.fixedNormalPrice === 'number') ? opts.fixedNormalPrice : null,
-      fixedSalePrice: (typeof opts.fixedSalePrice === 'number') ? opts.fixedSalePrice : null
+      fixedSalePrice: (typeof opts.fixedSalePrice === 'number') ? opts.fixedSalePrice : null,
+      bundleAuto: (typeof opts.bundleAuto === 'boolean') ? opts.bundleAuto : true,
+      bundleDiscountPct: (typeof opts.bundleDiscountPct === 'number') ? opts.bundleDiscountPct : 0
     };
 
     const g = (id) => document.getElementById(`c${uid}-${id}`);
@@ -949,10 +1107,17 @@
       segVat: g('segVat'), segMargin: g('segMargin'),
       legCost: g('legCost'), legFee: g('legFee'), legLogi: g('legLogi'),
       legVat: g('legVat'), legMargin: g('legMargin'),
-      remove: g('remove')
+      remove: g('remove'),
+      bundleAutoToggle: g('bundleAuto'), bundleDiscountRow: g('bundleDiscountRow'), bundleDiscount: g('bundleDiscount'),
+      bundleAddBtn: g('bundleAddBtn'), bundleBody: g('bundleBody'),
+      bundleBaseSale: g('bundleBaseSale'), bundleBaseLogi: g('bundleBaseLogi'), bundleBaseSettle: g('bundleBaseSettle'),
+      bundleBaseUnit: g('bundleBaseUnit'), bundleBaseMarginRate: g('bundleBaseMarginRate')
     };
     els.roundUnit.value = String(state.roundUnit);
     els.fixedToggle.checked = state.fixed;
+    els.bundleAutoToggle.checked = state.bundleAuto;
+    els.bundleDiscount.value = String(state.bundleDiscountPct);
+    els.bundleDiscountRow.style.display = state.bundleAuto ? '' : 'none';
     (function initLogisticsSelect(){
       const presets = ['1800','2500','3500','5000','7500'];
       const feeStr = String(state.logisticsFee);
@@ -993,6 +1158,125 @@
       const marginRate = state.finalPrice > 0 ? (margin / state.finalPrice) * 100 : 0;
       return { costKrw, commission, logisticsFee, vat, settleAmt, margin, marginRate };
     }
+
+    /* ── 번들(묶음) 구성: 몇 개를 묶어 팔지, 그때 판매가·정산액·마진이 어떻게 되는지 ── */
+    let bundleSeq = 0;
+    const bundleRows = [];
+
+    function computeBundle(qty, priceOverride, logisticsFee){
+      const gn = globalNums();
+      qty = Math.max(2, Math.round(qty) || 2);
+      let price;
+      if (state.bundleAuto){
+        const discount = Math.min(90, Math.max(0, state.bundleDiscountPct)) / 100;
+        price = Math.max(0, Math.round((state.finalPrice * qty * (1 - discount)) / 10) * 10);
+      } else {
+        price = (priceOverride != null) ? priceOverride : Math.round(state.finalPrice * qty);
+      }
+      const logi = (logisticsFee != null) ? logisticsFee : state.logisticsFee;
+      const commission = price * (gn.feeRate / 100);
+      const vat = gn.vatOn ? price / 11 : 0;
+      const costKrw = state.costCny * gn.exchangeRate * qty;
+      const settleAmt = price - commission - logi;
+      const margin = settleAmt - costKrw - vat;
+      const marginRate = price > 0 ? (margin / price) * 100 : 0;
+      const perUnitSettle = settleAmt / qty;
+      return { qty, price, logi, settleAmt, margin, marginRate, perUnitSettle };
+    }
+
+    function bundleRowTemplate(bid, qty, price, logi){
+      return `<tr class="bundle-row" data-bundle="${bid}">
+        <td class="bundle-tag">번들</td>
+        <td><div class="bundle-qty-cell"><input type="text" inputmode="numeric" class="bundle-qty-input" id="c${uid}-bd${bid}-qty" value="${qty}"><span>개</span></div></td>
+        <td><div class="bundle-cell-input"><span class="won">₩</span><input type="text" inputmode="numeric" class="bundle-price-input" id="c${uid}-bd${bid}-price" value="${fmt(price)}"${state.bundleAuto ? ' disabled' : ''}></div></td>
+        <td><div class="bundle-cell-input"><span class="won">₩</span><input type="text" inputmode="numeric" class="bundle-logi-input" id="c${uid}-bd${bid}-logi" value="${fmt(logi)}"></div></td>
+        <td id="c${uid}-bd${bid}-settle">₩0</td>
+        <td id="c${uid}-bd${bid}-unit">₩0</td>
+        <td id="c${uid}-bd${bid}-marginRate">0.0%</td>
+        <td><button type="button" class="bundle-remove-btn" id="c${uid}-bd${bid}-remove" aria-label="번들 삭제">×</button></td>
+      </tr>`;
+    }
+
+    function addBundleRow(initial){
+      initial = initial || {};
+      bundleSeq += 1;
+      const bid = bundleSeq;
+      const qty = Math.max(2, Math.round(initial.qty) || (bundleRows.length ? bundleRows[bundleRows.length - 1].qty + 1 : 2));
+      const logi = (typeof initial.logisticsFee === 'number') ? initial.logisticsFee : state.logisticsFee;
+      const priceOverride = (typeof initial.price === 'number') ? initial.price : null;
+      const initPrice = priceOverride != null ? priceOverride : Math.round(state.finalPrice * qty);
+      els.bundleBody.insertAdjacentHTML('beforeend', bundleRowTemplate(bid, qty, initPrice, logi));
+      const row = {
+        id: bid, qty: qty, price: priceOverride, logisticsFee: logi,
+        els: {
+          qty: document.getElementById(`c${uid}-bd${bid}-qty`),
+          price: document.getElementById(`c${uid}-bd${bid}-price`),
+          logi: document.getElementById(`c${uid}-bd${bid}-logi`),
+          settle: document.getElementById(`c${uid}-bd${bid}-settle`),
+          unit: document.getElementById(`c${uid}-bd${bid}-unit`),
+          marginRate: document.getElementById(`c${uid}-bd${bid}-marginRate`),
+          remove: document.getElementById(`c${uid}-bd${bid}-remove`)
+        }
+      };
+      row.els.qty.addEventListener('input', e => { row.qty = Math.max(2, parseInt(e.target.value, 10) || 2); renderBundles(); });
+      row.els.qty.addEventListener('change', e => { row.qty = Math.max(2, parseInt(e.target.value, 10) || 2); renderBundles(); });
+      row.els.price.addEventListener('input', e => { row.price = parseNum(e.target.value); renderBundles(); });
+      row.els.price.addEventListener('change', e => { row.price = parseNum(e.target.value); renderBundles(); });
+      row.els.logi.addEventListener('input', e => { row.logisticsFee = parseNum(e.target.value); renderBundles(); });
+      row.els.logi.addEventListener('change', e => { row.logisticsFee = parseNum(e.target.value); renderBundles(); });
+      [row.els.qty, row.els.price, row.els.logi].forEach(input => {
+        input.addEventListener('focus', () => { setTimeout(() => { try { input.select(); } catch (err) {} }, 0); });
+        input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); });
+      });
+      row.els.remove.addEventListener('click', () => {
+        const idx = bundleRows.findIndex(r => r.id === bid);
+        if (idx !== -1){
+          const tr = els.bundleBody.querySelector(`tr[data-bundle="${bid}"]`);
+          if (tr) tr.remove();
+          bundleRows.splice(idx, 1);
+        }
+      });
+      bundleRows.push(row);
+      renderBundles();
+    }
+
+    function renderBundles(){
+      const m = deriveMargin();
+      els.bundleBaseSale.textContent = '₩' + fmt(state.finalPrice);
+      els.bundleBaseLogi.textContent = '₩' + fmt(state.logisticsFee);
+      els.bundleBaseSettle.textContent = '₩' + fmt(m.settleAmt);
+      els.bundleBaseUnit.textContent = '₩' + fmt(m.settleAmt);
+      els.bundleBaseMarginRate.textContent = m.marginRate.toFixed(1) + '%';
+      els.bundleBaseMarginRate.classList.toggle('negative', m.margin < 0);
+
+      bundleRows.forEach(row => {
+        const active = document.activeElement;
+        const c = computeBundle(row.qty, state.bundleAuto ? null : row.price, row.logisticsFee);
+        row.els.price.disabled = state.bundleAuto;
+        if (active !== row.els.qty) row.els.qty.value = String(row.qty);
+        if (state.bundleAuto || active !== row.els.price) row.els.price.value = fmt(c.price);
+        if (active !== row.els.logi) row.els.logi.value = fmt(c.logi);
+        row.els.settle.textContent = '₩' + fmt(c.settleAmt);
+        const diff = c.perUnitSettle - m.settleAmt;
+        const arrow = diff > 0.5 ? ' <span class="bundle-arrow up">▲</span>' : (diff < -0.5 ? ' <span class="bundle-arrow down">▼</span>' : '');
+        row.els.unit.innerHTML = '₩' + fmt(c.perUnitSettle) + arrow;
+        row.els.marginRate.textContent = c.marginRate.toFixed(1) + '%';
+        row.els.marginRate.classList.toggle('negative', c.margin < 0);
+      });
+    }
+
+    els.bundleAutoToggle.addEventListener('change', e => {
+      state.bundleAuto = e.target.checked;
+      els.bundleDiscountRow.style.display = state.bundleAuto ? '' : 'none';
+      renderBundles();
+    });
+    els.bundleDiscount.addEventListener('input', e => {
+      state.bundleDiscountPct = parseFloat(String(e.target.value).replace(/[^0-9.\-]/g, '')) || 0;
+      renderBundles();
+    });
+    els.bundleDiscount.addEventListener('focus', () => { setTimeout(() => { try { els.bundleDiscount.select(); } catch (err) {} }, 0); });
+    els.bundleDiscount.addEventListener('keydown', e => { if (e.key === 'Enter') els.bundleDiscount.blur(); });
+    els.bundleAddBtn.addEventListener('click', () => addBundleRow());
 
     function render(){
       const { salePrice, normalPrice, subAfterInstant } = derive();
@@ -1066,6 +1350,7 @@
       els.legVat.textContent = '₩' + fmt(m.vat);
       els.legMargin.textContent = m.margin < 0 ? '-₩' + fmt(Math.abs(m.margin)) : '₩' + fmt(m.margin);
 
+      renderBundles();
       updateComparisonTable();
     }
 
@@ -1173,8 +1458,12 @@
     const cardObj = {
       uid, state, els, derive, deriveMargin, render,
       getLabel: () => els.label.value || '(이름없음)',
+      getBundles: () => bundleRows.map(r => ({ qty: r.qty, price: r.price, logisticsFee: r.logisticsFee })),
       get root(){ return document.querySelector(`.product-card[data-card="${uid}"]`); }
     };
+    if (Array.isArray(opts.bundles)){
+      opts.bundles.forEach(b => addBundleRow(b));
+    }
     render();
     return cardObj;
   }
@@ -1263,7 +1552,7 @@
       collect: function(){
         return {
           global: globalNums(),
-          products: cards.map(c => Object.assign({ label: c.getLabel() }, c.state))
+          products: cards.map(c => Object.assign({ label: c.getLabel(), bundles: c.getBundles() }, c.state))
         };
       },
       restore: function(d){
