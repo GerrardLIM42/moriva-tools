@@ -92,6 +92,13 @@
   .icon-btn:hover{background:#f2f2f2;}
   .icon-btn.danger:hover{background:#fdeceb;color:var(--coupang-price);border-color:var(--coupang-price);}
   .empty-hint{font-size:11.5px;color:var(--text-3);text-align:center;padding:10px 0 2px;}
+  .bundle-toggle-row{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-1);font-weight:600;cursor:pointer;margin-bottom:12px;}
+  .bundle-toggle-row input{width:15px;height:15px;cursor:pointer;}
+  .bundle-opt-item{display:flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:8px;padding:7px 8px;margin-bottom:6px;}
+  .bundle-opt-item input[type=number]{width:56px;padding:5px 6px;border:1px solid var(--border);border-radius:5px;font-size:12.5px;font-family:inherit;}
+  .bundle-opt-item .unit-suffix, .bundle-opt-item .won-suffix{font-size:11.5px;color:var(--text-2);white-space:nowrap;}
+  .bundle-opt-item .icon-btn{margin-left:auto;}
+  .bundle-base-hint{font-size:11px;color:var(--text-3);margin-bottom:10px;line-height:1.5;}
   .device-toggle{display:flex;gap:8px;margin-top:8px;}
   .device-toggle button{
     flex:1;padding:10px 0;border-radius:8px;border:1.5px solid var(--border);background:#fff;font-size:13px;font-weight:600;color:var(--text-2);cursor:pointer;
@@ -217,6 +224,17 @@
   }
   .m-freerow{display:flex;align-items:center;gap:14px;font-size:11.5px;color:#8a8a8a;padding-bottom:18px;}
   .m-freerow span{display:flex;align-items:center;gap:4px;}
+  .m-bundle-box{border-top:8px solid #f4f5f7;margin:0 -14px;padding:18px 14px 16px;}
+  .m-bundle-title{font-size:14.5px;font-weight:700;color:#111;margin-bottom:12px;}
+  .m-bundle-list{display:flex;flex-direction:column;gap:8px;}
+  .m-bundle-row{display:flex;align-items:center;gap:9px;border:1px solid #e6e6e6;border-radius:9px;padding:11px 12px;cursor:pointer;flex-wrap:wrap;}
+  .m-bundle-row.sel{border-color:var(--coupang-blue);background:#f4f7ff;}
+  .m-bundle-radio{width:17px;height:17px;border-radius:50%;border:2px solid #cfcfcf;flex-shrink:0;position:relative;}
+  .m-bundle-radio.on{border-color:var(--coupang-blue);}
+  .m-bundle-radio.on::after{content:'';position:absolute;inset:3px;border-radius:50%;background:var(--coupang-blue);}
+  .m-bundle-label{font-size:13.5px;font-weight:700;color:#111;}
+  .m-bundle-price{font-size:13.5px;font-weight:800;color:#111;}
+  .m-bundle-rocket{font-size:11px;font-weight:700;color:var(--coupang-blue);display:flex;align-items:center;gap:3px;margin-left:auto;white-space:nowrap;}
   .m-notice{
     margin:0 -14px;padding:22px 24px;background:#fafafa;border-top:8px solid #f4f5f7;text-align:center;
   }
@@ -328,6 +346,17 @@
   .pc-freeship-row .sub{font-size:12.5px;color:#666;line-height:1.7;}
   .pc-optsummary{font-size:12.5px;color:#555;}
   .pc-optsummary b{color:#1a1a1a;font-weight:600;}
+  .pc-bundle-box{}
+  .pc-bundle-title{font-size:13.5px;font-weight:700;color:#1a1a1a;margin-bottom:10px;}
+  .pc-bundle-list{display:flex;flex-direction:column;gap:8px;}
+  .pc-bundle-row{display:flex;align-items:center;gap:10px;border:1px solid #e6e6e6;border-radius:9px;padding:10px 12px;cursor:pointer;}
+  .pc-bundle-row.sel{border-color:var(--coupang-blue);background:#f4f7ff;}
+  .pc-bundle-radio{width:16px;height:16px;border-radius:50%;border:2px solid #cfcfcf;flex-shrink:0;position:relative;}
+  .pc-bundle-radio.on{border-color:var(--coupang-blue);}
+  .pc-bundle-radio.on::after{content:'';position:absolute;inset:3px;border-radius:50%;background:var(--coupang-blue);}
+  .pc-bundle-label{font-size:13px;font-weight:700;color:#111;}
+  .pc-bundle-price{font-size:13px;font-weight:800;color:#111;}
+  .pc-bundle-rocket{font-size:11px;font-weight:700;color:var(--coupang-blue);display:flex;align-items:center;gap:3px;margin-left:auto;white-space:nowrap;}
   .pc-reward-row{font-size:12.5px;color:#555;display:flex;gap:12px;}
   .pc-reward-row .lbl{color:#999;flex-shrink:0;}
   .pc-qty{display:flex;align-items:center;gap:10px;margin-bottom:18px;font-size:12.5px;color:#555;}
@@ -433,6 +462,20 @@
     </div>
 
     <div class="section">
+      <div class="section-label">🎁 번들(묶음) 옵션 미리보기</div>
+      <label class="bundle-toggle-row" for="in-bundleEnable">
+        <input type="checkbox" id="in-bundleEnable" onchange="state.bundle.enabled=this.checked; render(); if(document.getElementById('fs-overlay').classList.contains('open')) renderFullscreen();">
+        가격 아래에 "더 많은 옵션 보기" 번들 선택 UI 표시
+      </label>
+      <div class="field"><label>옵션 단위 이름</label>
+        <input type="text" id="in-bundleUnit" placeholder="박스" oninput="state.bundle.unit=this.value||'박스'; render(); if(document.getElementById('fs-overlay').classList.contains('open')) renderFullscreen();"></div>
+      <div class="bundle-base-hint">기본(1개) 옵션은 위에서 입력한 판매가를 그대로 사용해요. 아래 "+ 옵션 추가"로 2개, 3개... 묶음 단위와 가격을 추가하세요.</div>
+      <div id="bundle-opt-list"></div>
+      <div class="empty-hint" id="bundle-opt-empty">아직 추가된 번들 옵션이 없어요</div>
+      <button type="button" class="add-html-btn" onclick="addBundleOption()">+ 옵션 추가</button>
+    </div>
+
+    <div class="section">
       <div class="section-label">🖼️ 썸네일 이미지 (대표/서브)</div>
       <label class="upload-btn">+ 썸네일 이미지 추가 (여러 장 선택 가능)
         <input type="file" accept="image/*" multiple onchange="handleThumbUpload(event)"></label>
@@ -493,8 +536,9 @@
 </div>
 
 <script>
-let state = { device: 'mobile', thumbs: [], details: [], prodNo: (8000000000 + Math.floor(Math.random()*999999999)) + ' - ' + (10000000 + Math.floor(Math.random()*89999999)) };
+let state = { device: 'mobile', thumbs: [], details: [], prodNo: (8000000000 + Math.floor(Math.random()*999999999)) + ' - ' + (10000000 + Math.floor(Math.random()*89999999)), bundle: { enabled: false, unit: '박스', options: [] }, bundleSelectedIdx: 0 };
 let uid = 1;
+let bundleUid = 1;
 let pendingHtmlEditId = null; // HTML 블록을 수정 중일 때 대상 id (null이면 새로 추가하는 중)
 
 function escapeAttr(str){
@@ -934,6 +978,49 @@ function renderControls(){
       <div class="icon-btn danger" onclick="removeDetail(${d.id})">✕</div>`;
     dList.appendChild(div);
   });
+  renderBundleOptControls();
+}
+
+/* ---------- 번들(묶음) 옵션 미리보기: 좌측 패널 편집 목록 ---------- */
+function renderBundleOptControls(){
+  const bList = document.getElementById('bundle-opt-list');
+  const bEmpty = document.getElementById('bundle-opt-empty');
+  if (!bList) return;
+  bList.innerHTML = '';
+  bEmpty.style.display = state.bundle.options.length ? 'none' : 'block';
+  state.bundle.options.forEach(o=>{
+    const div = document.createElement('div');
+    div.className = 'bundle-opt-item';
+    div.innerHTML = `
+      <input type="number" min="2" value="${o.qty}" oninput="updateBundleOption(${o.id},'qty',this.value)">
+      <span class="unit-suffix">${state.bundle.unit || '박스'}</span>
+      <input type="number" min="0" value="${o.price}" oninput="updateBundleOption(${o.id},'price',this.value)">
+      <span class="won-suffix">원</span>
+      <div class="icon-btn danger" onclick="removeBundleOption(${o.id})">✕</div>`;
+    bList.appendChild(div);
+  });
+}
+function addBundleOption(){
+  const basePrice = Number(document.getElementById('in-price').value) || Number(DEFAULTS.price);
+  const lastQty = state.bundle.options.length ? state.bundle.options[state.bundle.options.length-1].qty : 1;
+  const qty = lastQty + 1;
+  const price = Math.round(basePrice * qty / 10) * 10;
+  state.bundle.options.push({ id: bundleUid++, qty, price });
+  renderBundleOptControls();
+  render();
+}
+function removeBundleOption(id){
+  state.bundle.options = state.bundle.options.filter(o=>o.id !== id);
+  if (state.bundleSelectedIdx > state.bundle.options.length) state.bundleSelectedIdx = 0;
+  renderBundleOptControls();
+  render();
+}
+function updateBundleOption(id, field, value){
+  const o = state.bundle.options.find(o=>o.id === id);
+  if (!o) return;
+  if (field === 'qty') o.qty = Math.max(2, parseInt(value, 10) || 2);
+  else o.price = Math.max(0, parseInt(value, 10) || 0);
+  render();
 }
 
 function setDevice(dev){
@@ -975,6 +1062,55 @@ function starRow(rating){
   let s = '';
   for(let i=0;i<5;i++) s += i<full ? '★' : '☆';
   return s;
+}
+
+/* ---------- 번들(묶음) 옵션 미리보기: 모바일/PC 공용 목록 생성 ---------- */
+function bundleOptionRows(v){
+  const unit = state.bundle.unit || '박스';
+  const rows = [{ qty: 1, price: Number(v.price) || 0 }].concat(
+    state.bundle.options.map(o=>({ qty: o.qty, price: o.price }))
+  );
+  return rows.map((r,i)=>({ idx: i, label: `${r.qty}${unit}`, price: r.price, selected: state.bundleSelectedIdx === i }));
+}
+function mobileBundleBlockHTML(v){
+  if (!state.bundle.enabled || !state.bundle.options.length) return '';
+  const rows = bundleOptionRows(v);
+  return `
+      <div class="m-bundle-box">
+        <div class="m-bundle-title">더 많은 옵션 보기</div>
+        <div class="m-bundle-list">
+          ${rows.map(r=>`
+            <div class="m-bundle-row${r.selected?' sel':''}" onclick="selectBundleOption(${r.idx})">
+              <span class="m-bundle-radio${r.selected?' on':''}"></span>
+              <span class="m-bundle-label">${r.label}</span>
+              <span class="m-bundle-price">${fmt(r.price)}원</span>
+              <span class="m-bundle-rocket">🚀 판매자로켓</span>
+            </div>`).join('')}
+        </div>
+      </div>`;
+}
+function pcBundleBlockHTML(v){
+  if (!state.bundle.enabled || !state.bundle.options.length) return '';
+  const rows = bundleOptionRows(v);
+  return `
+          <div class="pc-divider"></div>
+          <div class="pc-bundle-box">
+            <div class="pc-bundle-title">더 많은 옵션 보기</div>
+            <div class="pc-bundle-list">
+              ${rows.map(r=>`
+                <div class="pc-bundle-row${r.selected?' sel':''}" onclick="selectBundleOption(${r.idx})">
+                  <span class="pc-bundle-radio${r.selected?' on':''}"></span>
+                  <span class="pc-bundle-label">${r.label}</span>
+                  <span class="pc-bundle-price">${fmt(r.price)}원</span>
+                  <span class="pc-bundle-rocket">🚀 판매자로켓</span>
+                </div>`).join('')}
+            </div>
+          </div>`;
+}
+function selectBundleOption(i){
+  state.bundleSelectedIdx = i;
+  render();
+  if(document.getElementById('fs-overlay').classList.contains('open')) renderFullscreen();
 }
 
 /* ---------- MOBILE CONTENT (shared) ---------- */
@@ -1034,6 +1170,7 @@ function mobileInnerHTML(v){
             <span>↩︎ 단순변심도 30일 무료반품</span>
           </div>
         </div>
+        ${mobileBundleBlockHTML(v)}
       </div>
       ${noticeBlock}
       <div class="m-seller-box">
@@ -1128,6 +1265,7 @@ function pcInnerHTML(v){
             <div class="lbl">무료배송</div>
             <div class="sub">${v.deliver} · 단순변심 30일 무료반품<br>판매자 ${v.sellerLegal}</div>
           </div>
+          ${pcBundleBlockHTML(v)}
           ${v.option ? `<div class="pc-divider"></div><div class="pc-optsummary">${v.option}</div>` : ''}
           <div class="pc-divider"></div>
           <div class="pc-reward-row"><span class="lbl">적립</span> 최대 ${fmt(Math.round(v.price*0.01))}원 쿠팡캐시 적립 · 쿠페이 머니 결제시</div>
@@ -1205,7 +1343,7 @@ function closeFullscreen(){
 document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeFullscreen(); });
 
 // init
-applyShareParam(); renderControls(); render(); if (new URLSearchParams(location.search).get('solo') === '1' && new URLSearchParams(location.search).get('share')) openFullscreen(); window.addEventListener('load', function(){ if (!window.MorivaSaves) return; MorivaSaves.init({ storeKey: 'moriva_preview_saves_v1', title: '상품페이지 미리보기', collect: function(){ const fields = {}; Object.keys(SHARE_FIELD_MAP).forEach(k=>{ const el = document.getElementById(SHARE_FIELD_MAP[k]); if (el) fields[k] = el.value; }); return { fields: fields, device: state.device, thumbs: state.thumbs, details: state.details }; }, restore: function(d){ if (!d) return; if (d.fields){ Object.keys(SHARE_FIELD_MAP).forEach(k=>{ const el = document.getElementById(SHARE_FIELD_MAP[k]); if (el && d.fields[k] !== undefined) el.value = d.fields[k]; }); } state.thumbs = Array.isArray(d.thumbs) ? d.thumbs : []; state.details = Array.isArray(d.details) ? d.details : []; const allIds = state.thumbs.concat(state.details).map(x=>x.id||0); uid = (allIds.length ? Math.max.apply(null, allIds) : 0) + 1; if (d.device === 'mobile' || d.device === 'pc'){ state.device = d.device; document.getElementById('btn-mobile').classList.toggle('active', d.device === 'mobile'); document.getElementById('btn-pc').classList.toggle('active', d.device === 'pc'); } renderControls(); render(); }, nameHint: function(){ const el = document.getElementById('in-title'); return el && el.value ? el.value.slice(0, 24) : ''; }, summary: function(d){ const f = (d && d.fields) || {}; const cnt = ((d && d.thumbs) || []).length + ((d && d.details) || []).length; const title = (f.title || DEFAULTS.title || '상품명 없음').slice(0, 26); return title + (cnt ? ' · 이미지·동영상 ' + cnt + '개' : ' · 이미지 없음'); } }); });
+applyShareParam(); renderControls(); render(); if (new URLSearchParams(location.search).get('solo') === '1' && new URLSearchParams(location.search).get('share')) openFullscreen(); window.addEventListener('load', function(){ if (!window.MorivaSaves) return; MorivaSaves.init({ storeKey: 'moriva_preview_saves_v1', title: '상품페이지 미리보기', collect: function(){ const fields = {}; Object.keys(SHARE_FIELD_MAP).forEach(k=>{ const el = document.getElementById(SHARE_FIELD_MAP[k]); if (el) fields[k] = el.value; }); return { fields: fields, device: state.device, thumbs: state.thumbs, details: state.details, bundle: state.bundle }; }, restore: function(d){ if (!d) return; if (d.fields){ Object.keys(SHARE_FIELD_MAP).forEach(k=>{ const el = document.getElementById(SHARE_FIELD_MAP[k]); if (el && d.fields[k] !== undefined) el.value = d.fields[k]; }); } state.thumbs = Array.isArray(d.thumbs) ? d.thumbs : []; state.details = Array.isArray(d.details) ? d.details : []; const allIds = state.thumbs.concat(state.details).map(x=>x.id||0); uid = (allIds.length ? Math.max.apply(null, allIds) : 0) + 1; if (d.bundle && typeof d.bundle === 'object'){ state.bundle.enabled = !!d.bundle.enabled; state.bundle.unit = d.bundle.unit || '박스'; state.bundle.options = Array.isArray(d.bundle.options) ? d.bundle.options : []; const bIds = state.bundle.options.map(o=>o.id||0); bundleUid = (bIds.length ? Math.max.apply(null, bIds) : 0) + 1; state.bundleSelectedIdx = 0; const enEl = document.getElementById('in-bundleEnable'); if (enEl) enEl.checked = state.bundle.enabled; const unEl = document.getElementById('in-bundleUnit'); if (unEl) unEl.value = state.bundle.unit; } if (d.device === 'mobile' || d.device === 'pc'){ state.device = d.device; document.getElementById('btn-mobile').classList.toggle('active', d.device === 'mobile'); document.getElementById('btn-pc').classList.toggle('active', d.device === 'pc'); } renderControls(); render(); }, nameHint: function(){ const el = document.getElementById('in-title'); return el && el.value ? el.value.slice(0, 24) : ''; }, summary: function(d){ const f = (d && d.fields) || {}; const cnt = ((d && d.thumbs) || []).length + ((d && d.details) || []).length; const title = (f.title || DEFAULTS.title || '상품명 없음').slice(0, 26); return title + (cnt ? ' · 이미지·동영상 ' + cnt + '개' : ' · 이미지 없음'); } }); });
 renderControls();
 render();
 </script>
