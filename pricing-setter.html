@@ -664,6 +664,7 @@
   table.bundle-table tr:last-child td{border-bottom:none;}
   table.bundle-table tr.bundle-base-row td{font-weight:700; color:var(--ink);}
   table.bundle-table td.bundle-tag{font-family:var(--sans); font-weight:700; color:var(--navy-deep);}
+  table.bundle-table td.bundle-setprice{color:var(--amber-deep); font-weight:700;}
   .bundle-qty-cell{display:flex; align-items:center; justify-content:flex-end; gap:3px;}
   .bundle-qty-cell span{font-family:var(--sans); font-weight:500; color:var(--ink-soft); font-size:10.5px;}
   .bundle-qty-input{width:34px; text-align:right;}
@@ -1047,13 +1048,14 @@
         <div class="bundle-table-wrap">
           <table class="bundle-table">
             <thead>
-              <tr><th>구성</th><th>수량</th><th>판매가</th><th>물류비</th><th>정산예상액</th><th>개당 정산액</th><th>마진율</th><th></th></tr>
+              <tr><th>구성</th><th>수량</th><th>판매가</th><th>설정 판매가 <span class="tag-mini" title="즉시할인·다운할인을 기본 상품과 동일한 금액으로 적용한다고 할 때, 쿠팡윙에 실제로 입력해야 하는 판매가">?</span></th><th>물류비</th><th>정산예상액</th><th>개당 정산액</th><th>마진율</th><th></th></tr>
             </thead>
             <tbody id="c${uid}-bundleBody">
               <tr class="bundle-base-row">
                 <td>기본</td>
                 <td>1개</td>
                 <td id="c${uid}-bundleBaseSale">₩0</td>
+                <td id="c${uid}-bundleBaseSetPrice" class="bundle-setprice">₩0</td>
                 <td id="c${uid}-bundleBaseLogi">₩0</td>
                 <td id="c${uid}-bundleBaseSettle">₩0</td>
                 <td id="c${uid}-bundleBaseUnit">₩0</td>
@@ -1064,7 +1066,7 @@
           </table>
         </div>
         <button type="button" class="bundle-add-btn" id="c${uid}-bundleAddBtn">＋ 번들 추가</button>
-        <div class="bundle-note">물류비는 기본값이 위 로켓그로스 물류비와 같게 채워지지만, 번들은 무게가 늘어 배송 구간이 바뀔 수 있어 각 줄에서 직접 고칠 수 있습니다.</div>
+        <div class="bundle-note">물류비는 기본값이 위 로켓그로스 물류비와 같게 채워지지만, 번들은 무게가 늘어 배송 구간이 바뀔 수 있어 각 줄에서 직접 고칠 수 있습니다. '설정 판매가'는 기본 상품과 동일한 즉시할인·다운할인 금액이 이 번들에도 그대로 적용된다고 가정했을 때, 쿠팡윙 상품 등록 화면에 입력해야 하는 판매가입니다.</div>
       </div>
     </div>`;
   }
@@ -1110,7 +1112,7 @@
       remove: g('remove'),
       bundleAutoToggle: g('bundleAuto'), bundleDiscountRow: g('bundleDiscountRow'), bundleDiscount: g('bundleDiscount'),
       bundleAddBtn: g('bundleAddBtn'), bundleBody: g('bundleBody'),
-      bundleBaseSale: g('bundleBaseSale'), bundleBaseLogi: g('bundleBaseLogi'), bundleBaseSettle: g('bundleBaseSettle'),
+      bundleBaseSale: g('bundleBaseSale'), bundleBaseSetPrice: g('bundleBaseSetPrice'), bundleBaseLogi: g('bundleBaseLogi'), bundleBaseSettle: g('bundleBaseSettle'),
       bundleBaseUnit: g('bundleBaseUnit'), bundleBaseMarginRate: g('bundleBaseMarginRate')
     };
     els.roundUnit.value = String(state.roundUnit);
@@ -1189,6 +1191,7 @@
         <td class="bundle-tag">번들</td>
         <td><div class="bundle-qty-cell"><input type="text" inputmode="numeric" class="bundle-qty-input" id="c${uid}-bd${bid}-qty" value="${qty}"><span>개</span></div></td>
         <td><div class="bundle-cell-input"><span class="won">₩</span><input type="text" inputmode="numeric" class="bundle-price-input" id="c${uid}-bd${bid}-price" value="${fmt(price)}"${state.bundleAuto ? ' disabled' : ''}></div></td>
+        <td id="c${uid}-bd${bid}-setPrice" class="bundle-setprice">₩0</td>
         <td><div class="bundle-cell-input"><span class="won">₩</span><input type="text" inputmode="numeric" class="bundle-logi-input" id="c${uid}-bd${bid}-logi" value="${fmt(logi)}"></div></td>
         <td id="c${uid}-bd${bid}-settle">₩0</td>
         <td id="c${uid}-bd${bid}-unit">₩0</td>
@@ -1211,6 +1214,7 @@
         els: {
           qty: document.getElementById(`c${uid}-bd${bid}-qty`),
           price: document.getElementById(`c${uid}-bd${bid}-price`),
+          setPrice: document.getElementById(`c${uid}-bd${bid}-setPrice`),
           logi: document.getElementById(`c${uid}-bd${bid}-logi`),
           settle: document.getElementById(`c${uid}-bd${bid}-settle`),
           unit: document.getElementById(`c${uid}-bd${bid}-unit`),
@@ -1242,7 +1246,9 @@
 
     function renderBundles(){
       const m = deriveMargin();
+      const extraDiscount = state.instantDiscount + state.downDiscount;
       els.bundleBaseSale.textContent = '₩' + fmt(state.finalPrice);
+      els.bundleBaseSetPrice.textContent = '₩' + fmt(state.finalPrice + extraDiscount);
       els.bundleBaseLogi.textContent = '₩' + fmt(state.logisticsFee);
       els.bundleBaseSettle.textContent = '₩' + fmt(m.settleAmt);
       els.bundleBaseUnit.textContent = '₩' + fmt(m.settleAmt);
@@ -1256,6 +1262,7 @@
         if (active !== row.els.qty) row.els.qty.value = String(row.qty);
         if (state.bundleAuto || active !== row.els.price) row.els.price.value = fmt(c.price);
         if (active !== row.els.logi) row.els.logi.value = fmt(c.logi);
+        row.els.setPrice.textContent = '₩' + fmt(c.price + extraDiscount);
         row.els.settle.textContent = '₩' + fmt(c.settleAmt);
         const diff = c.perUnitSettle - m.settleAmt;
         const arrow = diff > 0.5 ? ' <span class="bundle-arrow up">▲</span>' : (diff < -0.5 ? ' <span class="bundle-arrow down">▼</span>' : '');
