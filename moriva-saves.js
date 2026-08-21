@@ -17,9 +17,10 @@
  * 예전 버전 데이터가 남아 있으면 처음 열 때 자동으로 IndexedDB로 옮기고 localStorage는
  * 비운다. IndexedDB는 사실상 용량 제한이 없어 이미지·동영상이 포함된 항목(예: 상품페이지
  * 미리보기 도구)도 "저장 공간 부족" 오류 없이 저장된다.
- * 단, 기기 간 동기화(moriva-sync.js)는 localStorage 스냅샷만 GitHub로 백업하므로,
- * IndexedDB로 옮겨진 뒤에는 이미지가 포함된 저장 항목이 다른 기기로 자동 동기화되지는
- * 않는다(텍스트 위주로 가벼운 도구의 저장 항목은 영향 없음).
+ * 기기 간 동기화(moriva-sync.js)를 켜 두면 이 저장 목록도 함께 GitHub로 백업된다.
+ * 다만 저장 항목 하나(도구별 저장 목록 전체)가 너무 크면(약 200KB 초과, 주로 이미지·동영상이
+ * 포함된 경우) GitHub API 용량 한도 때문에 그 저장 항목만 이 기기에 남고 다른 기기로는
+ * 자동 동기화되지 않는다(텍스트 위주로 가벼운 도구의 저장 항목은 영향 없음).
  * IndexedDB를 쓸 수 없는 환경(사생활 보호 모드 등)에서는 예전처럼 localStorage로
  * 자동 대체된다.
  */
@@ -71,6 +72,16 @@
         tx.onabort = function () { reject(tx.error || new Error("저장 중단")); };
       });
     });
+  }
+
+  // 저장/삭제가 IndexedDB에 반영된 뒤 moriva-sync.js에게 알린다. moriva-sync.js는
+  // localStorage 변경만 자동으로 감지하므로(Storage.prototype 가로채기), IndexedDB로 저장하는
+  // 이 저장 보관함은 직접 알려줘야 자동 백업(schedule())이 걸린다. 셸 iframe 안에서 열렸으면
+  // window.parent가 셸이라 그쪽 리스너가 받고, 도구 페이지를 단독 탭으로 열었으면(solo=1)
+  // 그 페이지 자신이 곧 "상위 프레임" 역할이라 window.parent===window라 스스로 받는다.
+  // 동기화가 꺼져 있거나 moriva-sync.js가 없는 페이지에서는 아무 효과 없이 무시된다.
+  function notifySyncChange() {
+    try { window.parent.postMessage({ type: "moriva-storage-changed" }, "*"); } catch (e) {}
   }
 
   // localStorage 에 남아 있는 예전 저장 목록을 한 번만 IndexedDB로 옮기고
@@ -214,11 +225,13 @@
       return idbSet(opt.storeKey, list).then(function () {
         items = list;
         paint();
+        notifySyncChange();
         return true;
       }).catch(function () {
         var saved = writeLegacyFallback(list);
         items = saved || loadLocalSync();
         paint();
+        if (saved) notifySyncChange();
         return !!saved;
       });
     }
