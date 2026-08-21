@@ -149,6 +149,10 @@
   .day-block .db-body .db-noPhase{font-size:11px;color:var(--sub);font-style:italic;}
   .db-badges{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;}
   .db-badges span{font-size:10px;padding:1.5px 6px;border-radius:6px;background:#f1f2f8;color:var(--sub);font-weight:700;white-space:nowrap;}
+  /* 상품등록/그로스 상품 발송 — D+n 일정과 별도로 표시되는 마일스톤 배지 */
+  .milestone-block{border:1px dashed var(--gold);border-radius:7px;overflow:hidden;margin-bottom:6px;background:#fdf8ea;}
+  .milestone-block .db-head{color:#7a5a00;font-size:10.5px;font-weight:700;padding:3px 7px;display:flex;align-items:center;gap:6px;white-space:nowrap;background:#fdf1cc !important;}
+  .milestone-block .db-head .db-pname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700;}
   table.datatable{width:100%;border-collapse:collapse;font-size:12.5px;}
   table.datatable th,table.datatable td{border:1px solid var(--border);padding:5px 6px;text-align:center;}
   table.datatable th{background:#f1f2f8;font-weight:700;position:sticky;top:0;}
@@ -265,24 +269,26 @@ function escHtml(s){ return (s||'').toString().replace(/&/g,'&amp;').replace(/</
 const DOW = ['일','월','화','수','목','금','토'];
 const PALETTE = ['#1b2a4e','#c9a227','#f97316','#059669','#dc2626','#0891b2','#7c3aed','#db2777','#0f766e','#9333ea'];
 
+/* D+0 = 재고 입고 & 판매 시작일 기준. 상품등록·그로스 상품 발송은 이보다 앞선
+   별도 날짜(product.regDate / product.growthShipDate)로 관리하며, D+n 순서에는
+   포함되지 않고 캘린더에 별도 배지로만 표시된다. */
 const PHASE_TEMPLATE = {
-  0:'상품등록 · 그로스 상품 발송',
-  1:'입고(재고) 잡힘 · 판매 시작',
-  2:'인덱싱 · 28일 조회수 기록 시작',
-  3:'판매자 샵 진열(맨하단 노출)',
+  0:'입고(재고) 잡힘 · 판매 시작',
+  1:'인덱싱 · 28일 조회수 기록 시작',
+  2:'판매자 샵 진열(맨하단 노출)',
+  3:'대기',
   4:'대기',
-  5:'대기',
-  6:'판매자 샵 내 상품 랭킹 상승',
-  7:'최신순 정렬에 상품 노출',
-  8:'리뷰작업 시작',
+  5:'판매자 샵 내 상품 랭킹 상승',
+  6:'최신순 정렬에 상품 노출',
+  7:'리뷰작업 시작',
+  8:'리뷰작업 · 타겟키워드 순위체크',
   9:'리뷰작업 · 타겟키워드 순위체크',
   10:'리뷰작업 · 타겟키워드 순위체크',
   11:'리뷰작업 · 타겟키워드 순위체크',
-  12:'리뷰작업 · 타겟키워드 순위체크',
-  13:'리뷰작업 · 타겟키워드 순위체크'
+  12:'리뷰작업 · 타겟키워드 순위체크'
 };
 const DEFAULT_REVIEW_SCHEDULE = [4,7,11,16,22];
-const DEFAULT_REVIEW_START = 8;
+const DEFAULT_REVIEW_START = 7;
 const DEFAULT_MAX_DAY = 20;
 /* 파렛트 규정: 1100×1100mm 기본 규격(오버행 금지), 팔레트 높이 포함 최대 1700mm */
 const PALLET_BASE_MM = 1100;
@@ -386,8 +392,15 @@ function setPrimaryOption(pid, optionId){
   renderAll();
 }
 
+/* 상품등록일 / 그로스 상품 발송일의 기본값 — 별다른 설정이 없으면
+   판매시작일(D+0) 하루 전날로 잡아 둔다(실제 값은 설정 탭에서 언제든 수정 가능). */
+function defaultRegDate(launchDateStr){
+  return formatDate(addDays(parseDate(launchDateStr), -1));
+}
 function createProduct(name, launchDateStr, color, optionName, image){
-  const p = { id: uid(), name, color, image: image||null, launchDate: launchDateStr, registeredProductId: '', options: [], primaryOptionId: null, maxDayIndex: DEFAULT_MAX_DAY, days: {}, orders: [], orderCoverDays: 40 };
+  const p = { id: uid(), name, color, image: image||null, launchDate: launchDateStr,
+    regDate: defaultRegDate(launchDateStr), growthShipDate: defaultRegDate(launchDateStr),
+    registeredProductId: '', options: [], primaryOptionId: null, maxDayIndex: DEFAULT_MAX_DAY, days: {}, orders: [], orderCoverDays: 40 };
   const opt = newOption(optionName || '기본옵션', color);
   opt.reviewDates = defaultReviewDates(opt.reviewStartDayIndex);
   p.options = [opt];
@@ -402,6 +415,14 @@ function migrateProduct(p){
   /* 1688 발주 계산용 데이터 */
   if(!Array.isArray(p.orders)) p.orders = [];
   if(!p.orderCoverDays) p.orderCoverDays = 40;
+  /* 이전 버전은 launchDate(0일차)를 "상품등록일"로 썼다. 이제 0일차는
+     "재고입고·판매시작일"이므로, 상품등록일/그로스 발송일이 없는 기존 제품은
+     기존 launchDate를 그대로 두 날짜의 기본값으로 옮겨 온다(사용자가 설정 탭에서
+     조정할 수 있도록). */
+  if(p.launchDate){
+    if(p.regDate===undefined) p.regDate = p.launchDate;
+    if(p.growthShipDate===undefined) p.growthShipDate = p.launchDate;
+  }
   if(p.options && Array.isArray(p.options)){
     if(p.image===undefined) p.image = null;
     if(p.registeredProductId===undefined) p.registeredProductId = '';
@@ -1143,11 +1164,18 @@ function renderCalendarView(area){
       const isToday = sameDate(date, today);
       const dateStr = formatDate(date);
       let entries = [];
+      let milestones = [];
       productsToShow.forEach(p=>{
         const di = dayIndexForDate(p, dateStr);
         if(di>=0 && di<=p.maxDayIndex){ entries.push({p, di, d:p.days[di]}); }
+        if(p.regDate===dateStr) milestones.push({p, label:'📦 상품등록'});
+        if(p.growthShipDate===dateStr) milestones.push({p, label:'🚀 그로스 상품 발송'});
       });
       let cellClass = 'cal-cell' + (isOutside?' outside':'') + (isToday?' today':'');
+      let milestonesHtml = milestones.map(m=>{
+        const label = isMultiMode() ? `<span class="db-pname">${escHtml(m.p.name)}</span><span>${m.label}</span>` : `<span>${m.label}</span>`;
+        return `<div class="milestone-block"><div class="db-head">${label}</div></div>`;
+      }).join('');
       let blocksHtml = entries.map(e=>{
         const badges = [];
         const plan = dayAgg(e.d,'reviewPlan'), act = dayAgg(e.d,'reviewActual'), writ = dayAgg(e.d,'reviewWritten'), nat = dayAgg(e.d,'naturalSales');
@@ -1170,6 +1198,7 @@ function renderCalendarView(area){
       }).join('');
       html += `<div class="${cellClass}" onclick='openDayModal("${dateStr}")'>
         <div class="dnum">${date.getDate()}</div>
+        ${milestonesHtml}
         ${blocksHtml}
       </div>`;
     });
@@ -1191,18 +1220,24 @@ function goToday(){
 function openDayModal(dateStr){
   const productsToShow = getVisibleProducts();
   let entries = [];
+  let milestones = [];
   productsToShow.forEach(p=>{
     const di = dayIndexForDate(p, dateStr);
     if(di>=0 && di<=p.maxDayIndex){ entries.push({p, di}); }
     else if(!isMultiMode()){
       if(di>p.maxDayIndex && di<=p.maxDayIndex+60){ entries.push({p, di, needsExtend:true}); }
     }
+    if(p.regDate===dateStr) milestones.push({p, label:'📦 상품등록'});
+    if(p.growthShipDate===dateStr) milestones.push({p, label:'🚀 그로스 상품 발송'});
   });
-  if(entries.length===0){
-    showModal(`<h3>${dateStr}</h3><div class="empty">이 날짜에는 표시할 제품 일정이 없습니다.<br>(제품의 런칭일 이전이거나 트래킹 범위를 벗어났습니다)</div><div class="modal-actions"><button class="btn" onclick="closeModal()">닫기</button></div>`);
+  if(entries.length===0 && milestones.length===0){
+    showModal(`<h3>${dateStr}</h3><div class="empty">이 날짜에는 표시할 제품 일정이 없습니다.<br>(제품의 판매시작일 이전이거나 트래킹 범위를 벗어났습니다)</div><div class="modal-actions"><button class="btn" onclick="closeModal()">닫기</button></div>`);
     return;
   }
-  let body = `<h3>${dateStr} 기록</h3>`;
+  const milestonesHtml = milestones.length
+    ? `<div class="field" style="margin-bottom:10px;">${milestones.map(m=>`<div style="font-size:12.5px;font-weight:700;color:#7a5a00;background:#fdf1cc;border-radius:6px;padding:5px 9px;margin-bottom:4px;">${m.label} — ${escHtml(m.p.name)}</div>`).join('')}<div style="font-size:11px;color:var(--sub);">날짜를 바꾸려면 "옵션 / 리뷰스케줄 설정" 탭의 제품 정보에서 수정하세요.</div></div>`
+    : '';
+  let body = `<h3>${dateStr} 기록</h3>${milestonesHtml}`;
   entries.forEach(e=>{
     const p = e.p, di = e.di;
     if(e.needsExtend) ensureDay(p, di);
@@ -1461,7 +1496,7 @@ function renderCompareView(area){
   } else {
     labels = []; for(let i=0;i<=maxDay;i++) labels.push('D+'+i);
   }
-  /* 라벨(날짜 모드일 땐 실제 날짜, 아닐 땐 D+i)을 각 제품의 dayIndex로 변환 */
+  /* 라벨(날짜 모드일 때 실제 날짜, 아닐 때 D+i)을 각 제품의 dayIndex로 변환 */
   function dayIndexFor(product, labelIdx){
     return useDateMode ? diffDays(parseDate(dateList[labelIdx]), parseDate(product.launchDate)) : labelIdx;
   }
@@ -1668,8 +1703,13 @@ function renderSettingsView(area){
     <h3 style="margin-top:0">제품 정보 — ${escHtml(p.name)}</h3>
     <div class="row2">
       <div class="field"><label>제품명</label><input id="set_name" value="${escAttr(p.name)}"></div>
-      <div class="field"><label>런칭일 (0일차 = 상품등록일)</label><input type="date" id="set_launch" value="${p.launchDate}"></div>
+      <div class="field"><label>판매시작일 (D+0, 재고 입고 · 판매 시작)</label><input type="date" id="set_launch" value="${p.launchDate}"></div>
     </div>
+    <div class="row2">
+      <div class="field"><label>상품등록일</label><input type="date" id="set_regdate" value="${p.regDate||p.launchDate}"></div>
+      <div class="field"><label>그로스 상품 발송일</label><input type="date" id="set_growthdate" value="${p.growthShipDate||p.launchDate}"></div>
+    </div>
+    <div style="font-size:11.5px;color:var(--sub);margin:-4px 0 10px;">상품등록·그로스 상품 발송은 판매시작일(D+0)과 별도로 관리되며, 캘린더에 각각의 날짜에 배지로 표시됩니다.</div>
     <div class="row2">
       <div class="field"><label>등록상품ID (쿠팡 Wing)</label><input id="set_regid" value="${escAttr(p.registeredProductId||'')}" placeholder="예: 16336665347"></div>
       <div class="field" style="display:flex;align-items:flex-end;">
@@ -1713,6 +1753,10 @@ function saveSettings(pid){
   const p = getProduct(pid);
   p.name = document.getElementById('set_name').value || p.name;
   p.launchDate = document.getElementById('set_launch').value || p.launchDate;
+  const regDateEl = document.getElementById('set_regdate');
+  if(regDateEl) p.regDate = regDateEl.value || p.launchDate;
+  const growthDateEl = document.getElementById('set_growthdate');
+  if(growthDateEl) p.growthShipDate = growthDateEl.value || p.launchDate;
   const regEl = document.getElementById('set_regid');
   if(regEl) p.registeredProductId = regEl.value.trim();
   saveState();
@@ -1904,7 +1948,8 @@ function openProductModal(){
       <div class="field"><label>제품명</label><input id="np_name" placeholder="예: 텀블러"></div>
       <div class="field"><label>첫 옵션명 (선택, 예: 블랙/L)</label><input id="np_option" placeholder="비워두면 '기본옵션'"></div>
     </div>
-    <div class="field"><label>런칭일 (0일차 = 상품등록일)</label><input type="date" id="np_launch" value="${todayStr}"></div>
+    <div class="field"><label>판매시작일 (D+0, 재고 입고 · 판매 시작)</label><input type="date" id="np_launch" value="${todayStr}"></div>
+    <div style="font-size:11.5px;color:var(--sub);margin:-4px 0 4px;">상품등록일·그로스 상품 발송일은 기본적으로 판매시작일 하루 전으로 잡히며, 추가 후 "옵션 / 리뷰스케줄 설정" 탭에서 조정할 수 있습니다.</div>
     <div class="field"><label>제품 이미지 (선택)</label>
       ${imageInputHtml('new', '', '<div class="img-upload-preview" id="np_img_preview"></div>')}
     </div>
@@ -2879,7 +2924,6 @@ document.addEventListener('click', function(e){
     zone.focus();
     return;
   }
-  /* "주소로 넣기" 버튼 */
   const btn = e.target.closest ? e.target.closest('[data-img-url-apply]') : null;
   if(btn){
     const box = btn.closest('.img-input');
@@ -2893,7 +2937,6 @@ document.addEventListener('click', function(e){
   }
 });
 
-/* 파일 선택 */
 document.addEventListener('change', function(e){
   const el = e.target;
   if(!el || el.type !== 'file') return;
@@ -2905,7 +2948,6 @@ document.addEventListener('change', function(e){
   readImageAsDataURL(file, IMG_MAX_DIM, (dataUrl)=>{ applyPickedImage(drop, dataUrl); });
 });
 
-/* 붙여넣기 (Ctrl+V) */
 document.addEventListener('paste', function(e){
   const zone = activeImageZone();
   if(!zone) return;
@@ -2920,7 +2962,6 @@ document.addEventListener('paste', function(e){
   }
 });
 
-/* 끌어다 놓기 */
 document.addEventListener('dragover', function(e){
   const zone = e.target.closest ? e.target.closest('.img-drop') : null;
   if(!zone) return;
