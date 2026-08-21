@@ -1617,7 +1617,7 @@ function renderSettingsView(area){
     const sum = dates.reduce((a,rd)=>a+Number(rd.qty||0),0);
     const rowsHtml = dates.map(rd=>reviewDateRowHtml(rd.dayIndex, rd.qty, o.id)).join('');
     const reviewSection = isPrimary
-      ? `<div class="field"><label>리뷰작업 시작일 (D+n, "기본값 적용" 기준일)</label><input type="number" id="ostart_${o.id}" value="${o.reviewStartDayIndex}" style="max-width:120px;"></div>
+      ? `<div class="field"><label>리뷰작업 시작일 (D+n, "기본값 적용" 기준일)</label><input type="number" id="ostart_${o.id}" value="${o.reviewStartDayIndex}" data-prev="${o.reviewStartDayIndex}" oninput="handleReviewStartInput(this,'${o.id}')" style="max-width:120px;"></div>
         <div class="field">
           <label>리뷰 진행일 목록 (합계 <span id="revsum_${o.id}">${sum}</span>개) — 원하는 날짜를 자유롭게 추가/삭제하세요</label>
           <div class="revdate-list" id="revdates_${o.id}">${rowsHtml}</div>
@@ -1721,11 +1721,49 @@ function saveSettings(pid){
 /* Renders one editable "리뷰 진행일" row: a D+n day input + quantity input + remove button */
 function reviewDateRowHtml(dayIndex, qty, optionId){
   return `<div class="revdate-row">
-    <span>D+</span><input type="number" class="rd-day" value="${dayIndex}" oninput="updateReviewSum('${optionId}')">
+    <span>D+</span><input type="number" class="rd-day" value="${dayIndex}" data-prev="${dayIndex}" oninput="handleReviewDayInput(this,'${optionId}')">
     <span>일차 ·</span><input type="number" class="rd-qty" value="${qty}" placeholder="수량" oninput="updateReviewSum('${optionId}')">
     <span>개</span>
     <button type="button" class="btn danger" onclick="this.closest('.revdate-row').remove();updateReviewSum('${optionId}')">✕</button>
   </div>`;
+}
+/* 목록의 한 행에서 D+ 날짜를 직접 고치면, 그 아래(이후) 행들도 같은 만큼
+   함께 밀려서 날짜 간격이 그대로 유지되게 한다.
+   예) 2번째 행을 D+4 → D+5로 고치면 3번째 이후 행도 모두 하루씩 밀린다. */
+function handleReviewDayInput(el, optionId){
+  const list = document.getElementById('revdates_'+optionId);
+  if(!list){ updateReviewSum(optionId); return; }
+  const newVal = Number(el.value)||0;
+  const prevVal = Number(el.dataset.prev)||0;
+  const delta = newVal - prevVal;
+  el.dataset.prev = String(newVal);
+  if(delta){
+    const rows = [...list.querySelectorAll('.rd-day')];
+    const idx = rows.indexOf(el);
+    for(let i=idx+1;i<rows.length;i++){
+      const r = rows[i];
+      const shifted = (Number(r.value)||0) + delta;
+      r.value = shifted;
+      r.dataset.prev = String(shifted);
+    }
+  }
+  updateReviewSum(optionId);
+}
+/* "리뷰작업 시작일" 기준일을 바꾸면, 아래 리뷰 진행일 목록 전체가 같은 만큼
+   함께 밀린다(각 날짜 사이 간격은 그대로 유지). */
+function handleReviewStartInput(el, optionId){
+  const list = document.getElementById('revdates_'+optionId);
+  const newVal = Number(el.value)||0;
+  const prevVal = Number(el.dataset.prev)||0;
+  const delta = newVal - prevVal;
+  el.dataset.prev = String(newVal);
+  if(delta && list){
+    list.querySelectorAll('.rd-day').forEach(r=>{
+      const shifted = (Number(r.value)||0) + delta;
+      r.value = shifted;
+      r.dataset.prev = String(shifted);
+    });
+  }
 }
 /* 리뷰 진행일 목록의 "합계" 표시를 지금 화면에 입력된 값 기준으로 즉시 갱신한다.
    수동으로 직접 입력하는 경우, 이 합계가 그대로 배정되는 추가 수량이 된다. */
@@ -2473,15 +2511,9 @@ function palletSideSvg(calc){
   let marginMarks = '';
   if(marginPx>3){
     const halfSpare = Math.round(calc.spareW/2);
-    marginMarks += `<line x1="${x0}" y1="${markY.toFixed(1)}" x2="${xBoxStart.toFixed(1)}" y2="${markY.toFixed(1)}" stroke="#c9a227" stroke-width="1"/>
-      <line x1="${x0}" y1="${(markY-3).toFixed(1)}" x2="${x0}" y2="${(markY+3).toFixed(1)}" stroke="#c9a227" stroke-width="1"/>
-      <line x1="${xBoxStart.toFixed(1)}" y1="${(markY-3).toFixed(1)}" x2="${xBoxStart.toFixed(1)}" y2="${(markY+3).toFixed(1)}" stroke="#c9a227" stroke-width="1"/>
-      <line x1="${xBoxEnd.toFixed(1)}" y1="${markY.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${markY.toFixed(1)}" stroke="#c9a227" stroke-width="1"/>
-      <line x1="${xBoxEnd.toFixed(1)}" y1="${(markY-3).toFixed(1)}" x2="${xBoxEnd.toFixed(1)}" y2="${(markY+3).toFixed(1)}" stroke="#c9a227" stroke-width="1"/>
-      <line x1="${x1.toFixed(1)}" y1="${(markY-3).toFixed(1)}" x2="${x1.toFixed(1)}" y2="${(markY+3).toFixed(1)}" stroke="#c9a227" stroke-width="1"/>`;
+    marginMarks += `<line x1="${x0}" y1="${markY.toFixed(1)}" x2="${xBoxStart.toFixed(1)}" y2="${markY.toFixed(1)}" stroke="#c9a227" stroke-width="1"/>\n      <line x1="${x0}" y1="${(markY-3).toFixed(1)}" x2="${x0}" y2="${(markY+3).toFixed(1)}" stroke="#c9a227" stroke-width="1"/>\n      <line x1="${xBoxStart.toFixed(1)}" y1="${(markY-3).toFixed(1)}" x2="${xBoxStart.toFixed(1)}" y2="${(markY+3).toFixed(1)}" stroke="#c9a227" stroke-width="1"/>\n      <line x1="${xBoxEnd.toFixed(1)}" y1="${markY.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${markY.toFixed(1)}" stroke="#c9a227" stroke-width="1"/>\n      <line x1="${xBoxEnd.toFixed(1)}" y1="${(markY-3).toFixed(1)}" x2="${xBoxEnd.toFixed(1)}" y2="${(markY+3).toFixed(1)}" stroke="#c9a227" stroke-width="1"/>\n      <line x1="${x1.toFixed(1)}" y1="${(markY-3).toFixed(1)}" x2="${x1.toFixed(1)}" y2="${(markY+3).toFixed(1)}" stroke="#c9a227" stroke-width="1"/>`;
     if(marginPx>15){
-      marginMarks += `<text x="${(x0+marginPx/2).toFixed(1)}" y="${(markY-4).toFixed(1)}" font-size="7" fill="#9a6d00" text-anchor="middle">여유 ${fmtC(halfSpare)}</text>
-        <text x="${(xBoxEnd+marginPx/2).toFixed(1)}" y="${(markY-4).toFixed(1)}" font-size="7" fill="#9a6d00" text-anchor="middle">여유 ${fmtC(halfSpare)}</text>`;
+      marginMarks += `<text x="${(x0+marginPx/2).toFixed(1)}" y="${(markY-4).toFixed(1)}" font-size="7" fill="#9a6d00" text-anchor="middle">여유 ${fmtC(halfSpare)}</text>\n        <text x="${(xBoxEnd+marginPx/2).toFixed(1)}" y="${(markY-4).toFixed(1)}" font-size="7" fill="#9a6d00" text-anchor="middle">여유 ${fmtC(halfSpare)}</text>`;
     }
   }
   const viewW = x1 + 64, viewH = padTop+chartH+16;
