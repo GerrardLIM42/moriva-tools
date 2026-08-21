@@ -2,8 +2,9 @@
  *
  * 역할이 두 가지로 나뉜다.
  *  1) 상위 프레임(index.html 셸): 설정 보관, GitHub 읽기/쓰기, 사이드바 상태 표시를 모두 담당.
- *  2) 하위 프레임(각 도구 페이지): localStorage 변경만 감지해 부모에게 알린다.
- *     같은 출처(origin)라 localStorage는 공유되므로, 저장은 부모가 한 번만 수행한다.
+ *     localStorage뿐 아니라 저장 보관함(moriva-saves.js)의 IndexedDB 목록도 함께 백업한다.
+ *  2) 하위 프레임(각 도구 페이지): localStorage 변경, 저장 보관함 저장 알림을 감지해 부모에게 알린다.
+ *     같은 출처(origin)라 localStorage·IndexedDB는 공유되므로, 실제 백업은 부모가 한 번만 수행한다.
  *
  * 또한 도구 페이지를 주소창으로 직접 열었을 때는 사이드바가 있는 셸로 자동 이동시켜
  * 어느 경로로 들어와도 항상 동일한 화면 구성을 유지한다.
@@ -87,13 +88,72 @@
     return { "Authorization": "token " + cfg.token, "Accept": "application/vnd.github+json" };
   }
 
-  function snapshot() {
-    var keys = {};
-    for (var i = 0; i < localStorage.length; i++) {
-      var k = localStorage.key(i);
-      if (!isInternal(k)) keys[k] = localStorage.getItem(k);
-    }
-    return { savedAt: Date.now(), keys: keys };
+  /* 저장 보관함(moriva-saves.js)의 IndexedDB 목록도 함께 백업한다.
+     레코드 하나는 도구 하나의 저장 목록 전체(예: 가격 세팅 도구의 모든 저장 항목)이며,
+     사진·동영상이 포함돼 너무 크면(약 200KB 초과) GitHub API 한도를 넘을 수 있어
+     그 레코드만 이 기기에 남기고 백업에서 건너뛴다(로컬 데이터는 그대로 유지됨). */
+  var SAVES_DB_NAME = "moriva_saves_db_v1";
+  var SAVES_STORE = "lists";
+  var SAVES_MAX_BYTES = 200000;
+  var savesDbPromise = null;
+
+  function openSavesDb() {
+    if (savesDbPromise) return savesDbPromise;
+    savesDbPromise = new Promise(function (resolve, reject) {
+      if (!window.indexedDB) { reject(new Error("IndexedDB 미지원")); return; }
+      var req;
+      try { req = indexedDB.open(SAVES_DB_NAME, 1); } catch (e) { reject(e); return; }
+      req.onupgradeneeded = function (e) {
+        var db = e.target.result;
+        if (!db.objectStoreNames.contains(SAVES_STORE)) db.createObjectStore(SAVES_STORE, { keyPath: "storeKey" });
+      };
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error || new Error("IndexedDB 열기 실패")); };
+      req.onblocked = function () { reject(new Error("IndexedDB 열기 지연")); };
+    });
+    return savesDbPromise;
+  }
+
+  function readSyncableSaves() {
+    return openSavesDb().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction(SAVES_STORE, "readonly");
+        var req = tx.objectStore(SAVES_STORE).getAll();
+        req.onsuccess = function () { resolve(req.result || []); };
+        req.onerror = function () { reject(req.error); };
+      });
+    }).then(function (records) {
+      return records.filter(function (r) {
+        try { return JSON.stringify(r).length <= SAVES_MAX_BYTES; } catch (e) { return false; }
+      });
+    }).catch(function () { return []; });
+  }
+
+  // remote.saves에 있는 storeKey만 통째로 덮어쓴다(upsert). 용량 초과로 백업에서
+  // 빠진 로컬 전용 레코드는 remote에 없다고 해서 지우지 않는다 — 그 기기에만 있는
+  // 이미지 포함 저장 항목을 실수로 삭제하는 걸 막기 위해서다.
+  function writeAllSaves(records) {
+    if (!records || !records.length) return Promise.resolve();
+    return openSavesDb().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction(SAVES_STORE, "readwrite");
+        records.forEach(function (r) { tx.objectStore(SAVES_STORE).put(r); });
+        tx.oncomplete = function () { resolve(); };
+        tx.onerror = function () { reject(tx.error); };
+        tx.onabort = function () { reject(tx.error || new Error("저장 중단")); };
+      });
+    }).catch(function () {});
+  }
+
+  function buildSnapshot() {
+    return readSyncableSaves().then(function (saves) {
+      var keys = {};
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (!isInternal(k)) keys[k] = localStorage.getItem(k);
+      }
+      return { savedAt: Date.now(), keys: keys, saves: saves };
+    });
   }
 
   function applySnapshot(snap) {
@@ -106,6 +166,7 @@
     toRemove.forEach(function (k) { origRemove.call(localStorage, k); });
     Object.keys(remote).forEach(function (k) { origSet.call(localStorage, k, remote[k]); });
     origSet.call(localStorage, STAMP_KEY, String(snap.savedAt));
+    return writeAllSaves(snap.saves || []);
   }
 
   function fetchRemote() {
@@ -143,30 +204,31 @@
 
     function attempt(retryCount) {
       status("저장 중…", "busy");
-      var snap = snapshot();
-      var body = {
-        message: "MORIVA sync",
-        content: b64enc(JSON.stringify(snap)),
-        branch: cfg.branch || "main"
-      };
-      if (fileSha) body.sha = fileSha;
-      return fetch(apiUrl(), {
-        method: "PUT",
-        headers: Object.assign({ "Content-Type": "application/json" }, headers()),
-        body: JSON.stringify(body)
-      }).then(function (res) {
-        if ((res.status === 409 || res.status === 422) && retryCount < 3) {
-          return fetchRemote().then(function () { return attempt(retryCount + 1); });
-        }
-        if (!res.ok) {
-          return res.json().catch(function () { return {}; }).then(function (b) {
-            throw new Error(b.message || ("저장 실패 " + res.status));
+      return buildSnapshot().then(function (snap) {
+        var body = {
+          message: "MORIVA sync",
+          content: b64enc(JSON.stringify(snap)),
+          branch: cfg.branch || "main"
+        };
+        if (fileSha) body.sha = fileSha;
+        return fetch(apiUrl(), {
+          method: "PUT",
+          headers: Object.assign({ "Content-Type": "application/json" }, headers()),
+          body: JSON.stringify(body)
+        }).then(function (res) {
+          if ((res.status === 409 || res.status === 422) && retryCount < 3) {
+            return fetchRemote().then(function () { return attempt(retryCount + 1); });
+          }
+          if (!res.ok) {
+            return res.json().catch(function () { return {}; }).then(function (b) {
+              throw new Error(b.message || ("저장 실패 " + res.status));
+            });
+          }
+          return res.json().then(function (d) {
+            fileSha = d.content.sha;
+            origSet.call(localStorage, STAMP_KEY, String(snap.savedAt));
+            status("저장됨 " + new Date().toLocaleTimeString("ko-KR"), "ok");
           });
-        }
-        return res.json().then(function (d) {
-          fileSha = d.content.sha;
-          origSet.call(localStorage, STAMP_KEY, String(snap.savedAt));
-          status("저장됨 " + new Date().toLocaleTimeString("ko-KR"), "ok");
         });
       });
     }
@@ -202,12 +264,15 @@
     origSet.call(localStorage, CFG_KEY, JSON.stringify(cfg));
     status("연결 확인 중…", "busy");
     fetchRemote().then(function (remote) {
-      if (remote && remote.keys && Object.keys(remote.keys).length) {
+      var hasKeys = remote && remote.keys && Object.keys(remote.keys).length;
+      var hasSaves = remote && remote.saves && remote.saves.length;
+      if (hasKeys || hasSaves) {
         var useRemote = confirm("저장소에 이미 백업된 데이터가 있어요. 불러와서 이 브라우저에 적용할까요?\n(취소하면 이 브라우저의 현재 데이터로 백업을 덮어씁니다)");
         if (useRemote) {
-          applySnapshot(remote);
-          status("불러옴 — 새로고침합니다", "ok");
-          location.reload();
+          applySnapshot(remote).then(function () {
+            status("불러옴 — 새로고침합니다", "ok");
+            location.reload();
+          });
           return;
         }
       }
@@ -231,8 +296,7 @@
     status("확인 중…", "busy");
     fetchRemote().then(function (remote) {
       if (remote && remote.savedAt && String(remote.savedAt) !== localStorage.getItem(STAMP_KEY)) {
-        applySnapshot(remote);
-        location.reload();
+        applySnapshot(remote).then(function () { location.reload(); });
         return;
       }
       status("연결됨 " + new Date().toLocaleTimeString("ko-KR"), "ok");
