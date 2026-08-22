@@ -343,7 +343,7 @@ function defaultReviewDates(startDay){
 function newOption(name, color){
   return { id: uid(), name: name || '옵션', color: color || PALETTE[Math.floor(Math.random()*PALETTE.length)], reviewStartDayIndex: DEFAULT_REVIEW_START, reviewDates: [],
     sellerShip: {optionId:'', exposedId:''}, rocket: {optionId:'', exposedId:''},
-    costPrice: 0, coupangCat: '직접입력', coupangFeePct: 0, rocketSize: '직접입력', rocketFeePerUnit: 0 };
+    costPrice: 0, coupangCat: '직접입력', coupangFeePct: 0, rocketSize: '직접입력', rocketFeePerUnit: 0, promo: 'none' };
 }
 function getOption(product, optionId){ return product.options.find(o=>o.id===optionId); }
 function optionLabel(p, o){ return p.options.length<=1 ? p.name : (p.name+' · '+o.name); }
@@ -356,6 +356,7 @@ function resolveFeePct(o){
   return (v !== null && v !== undefined) ? v : Number(o && o.coupangFeePct)||0;
 }
 function resolveRocketFee(o){
+  if(o && o.promo === '90') return 0; // 로켓그로스 첫 90일 무료 프로모션 — 물류비 전액 무료
   const v = o && ROCKET_SIZES[o.rocketSize];
   return (v !== null && v !== undefined) ? v : Number(o && o.rocketFeePerUnit)||0;
 }
@@ -511,6 +512,7 @@ function migrateProduct(p){
       if(o.rocketFeePerUnit===undefined) o.rocketFeePerUnit = 0;
       if(o.coupangCat===undefined) o.coupangCat = '직접입력';
       if(o.rocketSize===undefined) o.rocketSize = '직접입력';
+      if(o.promo===undefined) o.promo = 'none';
     });
     if(!p.primaryOptionId || !p.options.some(o=>o.id===p.primaryOptionId)) p.primaryOptionId = p.options[0] ? p.options[0].id : null;
     Object.keys(p.days||{}).forEach(k=>{
@@ -1842,7 +1844,16 @@ function renderSettingsView(area){
             <input type="number" id="orocketfee_${o.id}" value="${o.rocketFeePerUnit||0}" placeholder="0" style="margin-top:5px;display:${ROCKET_SIZES[o.rocketSize]==null?'block':'none'};" title="직접입력 선택 시에만 사용됩니다">
           </div>
         </div>
-        <div style="font-size:10.5px;color:var(--sub);margin-top:6px;">순이익 = 매출(판매가×자연판매량) − 쿠팡수수료 − 그로스비용(로켓그로스물류비×총판매량 + 원가×리뷰판매량) − 원가×자연판매량. 카테고리·사이즈를 "직접입력"으로 두면 옆 숫자칸 값을 그대로 사용합니다.</div>
+        <div style="margin-top:8px;">
+          <div style="font-size:10.5px;color:var(--sub);margin-bottom:2px;">🎁 로켓그로스 비용 제로 프로모션 (신규 입점 상품)</div>
+          <select id="opromo_${o.id}">
+            <option value="none" ${(o.promo||'none')==='none'?'selected':''}>미적용</option>
+            <option value="90" ${o.promo==='90'?'selected':''}>첫 90일 — 물류비 전액 무료</option>
+            <option value="270" ${o.promo==='270'?'selected':''}>+270일(로켓그로스 세이버) — 물류비는 정상 부과</option>
+          </select>
+          ${o.promo==='90'?'<div style="font-size:10.5px;color:#1f7a4d;margin-top:3px;">✅ 물류비 0원으로 계산됩니다.</div>':''}
+        </div>
+        <div style="font-size:10.5px;color:var(--sub);margin-top:6px;">순이익 = 매출(판매가×자연판매량) − 쿠팡수수료 − 그로스비용(로켓그로스물류비×총판매량 + 원가×리뷰판매량) − 원가×자연판매량. 카테고리·사이즈를 "직접입력"으로 두면 옆 숫자칸 값을 그대로 사용합니다. 첫 90일 프로모션 적용 시 물류비는 0원으로 계산됩니다.</div>
       </div>
       ${reviewSection}
     </div>`;
@@ -2068,6 +2079,8 @@ function saveOptionSettings(pid){
     if(rsizeEl) o.rocketSize = rsizeEl.value;
     const rocketFeeEl = document.getElementById('orocketfee_'+o.id);
     if(rocketFeeEl) o.rocketFeePerUnit = Number(rocketFeeEl.value)||0;
+    const promoEl = document.getElementById('opromo_'+o.id);
+    if(promoEl) o.promo = promoEl.value;
     const list = document.getElementById('revdates_'+o.id);
     if(list){
       const days = [...list.querySelectorAll('.rd-day')].map(el=>Number(el.value));
