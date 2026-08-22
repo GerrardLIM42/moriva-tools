@@ -955,7 +955,7 @@ function getTotalSales(day){
   return dayAgg(day,'reviewActual') + dayAgg(day,'naturalSales');
 }
 /* end 날짜부터 거꾸로, 하루 자연판매량(전체옵션 합)이 10개 이상인 날이
-   며칠 연속으로 이어지고 있는지 센다. 하루라도 10개 미만이면 멈추다. */
+   며칠 연속으로 이어지고 있는지 센다. 하루라도 10개 미만이면 멈춘다. */
 function naturalSalesStreak(product, end){
   let streak = 0;
   for(let i=end; i>=0; i--){
@@ -1077,7 +1077,7 @@ function renderSummary(){
   const area = document.getElementById('summaryArea');
   if(isMultiMode()){
     const visible = getVisibleProducts();
-    if(visible.length===0){ area.innerHTML = state.selectedId==='CUSTOM' ? `<div class="card"><div class="empty">선택된 제품이 없습니다. 위 "🔎 선택볼기"에서 제품을 골라주세요.</div></div>` : ''; return; }
+    if(visible.length===0){ area.innerHTML = state.selectedId==='CUSTOM' ? `<div class="card"><div class="empty">선택된 제품이 없습니다. 위 "🔎 선택보기"에서 제품을 골라주세요.</div></div>` : ''; return; }
     let html = '<div class="summary-row">';
     visible.forEach(p=>{
       const todayIdx = diffDays(new Date(), parseDate(p.launchDate));
@@ -2306,7 +2306,7 @@ function ordCalcAll(round, options){
     }
     if(bestI===-1) break;
     const nextTotal = cur + base[bestI].box;
-    if(Math.abs(nextTotal-target) >= Math.abs(cur-target)) break; /* 이대로 가까워지지 않으면 중단 */
+    if(Math.abs(nextTotal-target) >= Math.abs(cur-target)) break; /* 더 가까워지지 않으면 중단 */
     boxCount[bestI]++;
     cur = nextTotal;
   }
@@ -2816,7 +2816,7 @@ function renderOrdersView(area){
         <td class="ord-adj-cell">
           <button class="ord-step" onclick="stepOrderAdj('${p.id}','${rd.id}','${o.id}',-10)">−10</button>
           <input class="ord-in ord-in-adj${c.auto?' is-auto':''}" inputmode="numeric" value="${c.adj}"
-            title="${c.auto?'비율수량을 10개 단위로 맞추 자동값':'직접 입력한 값'}"
+            title="${c.auto?'비율수량을 10개 단위로 맞춘 자동값':'직접 입력한 값'}"
             onchange="updOrderCell('${p.id}','${rd.id}','${o.id}','adj',this.value)">
           <button class="ord-step" onclick="stepOrderAdj('${p.id}','${rd.id}','${o.id}',10)">+10</button>
           ${c.auto?'':`<button class="ord-step ord-reset" title="자동값으로 되돌리기" onclick="resetOrderAdj('${p.id}','${rd.id}','${o.id}')">↺</button>`}
