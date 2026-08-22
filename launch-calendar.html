@@ -362,12 +362,11 @@ function resolveRocketFee(o){
 }
 
 /* ── 하루치 실제 손익 계산 ──
-   매출: 자연판매만 정상 매출로 본다(리뷰판매는 매출로 잡지 않는다).
-   쿠팡수수료: 그 매출(자연판매분)에만 부과된다.
-   물류비(그로스비용): 로켓그로스 물류비 × 자연판매량 — 즉 실제 판매량 기준으로만 계산한다.
-   순이익(일별) = 매출 − 쿠팡수수료 − 물류비(자연판매량 기준) − 원가×자연판매량.
-   리뷰비용은 하루 단위로는 계산하지 않는다 — 리뷰가 끝난 뒤 옵션 설정에서 총액을 한 번에
-   입력하면 누적 순이익(calcCumulativeProfit)에서만 한 번 차감된다. */
+   매출: 자연판매 + 리뷰판매를 모두 실제 판매로 보고 매출에 포함한다(리뷰도 결제가 일어난 실제 판매이므로).
+   쿠팡수수료·물류비·원가: 총판매량(자연판매+리뷰판매) 기준으로 계산한다.
+   순이익(일별) = 매출 − 쿠팡수수료 − 물류비(총판매량 기준) − 원가×총판매량.
+   리뷰 진행비(리뷰어 사례비 등)는 하루 단위로는 계산하지 않는다 — 리뷰가 끝난 뒤 옵션 설정에서
+   총액을 한 번에 입력하면 누적 순이익(calcCumulativeProfit)에서만 한 번 차감된다. */
 function calcDayProfit(o, od){
   od = od || blankOptDay();
   const sellPrice = Number(od.sellPrice)||0;
@@ -377,10 +376,10 @@ function calcDayProfit(o, od){
   const feePct = resolveFeePct(o);
   const rocketFee = resolveRocketFee(o);
   const totalQty = nat + rev;
-  const revenue = sellPrice * nat;
+  const revenue = sellPrice * totalQty;
   const coupangFee = revenue * (feePct/100);
-  const growthCost = rocketFee*nat;
-  const natCost = cost*nat;
+  const growthCost = rocketFee*totalQty;
+  const natCost = cost*totalQty;
   const netProfit = revenue - coupangFee - growthCost - natCost;
   return { revenue, coupangFee, growthCost, natCost, netProfit, totalQty };
 }
@@ -1466,7 +1465,7 @@ function renderProductTableView(area){
       <button class="btn danger" onclick="deleteProduct('${p.id}')">이 제품 삭제</button>
     </div>
     <div style="font-size:11px;color:var(--sub);margin-bottom:6px;">엑셀로 내보낸 뒤 값을 수정하고, 같은 파일을 "엑셀 가져오기"로 다시 불러오면 이 표에 반영됩니다. (열 구조를 바꾸지 않아야 정확히 인식됩니다)</div>
-    <div style="font-size:11px;color:var(--sub);margin-bottom:6px;">💰 <b>판매가</b>를 입력하면 자연판매량 기준으로 매출·수수료·물류비·원가가 자동 계산됩니다. <b>리뷰비용</b>은 리뷰가 끝난 뒤 "옵션 / 리뷰스케줄 설정" 탭에서 총액을 한 번에 입력하면 누적 순이익에서 차감됩니다. 원가·쿠팡수수료율·로켓그로스 물류비도 같은 탭의 옵션별 손익 설정에서 입력하세요.</div>
+    <div style="font-size:11px;color:var(--sub);margin-bottom:6px;">💰 <b>판매가</b>를 입력하면 자연판매량+리뷰판매량(총판매량) 기준으로 매출·수수료·물류비·원가가 자동 계산됩니다. <b>리뷰비용(리뷰 진행비)</b>은 리뷰가 끝난 뒤 "옵션 / 리뷰스케줄 설정" 탭에서 총액을 한 번에 입력하면 누적 순이익에서 차감됩니다. 원가·쿠팡수수료율·로켓그로스 물류비도 같은 탭의 옵션별 손익 설정에서 입력하세요.</div>
     ${isAgg?'<div style="font-size:11.5px;color:var(--sub);margin-bottom:6px;">"전체 합계" 표시 중에는 값이 읽기전용입니다. 옵션별로 직접 입력하려면 위 드롭다운에서 옵션을 선택하세요.</div>':nonPrimaryNote}
     <div style="overflow:auto;max-height:640px;">
     <table class="datatable">
@@ -1863,7 +1862,7 @@ function renderSettingsView(area){
           <div style="font-size:10.5px;color:var(--sub);margin-bottom:2px;">📋 리뷰비용 총액 (리뷰 종료 후 실제 정산한 총 금액, 원) — 누적 순이익에서 한 번만 차감됩니다</div>
           <input type="number" id="oreviewcost_${o.id}" value="${o.reviewCostTotal||0}" placeholder="0" style="max-width:200px;">
         </div>
-        <div style="font-size:10.5px;color:var(--sub);margin-top:6px;">일별 순이익 = 매출(판매가×자연판매량) − 쿠팡수수료 − 물류비(로켓그로스물류비×자연판매량) − 원가×자연판매량. 리뷰비용 총액은 여기에 포함되지 않고 누적 순이익에서만 한 번 차감됩니다. 카테고리·사이즈를 "직접입력"으로 두면 옆 숫자칸 값을 그대로 사용합니다. 첫 90일 프로모션 적용 시 물류비는 0원으로 계산됩니다.</div>
+        <div style="font-size:10.5px;color:var(--sub);margin-top:6px;">일별 순이익 = 매출(판매가×총판매량) − 쿠팡수수료 − 물류비(로켓그로스물류비×총판매량) − 원가×총판매량. 총판매량 = 자연판매량+리뷰판매량. 리뷰비용 총액은 여기에 포함되지 않고 누적 순이익에서만 한 번 차감됩니다. 카테고리·사이즈를 "직접입력"으로 두면 옆 숫자칸 값을 그대로 사용합니다. 첫 90일 프로모션 적용 시 물류비는 0원으로 계산됩니다.</div>
       </div>
       ${reviewSection}
     </div>`;
