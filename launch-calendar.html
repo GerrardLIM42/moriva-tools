@@ -336,7 +336,7 @@ function saveState(){
 }
 
 /* ---------------- Options & Days ---------------- */
-function blankOptDay(){ return {reviewPlan:0, reviewActual:0, reviewWritten:0, naturalSales:0, sellPrice:0}; }
+function blankOptDay(){ return {reviewPlan:0, reviewActual:0, reviewWritten:0, naturalSales:0, sellPrice:0, reviewCost:0}; }
 function defaultReviewDates(startDay){
   return DEFAULT_REVIEW_SCHEDULE.map((qty, idx)=>({ dayIndex: Number(startDay)+idx, qty }));
 }
@@ -362,12 +362,12 @@ function resolveRocketFee(o){
 }
 
 /* ── 하루치 실제 손익 계산 ──
-   매출: 자연판매만 정상 매출로 본다(리뷰판매는 리뷰를 받기 위해 무상/원가 수준으로
-   내보낸 것으로 보고 매출로 잡지 않는다).
+   매출: 자연판매만 정상 매출로 본다(리뷰판매는 매출로 잡지 않는다).
    쿠팡수수료: 그 매출(자연판매분)에만 부과된다.
-   그로스비용: (로켓그로스 물류비 × 총판매량 — 리뷰판매·자연판매 모두 로켓그로스 창고에서
-   출고되므로) + (원가 × 리뷰판매량 — 리뷰용으로 무상 제공한 상품의 원가).
-   순이익 = 매출 − 쿠팡수수료 − 그로스비용 − 원가×자연판매량. */
+   물류비(그로스비용): 로켓그로스 물류비 × 자연판매량 — 즉 실제 판매량 기준으로만 계산한다.
+   리뷰비용: 리뷰 진행을 위해 실제로 정산한 비용으로, 자동 추정하지 않고 일별 기록표에서
+   직접 입력한 금액을 그대로 뺀다(대행비·캐시백 등 실제 정산액이 원가×수량과 다를 수 있어서).
+   순이익 = 매출 − 쿠팡수수료 − 물류비(자연판매량 기준) − 원가×자연판매량 − 리뷰비용(직접입력). */
 function calcDayProfit(o, od){
   od = od || blankOptDay();
   const sellPrice = Number(od.sellPrice)||0;
@@ -376,34 +376,35 @@ function calcDayProfit(o, od){
   const cost = Number(o && o.costPrice)||0;
   const feePct = resolveFeePct(o);
   const rocketFee = resolveRocketFee(o);
+  const reviewCost = Number(od.reviewCost)||0;
   const totalQty = nat + rev;
   const revenue = sellPrice * nat;
   const coupangFee = revenue * (feePct/100);
-  const growthCost = rocketFee*totalQty + cost*rev;
+  const growthCost = rocketFee*nat;
   const natCost = cost*nat;
-  const netProfit = revenue - coupangFee - growthCost - natCost;
-  return { revenue, coupangFee, growthCost, natCost, netProfit, totalQty };
+  const netProfit = revenue - coupangFee - growthCost - natCost - reviewCost;
+  return { revenue, coupangFee, growthCost, natCost, reviewCost, netProfit, totalQty };
 }
 /* 옵션 전체를 합산한 그날의 손익(표시 옵션이 "전체 합계"일 때 사용). */
 function calcDayProfitAgg(p, d){
-  const out = { revenue:0, coupangFee:0, growthCost:0, natCost:0, netProfit:0 };
+  const out = { revenue:0, coupangFee:0, growthCost:0, natCost:0, reviewCost:0, netProfit:0 };
   (p.options||[]).forEach(o=>{
     const od = (d && d.opt && d.opt[o.id]) || blankOptDay();
     const r = calcDayProfit(o, od);
     out.revenue += r.revenue; out.coupangFee += r.coupangFee; out.growthCost += r.growthCost;
-    out.natCost += r.natCost; out.netProfit += r.netProfit;
+    out.natCost += r.natCost; out.reviewCost += r.reviewCost; out.netProfit += r.netProfit;
   });
   return out;
 }
 /* 제품 전체 기간의 누적 손익(요약 카드용). */
 function calcCumulativeProfit(p){
-  const out = { revenue:0, coupangFee:0, growthCost:0, natCost:0, netProfit:0 };
+  const out = { revenue:0, coupangFee:0, growthCost:0, natCost:0, reviewCost:0, netProfit:0 };
   for(let i=0;i<=p.maxDayIndex;i++){
     const d = p.days[i];
     if(!d) continue;
     const r = calcDayProfitAgg(p, d);
     out.revenue += r.revenue; out.coupangFee += r.coupangFee; out.growthCost += r.growthCost;
-    out.natCost += r.natCost; out.netProfit += r.netProfit;
+    out.natCost += r.natCost; out.reviewCost += r.reviewCost; out.netProfit += r.netProfit;
   }
   return out;
 }
@@ -520,7 +521,10 @@ function migrateProduct(p){
       if(!day.opt) day.opt = {};
       p.options.forEach(o=>{
         if(!day.opt[o.id]) day.opt[o.id] = blankOptDay();
-        else if(day.opt[o.id].sellPrice===undefined) day.opt[o.id].sellPrice = 0;
+        else {
+          if(day.opt[o.id].sellPrice===undefined) day.opt[o.id].sellPrice = 0;
+          if(day.opt[o.id].reviewCost===undefined) day.opt[o.id].reviewCost = 0;
+        }
       });
     });
     // Convert any option still using the old fixed 5-slot reviewSchedule/reviewStartDayIndex
@@ -567,7 +571,8 @@ function migrateProduct(p){
         reviewActual: Number(old.reviewActual)||0,
         reviewWritten: Number(old.reviewWritten)||0,
         naturalSales: Number(old.naturalSales)||0,
-        sellPrice: Number(old.sellPrice)||0
+        sellPrice: Number(old.sellPrice)||0,
+        reviewCost: Number(old.reviewCost)||0
       }}
     };
   });
@@ -1157,7 +1162,7 @@ function renderSummary(){
     <div class="stat"><div class="label">누적 리뷰 작성 (전체옵션)</div><div class="value">${cumWritten.toLocaleString()}</div></div>
     <div class="stat"><div class="label">누적 자연판매량 (전체옵션)</div><div class="value">${cumNatural.toLocaleString()}</div></div>
     <div class="stat"><div class="label">누적 매출 (자연판매분)</div><div class="value">${won(profitSum.revenue)}</div></div>
-    <div class="stat"><div class="label">누적 비용 (원가+수수료+그로스)</div><div class="value">${won(profitSum.natCost+profitSum.coupangFee+profitSum.growthCost)}</div></div>
+    <div class="stat"><div class="label">누적 비용 (원가+수수료+물류비+리뷰비용)</div><div class="value">${won(profitSum.natCost+profitSum.coupangFee+profitSum.growthCost+profitSum.reviewCost)}</div></div>
     <div class="stat"><div class="label">누적 실제 순이익</div><div class="value" style="color:${profitColor}">${won(profitSum.netProfit)}</div></div>
   </div>`;
   area.innerHTML = html;
@@ -1347,8 +1352,9 @@ function openDayModal(dateStr){
           ${reviewFields}
           <div class="field"><label>자연판매</label><input type="number" id="f_nat_${p.id}_${o.id}" value="${od.naturalSales||0}"></div>
         </div>
-        <div class="row2">
+        <div class="row3" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
           <div class="field"><label>판매가 (원)</label><input type="number" id="f_sell_${p.id}_${o.id}" value="${od.sellPrice||0}"></div>
+          <div class="field"><label>리뷰비용 (직접입력, 원)</label><input type="number" id="f_reviewcost_${p.id}_${o.id}" value="${od.reviewCost||0}"></div>
           <div class="field"><label>순이익 (자동계산)</label><input value="${won(r.netProfit)}" disabled></div>
         </div>
       </div>`;
@@ -1388,6 +1394,8 @@ function saveDayModal(dateStr){
       if(natEl) od.naturalSales = Number(natEl.value)||0;
       const sellEl = document.getElementById(`f_sell_${p.id}_${o.id}`);
       if(sellEl) od.sellPrice = Number(sellEl.value)||0;
+      const reviewCostEl = document.getElementById(`f_reviewcost_${p.id}_${o.id}`);
+      if(reviewCostEl) od.reviewCost = Number(reviewCostEl.value)||0;
       const pe = document.getElementById(`f_plan_${p.id}_${o.id}`);
       if(pe){
         od.reviewPlan = Number(pe.value)||0;
@@ -1416,15 +1424,15 @@ function renderProductTableView(area){
     const isToday = sameDate(dateForDay(p,i), today);
     const deltaClass = delta===null? '' : (delta>=0?'delta-up':'delta-down');
     const isPrimaryView = !isAgg && viewOpt===p.primaryOptionId;
-    let planV, actV, writV, natV, totalV, dis, disReview, sellV, profitRow;
+    let planV, actV, writV, natV, totalV, dis, disReview, sellV, reviewCostV, profitRow;
     if(isAgg){
       planV = dayAgg(d,'reviewPlan'); actV = dayAgg(d,'reviewActual'); writV = dayAgg(d,'reviewWritten'); natV = dayAgg(d,'naturalSales'); totalV = getTotalSales(d); dis='disabled'; disReview='disabled';
-      sellV = ''; profitRow = calcDayProfitAgg(p, d);
+      sellV = ''; reviewCostV = ''; profitRow = calcDayProfitAgg(p, d);
     } else {
       const od = d.opt[viewOpt] || blankOptDay();
       planV = od.reviewPlan||0; actV = od.reviewActual||0; writV = od.reviewWritten||0; natV = od.naturalSales||0;
       totalV = (Number(od.reviewActual)||0)+(Number(od.naturalSales)||0); dis=''; disReview = isPrimaryView ? '' : 'disabled';
-      sellV = od.sellPrice||0; profitRow = calcDayProfit(getOption(p, viewOpt), od);
+      sellV = od.sellPrice||0; reviewCostV = od.reviewCost||0; profitRow = calcDayProfit(getOption(p, viewOpt), od);
     }
     const profitClass = profitRow.netProfit>=0 ? 'profit-pos' : 'profit-neg';
     rows += `<tr class="${isToday?'today-row':''}">
@@ -1439,6 +1447,7 @@ function renderProductTableView(area){
       <td><input type="number" style="width:56px" ${dis} value="${natV}" oninput="updateOptDay('${p.id}','${viewOpt}',${i},'naturalSales',this.value)"></td>
       <td id="total_${p.id}_${i}"><b>${totalV}</b></td>
       <td><input type="number" style="width:72px" ${dis} value="${sellV}" oninput="updateOptDay('${p.id}','${viewOpt}',${i},'sellPrice',this.value)" placeholder="원"></td>
+      <td><input type="number" style="width:72px" ${dis} value="${reviewCostV}" oninput="updateOptDay('${p.id}','${viewOpt}',${i},'reviewCost',this.value)" placeholder="0"></td>
       <td id="profit_${p.id}_${i}" class="${profitClass}"><b>${won(profitRow.netProfit)}</b></td>
       <td class="memo"><textarea oninput="updateDayField('${p.id}',${i},'memo',this.value)">${escHtml(d.memo)}</textarea></td>
       <td><button type="button" class="btn shift" onclick="promptShift('${p.id}',${i})">🔀</button></td>
@@ -1460,12 +1469,12 @@ function renderProductTableView(area){
       <button class="btn danger" onclick="deleteProduct('${p.id}')">이 제품 삭제</button>
     </div>
     <div style="font-size:11px;color:var(--sub);margin-bottom:6px;">엑셀로 내보낸 뒤 값을 수정하고, 같은 파일을 "엑셀 가져오기"로 다시 불러오면 이 표에 반영됩니다. (열 구조를 바꾸지 않아야 정확히 인식됩니다)</div>
-    <div style="font-size:11px;color:var(--sub);margin-bottom:6px;">💰 <b>판매가</b>를 입력하면 <b>순이익</b>(매출−쿠팡수수료−그로스비용−원가)이 자동 계산됩니다. 원가·쿠팡수수료율·로켓그로스 물류비는 "옵션 / 리뷰스케줄 설정" 탭의 옵션별 손익 설정에서 입력하세요.</div>
+    <div style="font-size:11px;color:var(--sub);margin-bottom:6px;">💰 <b>판매가</b>를 입력하면 자연판매량 기준으로 매출·수수료·물류비·원가가 자동 계산됩니다. <b>리뷰비용</b>은 실제 정산한 금액을 직접 입력하면 <b>순이익</b>에서 그대로 차감됩니다. 원가·쿠팡수수료율·로켓그로스 물류비는 "옵션 / 리뷰스케줄 설정" 탭의 옵션별 손익 설정에서 입력하세요.</div>
     ${isAgg?'<div style="font-size:11.5px;color:var(--sub);margin-bottom:6px;">"전체 합계" 표시 중에는 값이 읽기전용입니다. 옵션별로 직접 입력하려면 위 드롭다운에서 옵션을 선택하세요.</div>':nonPrimaryNote}
     <div style="overflow:auto;max-height:640px;">
     <table class="datatable">
       <thead><tr>
-        <th>일차</th><th>날짜</th><th>단계</th><th>리뷰계획</th><th>리뷰판매</th><th>리뷰작성</th><th>28일조회수</th><th>증감폭</th><th>자연판매량</th><th>총판매량</th><th>판매가</th><th>순이익</th><th>메모</th><th>일정조정</th>
+        <th>일차</th><th>날짜</th><th>단계</th><th>리뷰계획</th><th>리뷰판매</th><th>리뷰작성</th><th>28일조회수</th><th>증감폭</th><th>자연판매량</th><th>총판매량</th><th>판매가</th><th>리뷰비용</th><th>순이익</th><th>메모</th><th>일정조정</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
@@ -1491,8 +1500,8 @@ function updateDayField(pid, dayIndex, field, value){
 function updateOptDay(pid, optionId, dayIndex, field, value){
   if(optionId==='ALL') return; // aggregate view is read-only
   const p = getProduct(pid);
-  // 리뷰계획/판매/작성은 주력 옵션에서만 편집 가능. 자연판매량·판매가는 어느 옵션에서든 편집 가능.
-  if(field!=='naturalSales' && field!=='sellPrice' && optionId!==p.primaryOptionId) return;
+  // 리뷰계획/판매/작성은 주력 옵션에서만 편집 가능. 자연판매량·판매가·리뷰비용은 어느 옵션에서든 편집 가능.
+  if(field!=='naturalSales' && field!=='sellPrice' && field!=='reviewCost' && optionId!==p.primaryOptionId) return;
   const d = ensureDay(p, dayIndex);
   const od = d.opt[optionId] || (d.opt[optionId]=blankOptDay());
   od[field] = Number(value)||0;
@@ -1853,7 +1862,7 @@ function renderSettingsView(area){
           </select>
           ${o.promo==='90'?'<div style="font-size:10.5px;color:#1f7a4d;margin-top:3px;">✅ 물류비 0원으로 계산됩니다.</div>':''}
         </div>
-        <div style="font-size:10.5px;color:var(--sub);margin-top:6px;">순이익 = 매출(판매가×자연판매량) − 쿠팡수수료 − 그로스비용(로켓그로스물류비×총판매량 + 원가×리뷰판매량) − 원가×자연판매량. 카테고리·사이즈를 "직접입력"으로 두면 옆 숫자칸 값을 그대로 사용합니다. 첫 90일 프로모션 적용 시 물류비는 0원으로 계산됩니다.</div>
+        <div style="font-size:10.5px;color:var(--sub);margin-top:6px;">순이익 = 매출(판매가×자연판매량) − 쿠팡수수료 − 물류비(로켓그로스물류비×자연판매량) − 원가×자연판매량 − 리뷰비용(일별 기록표에서 직접 입력). 카테고리·사이즈를 "직접입력"으로 두면 옆 숫자칸 값을 그대로 사용합니다. 첫 90일 프로모션 적용 시 물류비는 0원으로 계산됩니다.</div>
       </div>
       ${reviewSection}
     </div>`;
