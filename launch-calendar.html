@@ -163,6 +163,8 @@
   table.datatable td.memo textarea{text-align:left;resize:vertical;min-height:26px;}
   table.datatable tr.today-row td{background:#fff8e1;}
   .delta-up{color:var(--ok);font-weight:700;}
+  .profit-pos{color:var(--ok);font-weight:700;}
+  .profit-neg{color:var(--danger);font-weight:700;}
   .delta-down{color:var(--danger);font-weight:700;}
   .toolbar{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
   .btn{padding:7px 13px;border-radius:8px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:12.5px;font-weight:600;}
@@ -322,17 +324,67 @@ function saveState(){
 }
 
 /* ---------------- Options & Days ---------------- */
-function blankOptDay(){ return {reviewPlan:0, reviewActual:0, reviewWritten:0, naturalSales:0}; }
+function blankOptDay(){ return {reviewPlan:0, reviewActual:0, reviewWritten:0, naturalSales:0, sellPrice:0}; }
 function defaultReviewDates(startDay){
   return DEFAULT_REVIEW_SCHEDULE.map((qty, idx)=>({ dayIndex: Number(startDay)+idx, qty }));
 }
 function newOption(name, color){
   return { id: uid(), name: name || '옵션', color: color || PALETTE[Math.floor(Math.random()*PALETTE.length)], reviewStartDayIndex: DEFAULT_REVIEW_START, reviewDates: [],
-    sellerShip: {optionId:'', exposedId:''}, rocket: {optionId:'', exposedId:''} };
+    sellerShip: {optionId:'', exposedId:''}, rocket: {optionId:'', exposedId:''},
+    costPrice: 0, coupangFeePct: 0, rocketFeePerUnit: 0 };
 }
 function getOption(product, optionId){ return product.options.find(o=>o.id===optionId); }
 function optionLabel(p, o){ return p.options.length<=1 ? p.name : (p.name+' · '+o.name); }
 function isPrimaryOption(product, optionId){ return product.primaryOptionId===optionId; }
+
+function won(n){ return '₩' + Math.round(Number(n)||0).toLocaleString('ko-KR'); }
+
+/* ── 하루치 실제 손익 계산 ──
+   매출: 자연판매만 정상 매출로 본다(리뷰판매는 리뷰를 받기 위해 무상/원가 수준으로
+   내보낸 것으로 보고 매출로 잡지 않는다).
+   쿠팡수수료: 그 매출(자연판매분)에만 부과된다.
+   그로스비용: (로켓그로스 물류비 × 총판매량 — 리뷰판매·자연판매 모두 로켓그로스 창고에서
+   출고되므로) + (원가 × 리뷰판매량 — 리뷰용으로 무상 제공한 상품의 원가).
+   순이익 = 매출 − 쿠팡수수료 − 그로스비용 − 원가×자연판매량. */
+function calcDayProfit(o, od){
+  od = od || blankOptDay();
+  const sellPrice = Number(od.sellPrice)||0;
+  const nat = Number(od.naturalSales)||0;
+  const rev = Number(od.reviewActual)||0;
+  const cost = Number(o && o.costPrice)||0;
+  const feePct = Number(o && o.coupangFeePct)||0;
+  const rocketFee = Number(o && o.rocketFeePerUnit)||0;
+  const totalQty = nat + rev;
+  const revenue = sellPrice * nat;
+  const coupangFee = revenue * (feePct/100);
+  const growthCost = rocketFee*totalQty + cost*rev;
+  const natCost = cost*nat;
+  const netProfit = revenue - coupangFee - growthCost - natCost;
+  return { revenue, coupangFee, growthCost, natCost, netProfit, totalQty };
+}
+/* 옵션 전체를 합산한 그날의 손익(표시 옵션이 "전체 합계"일 때 사용). */
+function calcDayProfitAgg(p, d){
+  const out = { revenue:0, coupangFee:0, growthCost:0, natCost:0, netProfit:0 };
+  (p.options||[]).forEach(o=>{
+    const od = (d && d.opt && d.opt[o.id]) || blankOptDay();
+    const r = calcDayProfit(o, od);
+    out.revenue += r.revenue; out.coupangFee += r.coupangFee; out.growthCost += r.growthCost;
+    out.natCost += r.natCost; out.netProfit += r.netProfit;
+  });
+  return out;
+}
+/* 제품 전체 기간의 누적 손익(요약 카드용). */
+function calcCumulativeProfit(p){
+  const out = { revenue:0, coupangFee:0, growthCost:0, natCost:0, netProfit:0 };
+  for(let i=0;i<=p.maxDayIndex;i++){
+    const d = p.days[i];
+    if(!d) continue;
+    const r = calcDayProfitAgg(p, d);
+    out.revenue += r.revenue; out.coupangFee += r.coupangFee; out.growthCost += r.growthCost;
+    out.natCost += r.natCost; out.netProfit += r.netProfit;
+  }
+  return out;
+}
 
 function ensureDay(product, dayIndex){
   if(!product.days[dayIndex]){
@@ -433,12 +485,18 @@ function migrateProduct(p){
       if(o.sellerShip.exposedId===undefined) o.sellerShip.exposedId = '';
       if(o.rocket.optionId===undefined) o.rocket.optionId = '';
       if(o.rocket.exposedId===undefined) o.rocket.exposedId = '';
+      if(o.costPrice===undefined) o.costPrice = 0;
+      if(o.coupangFeePct===undefined) o.coupangFeePct = 0;
+      if(o.rocketFeePerUnit===undefined) o.rocketFeePerUnit = 0;
     });
     if(!p.primaryOptionId || !p.options.some(o=>o.id===p.primaryOptionId)) p.primaryOptionId = p.options[0] ? p.options[0].id : null;
     Object.keys(p.days||{}).forEach(k=>{
       const day = p.days[k];
       if(!day.opt) day.opt = {};
-      p.options.forEach(o=>{ if(!day.opt[o.id]) day.opt[o.id] = blankOptDay(); });
+      p.options.forEach(o=>{
+        if(!day.opt[o.id]) day.opt[o.id] = blankOptDay();
+        else if(day.opt[o.id].sellPrice===undefined) day.opt[o.id].sellPrice = 0;
+      });
     });
     // Convert any option still using the old fixed 5-slot reviewSchedule/reviewStartDayIndex
     // pair into the flexible reviewDates list (one-time, per option).
@@ -483,7 +541,8 @@ function migrateProduct(p){
         reviewPlan: Number(old.reviewPlan)||0,
         reviewActual: Number(old.reviewActual)||0,
         reviewWritten: Number(old.reviewWritten)||0,
-        naturalSales: Number(old.naturalSales)||0
+        naturalSales: Number(old.naturalSales)||0,
+        sellPrice: Number(old.sellPrice)||0
       }}
     };
   });
@@ -896,7 +955,7 @@ function getTotalSales(day){
   return dayAgg(day,'reviewActual') + dayAgg(day,'naturalSales');
 }
 /* end 날짜부터 거꾸로, 하루 자연판매량(전체옵션 합)이 10개 이상인 날이
-   며칠 연속으로 이어지고 있는지 센다. 하루라도 10개 미만이면 멈춘다. */
+   며칠 연속으로 이어지고 있는지 센다. 하루라도 10개 미만이면 멈추다. */
 function naturalSalesStreak(product, end){
   let streak = 0;
   for(let i=end; i>=0; i--){
@@ -1018,7 +1077,7 @@ function renderSummary(){
   const area = document.getElementById('summaryArea');
   if(isMultiMode()){
     const visible = getVisibleProducts();
-    if(visible.length===0){ area.innerHTML = state.selectedId==='CUSTOM' ? `<div class="card"><div class="empty">선택된 제품이 없습니다. 위 "🔎 선택보기"에서 제품을 골라주세요.</div></div>` : ''; return; }
+    if(visible.length===0){ area.innerHTML = state.selectedId==='CUSTOM' ? `<div class="card"><div class="empty">선택된 제품이 없습니다. 위 "🔎 선택볼기"에서 제품을 골라주세요.</div></div>` : ''; return; }
     let html = '<div class="summary-row">';
     visible.forEach(p=>{
       const todayIdx = diffDays(new Date(), parseDate(p.launchDate));
@@ -1049,6 +1108,8 @@ function renderSummary(){
   }
   const thumbHtml = p.image ? `<img class="prod-thumb" src="${p.image}">` : `<span class="dot" style="background:${p.color};width:36px;height:36px;border-radius:10px;display:inline-block;"></span>`;
   const optChips = p.options.map(o=>`<span class="option-tag" style="background:${o.color}22;color:${o.color};">${escHtml(o.name)}</span>`).join('');
+  const profitSum = calcCumulativeProfit(p);
+  const profitColor = profitSum.netProfit>=0 ? '#1f7a4d' : 'var(--danger)';
   /* 2차 추가발주 알림: 자연판매량(전체옵션 합)이 10개 이상으로 5일 이상 이어지면 표시.
      "오늘" 기준 날짜가 아직 기록되지 않았다면 마지막으로 기록된 날짜를 기준으로 본다. */
   const streakEnd = todayIdx<0 ? -1 : Math.min(todayIdx, p.maxDayIndex);
@@ -1070,6 +1131,9 @@ function renderSummary(){
     <div class="stat"><div class="label">누적 리뷰 판매 (전체옵션)</div><div class="value">${cumPurchase.toLocaleString()} <span class="badge-small">계획 ${reviewTargetSum}</span></div></div>
     <div class="stat"><div class="label">누적 리뷰 작성 (전체옵션)</div><div class="value">${cumWritten.toLocaleString()}</div></div>
     <div class="stat"><div class="label">누적 자연판매량 (전체옵션)</div><div class="value">${cumNatural.toLocaleString()}</div></div>
+    <div class="stat"><div class="label">누적 매출 (자연판매분)</div><div class="value">${won(profitSum.revenue)}</div></div>
+    <div class="stat"><div class="label">누적 비용 (원가+수수료+그로스)</div><div class="value">${won(profitSum.natCost+profitSum.coupangFee+profitSum.growthCost)}</div></div>
+    <div class="stat"><div class="label">누적 실제 순이익</div><div class="value" style="color:${profitColor}">${won(profitSum.netProfit)}</div></div>
   </div>`;
   area.innerHTML = html;
   /* 같은 날짜에 대해서는 한 번만 팝업으로 알린다(입력할 때마다 계속 뜨지 않도록). */
@@ -1251,11 +1315,16 @@ function openDayModal(dateStr){
           <div class="field"><label>리뷰 계획</label><input type="number" id="f_plan_${p.id}_${o.id}" value="${od.reviewPlan||0}"></div>
           <div class="field"><label>리뷰 판매</label><input type="number" id="f_act_${p.id}_${o.id}" value="${od.reviewActual||0}"></div>
           <div class="field"><label>리뷰 작성</label><input type="number" id="f_writ_${p.id}_${o.id}" value="${od.reviewWritten||0}"></div>` : '';
+      const r = calcDayProfit(o, od);
       return `<div class="opt-block">
         <div class="opt-title"><span class="dot" style="background:${o.color};width:9px;height:9px;border-radius:50%;display:inline-block;"></span>${escHtml(o.name)}${isPrimary?' <span class="badge-small">주력·리뷰진행</span>':''}</div>
         <div class="${isPrimary?'row4':'row2'}">
           ${reviewFields}
           <div class="field"><label>자연판매</label><input type="number" id="f_nat_${p.id}_${o.id}" value="${od.naturalSales||0}"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>판매가 (원)</label><input type="number" id="f_sell_${p.id}_${o.id}" value="${od.sellPrice||0}"></div>
+          <div class="field"><label>순이익 (자동계산)</label><input value="${won(r.netProfit)}" disabled></div>
         </div>
       </div>`;
     }).join('');
@@ -1292,6 +1361,8 @@ function saveDayModal(dateStr){
       const od = d.opt[o.id] || (d.opt[o.id]=blankOptDay());
       const natEl = document.getElementById(`f_nat_${p.id}_${o.id}`);
       if(natEl) od.naturalSales = Number(natEl.value)||0;
+      const sellEl = document.getElementById(`f_sell_${p.id}_${o.id}`);
+      if(sellEl) od.sellPrice = Number(sellEl.value)||0;
       const pe = document.getElementById(`f_plan_${p.id}_${o.id}`);
       if(pe){
         od.reviewPlan = Number(pe.value)||0;
@@ -1320,14 +1391,17 @@ function renderProductTableView(area){
     const isToday = sameDate(dateForDay(p,i), today);
     const deltaClass = delta===null? '' : (delta>=0?'delta-up':'delta-down');
     const isPrimaryView = !isAgg && viewOpt===p.primaryOptionId;
-    let planV, actV, writV, natV, totalV, dis, disReview;
+    let planV, actV, writV, natV, totalV, dis, disReview, sellV, profitRow;
     if(isAgg){
       planV = dayAgg(d,'reviewPlan'); actV = dayAgg(d,'reviewActual'); writV = dayAgg(d,'reviewWritten'); natV = dayAgg(d,'naturalSales'); totalV = getTotalSales(d); dis='disabled'; disReview='disabled';
+      sellV = ''; profitRow = calcDayProfitAgg(p, d);
     } else {
       const od = d.opt[viewOpt] || blankOptDay();
       planV = od.reviewPlan||0; actV = od.reviewActual||0; writV = od.reviewWritten||0; natV = od.naturalSales||0;
       totalV = (Number(od.reviewActual)||0)+(Number(od.naturalSales)||0); dis=''; disReview = isPrimaryView ? '' : 'disabled';
+      sellV = od.sellPrice||0; profitRow = calcDayProfit(getOption(p, viewOpt), od);
     }
+    const profitClass = profitRow.netProfit>=0 ? 'profit-pos' : 'profit-neg';
     rows += `<tr class="${isToday?'today-row':''}">
       <td>D+${i}</td>
       <td>${dateStr}</td>
@@ -1339,6 +1413,8 @@ function renderProductTableView(area){
       <td class="${deltaClass}" id="delta_${p.id}_${i}">${delta===null?'-':(delta>0?'+':'')+delta}</td>
       <td><input type="number" style="width:56px" ${dis} value="${natV}" oninput="updateOptDay('${p.id}','${viewOpt}',${i},'naturalSales',this.value)"></td>
       <td id="total_${p.id}_${i}"><b>${totalV}</b></td>
+      <td><input type="number" style="width:72px" ${dis} value="${sellV}" oninput="updateOptDay('${p.id}','${viewOpt}',${i},'sellPrice',this.value)" placeholder="원"></td>
+      <td id="profit_${p.id}_${i}" class="${profitClass}"><b>${won(profitRow.netProfit)}</b></td>
       <td class="memo"><textarea oninput="updateDayField('${p.id}',${i},'memo',this.value)">${escHtml(d.memo)}</textarea></td>
       <td><button type="button" class="btn shift" onclick="promptShift('${p.id}',${i})">🔀</button></td>
     </tr>`;
@@ -1359,11 +1435,12 @@ function renderProductTableView(area){
       <button class="btn danger" onclick="deleteProduct('${p.id}')">이 제품 삭제</button>
     </div>
     <div style="font-size:11px;color:var(--sub);margin-bottom:6px;">엑셀로 내보낸 뒤 값을 수정하고, 같은 파일을 "엑셀 가져오기"로 다시 불러오면 이 표에 반영됩니다. (열 구조를 바꾸지 않아야 정확히 인식됩니다)</div>
+    <div style="font-size:11px;color:var(--sub);margin-bottom:6px;">💰 <b>판매가</b>를 입력하면 <b>순이익</b>(매출−쿠팡수수료−그로스비용−원가)이 자동 계산됩니다. 원가·쿠팡수수료율·로켓그로스 물류비는 "옵션 / 리뷰스케줄 설정" 탭의 옵션별 손익 설정에서 입력하세요.</div>
     ${isAgg?'<div style="font-size:11.5px;color:var(--sub);margin-bottom:6px;">"전체 합계" 표시 중에는 값이 읽기전용입니다. 옵션별로 직접 입력하려면 위 드롭다운에서 옵션을 선택하세요.</div>':nonPrimaryNote}
     <div style="overflow:auto;max-height:640px;">
     <table class="datatable">
       <thead><tr>
-        <th>일차</th><th>날짜</th><th>단계</th><th>리뷰계획</th><th>리뷰판매</th><th>리뷰작성</th><th>28일조회수</th><th>증감폭</th><th>자연판매량</th><th>총판매량</th><th>메모</th><th>일정조정</th>
+        <th>일차</th><th>날짜</th><th>단계</th><th>리뷰계획</th><th>리뷰판매</th><th>리뷰작성</th><th>28일조회수</th><th>증감폭</th><th>자연판매량</th><th>총판매량</th><th>판매가</th><th>순이익</th><th>메모</th><th>일정조정</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
@@ -1389,13 +1466,21 @@ function updateDayField(pid, dayIndex, field, value){
 function updateOptDay(pid, optionId, dayIndex, field, value){
   if(optionId==='ALL') return; // aggregate view is read-only
   const p = getProduct(pid);
-  if(field!=='naturalSales' && optionId!==p.primaryOptionId) return; // review fields only editable on the primary option
+  // 리뷰계획/판매/작성은 주력 옵션에서만 편집 가능. 자연판매량·판매가는 어느 옵션에서든 편집 가능.
+  if(field!=='naturalSales' && field!=='sellPrice' && optionId!==p.primaryOptionId) return;
   const d = ensureDay(p, dayIndex);
   const od = d.opt[optionId] || (d.opt[optionId]=blankOptDay());
   od[field] = Number(value)||0;
   saveState();
   const tEl = document.getElementById(`total_${pid}_${dayIndex}`);
   if(tEl) tEl.innerHTML = '<b>'+((Number(od.reviewActual)||0)+(Number(od.naturalSales)||0))+'</b>';
+  const pEl = document.getElementById(`profit_${pid}_${dayIndex}`);
+  if(pEl){
+    const o = getOption(p, optionId);
+    const r = calcDayProfit(o, od);
+    pEl.className = r.netProfit>=0 ? 'profit-pos' : 'profit-neg';
+    pEl.innerHTML = '<b>'+won(r.netProfit)+'</b>';
+  }
   renderSummary();
 }
 
@@ -1695,6 +1780,18 @@ function renderSettingsView(area){
           </div>
         </div>
       </div>
+      <div class="field" style="margin:8px 0 10px;background:#f5f6fa;border-radius:6px;padding:8px 10px;">
+        <label style="font-size:11px;color:var(--sub);">💰 실제 손익 계산용 값 — 일별 기록표의 "판매가" 입력과 함께 순이익을 자동 계산합니다</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:4px;">
+          <div><div style="font-size:10.5px;color:var(--sub);margin-bottom:2px;">원가 (개당, 원)</div>
+            <input type="number" id="ocost_${o.id}" value="${o.costPrice||0}" placeholder="0"></div>
+          <div><div style="font-size:10.5px;color:var(--sub);margin-bottom:2px;">쿠팡 수수료율 (%)</div>
+            <input type="number" id="ofee_${o.id}" value="${o.coupangFeePct||0}" placeholder="0" step="0.1"></div>
+          <div><div style="font-size:10.5px;color:var(--sub);margin-bottom:2px;">로켓그로스 물류비 (개당, 원)</div>
+            <input type="number" id="orocketfee_${o.id}" value="${o.rocketFeePerUnit||0}" placeholder="0"></div>
+        </div>
+        <div style="font-size:10.5px;color:var(--sub);margin-top:4px;">순이익 = 매출(판매가×자연판매량) − 쿠팡수수료 − 그로스비용(로켓그로스물류비×총판매량 + 원가×리뷰판매량) − 원가×자연판매량</div>
+      </div>
       ${reviewSection}
     </div>`;
   }).join('');
@@ -1909,6 +2006,12 @@ function saveOptionSettings(pid){
     if(ssExpEl) o.sellerShip.exposedId = ssExpEl.value.trim();
     if(rkOptEl) o.rocket.optionId = rkOptEl.value.trim();
     if(rkExpEl) o.rocket.exposedId = rkExpEl.value.trim();
+    const costEl = document.getElementById('ocost_'+o.id);
+    if(costEl) o.costPrice = Number(costEl.value)||0;
+    const feeEl = document.getElementById('ofee_'+o.id);
+    if(feeEl) o.coupangFeePct = Number(feeEl.value)||0;
+    const rocketFeeEl = document.getElementById('orocketfee_'+o.id);
+    if(rocketFeeEl) o.rocketFeePerUnit = Number(rocketFeeEl.value)||0;
     const list = document.getElementById('revdates_'+o.id);
     if(list){
       const days = [...list.querySelectorAll('.rd-day')].map(el=>Number(el.value));
@@ -2203,7 +2306,7 @@ function ordCalcAll(round, options){
     }
     if(bestI===-1) break;
     const nextTotal = cur + base[bestI].box;
-    if(Math.abs(nextTotal-target) >= Math.abs(cur-target)) break; /* 더 가까워지지 않으면 중단 */
+    if(Math.abs(nextTotal-target) >= Math.abs(cur-target)) break; /* 이대로 가까워지지 않으면 중단 */
     boxCount[bestI]++;
     cur = nextTotal;
   }
@@ -2713,7 +2816,7 @@ function renderOrdersView(area){
         <td class="ord-adj-cell">
           <button class="ord-step" onclick="stepOrderAdj('${p.id}','${rd.id}','${o.id}',-10)">−10</button>
           <input class="ord-in ord-in-adj${c.auto?' is-auto':''}" inputmode="numeric" value="${c.adj}"
-            title="${c.auto?'비율수량을 10개 단위로 맞춘 자동값':'직접 입력한 값'}"
+            title="${c.auto?'비율수량을 10개 단위로 맞추 자동값':'직접 입력한 값'}"
             onchange="updOrderCell('${p.id}','${rd.id}','${o.id}','adj',this.value)">
           <button class="ord-step" onclick="stepOrderAdj('${p.id}','${rd.id}','${o.id}',10)">+10</button>
           ${c.auto?'':`<button class="ord-step ord-reset" title="자동값으로 되돌리기" onclick="resetOrderAdj('${p.id}','${rd.id}','${o.id}')">↺</button>`}
