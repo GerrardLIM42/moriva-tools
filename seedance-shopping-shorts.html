@@ -1,0 +1,812 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Seedance 2.5 쇼핑쇼츠 프롬프트 생성기</title>
+<style>
+:root{
+  --bg:#f4f7fb; --card:#fff; --text:#172033; --muted:#687386; --line:#dfe6ef;
+  --navy:#16365f; --navy2:#0f2747; --blue:#2d63a4; --soft:#edf4fd; --green:#16875d;
+  --danger:#b94a48; --shadow:0 10px 28px rgba(31,45,61,.08);
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Pretendard,"Noto Sans KR",Arial,sans-serif;background:var(--bg);color:var(--text)}
+header{
+  background:linear-gradient(135deg,var(--navy2),var(--navy));color:#fff;padding:26px 28px 22px;
+  position:sticky;top:0;z-index:10;box-shadow:0 3px 16px rgba(0,0,0,.15)
+}
+.header-inner{max-width:1440px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:20px}
+h1{font-size:22px;margin:0 0 6px}.subtitle{font-size:13px;opacity:.82}
+.badges{display:flex;gap:8px;flex-wrap:wrap}.badge{font-size:12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);padding:6px 9px;border-radius:999px}
+main{max-width:1440px;margin:22px auto;padding:0 18px 40px;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(420px,.95fr);gap:18px}
+@media(max-width:1050px){main{grid-template-columns:1fr}header{position:static}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:18px;margin-bottom:16px}
+.card h2{font-size:17px;margin:0 0 13px;display:flex;align-items:center;gap:8px}
+.card h3{font-size:14px;margin:16px 0 8px}
+.num{width:26px;height:26px;border-radius:8px;background:var(--navy);color:#fff;display:inline-grid;place-items:center;font-size:13px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media(max-width:650px){.grid2,.grid3{grid-template-columns:1fr}}
+label{display:block;font-size:12px;color:#566174;font-weight:700;margin-bottom:6px}
+input,select,textarea{
+  width:100%;border:1px solid #cfd8e5;border-radius:10px;padding:10px 11px;font:inherit;background:#fff;color:var(--text);outline:none
+}
+textarea{min-height:86px;resize:vertical;line-height:1.5}
+input:focus,select:focus,textarea:focus{border-color:#5c83b2;box-shadow:0 0 0 3px rgba(45,99,164,.1)}
+.help{font-size:11px;color:var(--muted);line-height:1.5;margin-top:6px}
+.drop{
+  border:1.5px dashed #9fb1c8;border-radius:13px;padding:13px;background:#f9fbfe;transition:.2s
+}
+.drop.drag{border-color:var(--blue);background:var(--soft)}
+.drop-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.btn{
+  border:0;border-radius:10px;padding:9px 12px;font-weight:800;cursor:pointer;font-size:13px;
+  background:var(--navy);color:#fff
+}
+.btn.secondary{background:#edf2f8;color:#24415f;border:1px solid #d6e0eb}
+.btn.green{background:var(--green)} .btn.danger{background:#fff2f2;color:var(--danger);border:1px solid #f0cccc}
+.btn:active{transform:translateY(1px)}
+.file-list{display:grid;gap:8px;margin-top:8px}
+.file{display:grid;grid-template-columns:58px 1fr auto;gap:10px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:11px;background:#fff}
+.thumb{width:58px;height:58px;border-radius:8px;background:#eaf0f7;object-fit:cover;display:block}
+.file-name{font-size:12px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-meta{font-size:10px;color:var(--muted);margin-top:3px}
+.role{font-size:10px;color:#31577e;background:#edf4fd;border-radius:999px;padding:3px 7px;display:inline-block;margin-top:4px}
+.style-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.style{
+  padding:12px;border:1px solid var(--line);border-radius:12px;cursor:pointer;background:#fff
+}
+.style.active{border-color:var(--blue);box-shadow:0 0 0 3px rgba(45,99,164,.08);background:#f8fbff}
+.style b{display:block;font-size:13px;margin-bottom:4px}.style span{font-size:11px;color:var(--muted);line-height:1.4}
+.checks{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.check{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:9px;background:#fafcff;font-size:12px}
+.check input{width:auto;margin-top:2px}
+.timeline{display:grid;gap:7px}.shot{display:grid;grid-template-columns:72px 1fr;gap:8px;align-items:start;padding:8px;border-radius:10px;background:#f7f9fc;border:1px solid #e7edf5}
+.shot .t{font-weight:900;font-size:12px;color:var(--navy)}.shot .d{font-size:12px;line-height:1.45}
+.sticky{position:sticky;top:104px}@media(max-width:1050px){.sticky{position:static}}
+.prompt{
+  min-height:630px;background:#0f1724;color:#dfe8f5;border:1px solid #263549;border-radius:12px;padding:15px;
+  font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;line-height:1.55;white-space:pre-wrap;overflow:auto
+}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0}
+.small-note{font-size:11px;color:#687386;background:#fff9e9;border:1px solid #f0dfad;padding:9px 10px;border-radius:10px;line-height:1.5}
+.status{font-size:11px;color:var(--green);font-weight:800;min-height:16px;margin-top:8px}
+.pillbar{display:flex;gap:7px;flex-wrap:wrap}
+.pill{border:1px solid #cfd8e5;background:white;padding:7px 9px;border-radius:999px;font-size:11px;cursor:pointer}
+.pill.active{background:var(--navy);border-color:var(--navy);color:white}
+hr{border:0;border-top:1px solid var(--line);margin:14px 0}
+details{border:1px solid var(--line);border-radius:11px;padding:9px 11px;background:#fbfcfe}
+summary{cursor:pointer;font-size:12px;font-weight:800}
+.kicker{font-size:11px;color:#4c6380;font-weight:900;letter-spacing:.04em;text-transform:uppercase}
+footer{max-width:1440px;margin:0 auto 30px;padding:0 18px;color:#7c8796;font-size:11px;line-height:1.6}
+.repair-box{border:1px solid #bfd0e3;background:#f6faff;border-radius:13px;padding:12px}
+.video-preview{width:100%;max-height:430px;background:#0c1420;border-radius:12px;display:none;margin-top:10px}
+.correction-list{display:grid;gap:10px;margin-top:10px}
+.correction-row{border:1px solid var(--line);border-radius:12px;padding:11px;background:#fbfcfe}
+.correction-head{display:grid;grid-template-columns:90px 90px 180px auto;gap:8px;align-items:end}
+.correction-body{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+@media(max-width:760px){.correction-head,.correction-body{grid-template-columns:1fr}}
+.prompt.repair{min-height:470px}
+.section-label{font-size:12px;font-weight:900;color:var(--navy);margin:4px 0 8px}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <div>
+      <h1>Seedance 2.5 쇼핑쇼츠 프롬프트 생성기</h1>
+      <div class="subtitle">제품 자료 + 실제 사용 영상 + 벤치마킹 쇼츠로 제작하고, 생성 결과 영상까지 다시 수정하는 프롬프트 생성</div>
+    </div>
+    <div class="badges"><span class="badge">Seedance 2.5</span><span class="badge">20 sec</span><span class="badge">9:16</span><span class="badge">Korean Voice</span></div>
+  </div>
+</header>
+
+<main>
+<section>
+  <div class="card">
+    <h2><span class="num">1</span> 제품 기본 정보</h2>
+    <div class="grid2">
+      <div><label>제품명</label><input id="productName" placeholder="예: 미니 스팀 다리미"></div>
+      <div><label>브랜드명</label><input id="brandName" placeholder="예: MORIVA"></div>
+    </div>
+    <div style="height:10px"></div>
+    <label>핵심 장점 / 반드시 보여줄 기능</label>
+    <textarea id="benefits" placeholder="예: 손바닥 크기, 빠른 구김 정리, 셔츠 칼라·소매 사용 편리, 여행 휴대"></textarea>
+    <div class="grid2">
+      <div><label>타깃 고객</label><input id="target" placeholder="예: 직장인, 여행이 잦은 20~40대"></div>
+      <div><label>CTA</label><input id="cta" value="지금 확인해보세요"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">2</span> 참고 자료 업로드</h2>
+    <div class="small-note">파일은 이 HTML 안에서만 미리보기 됩니다. 생성된 프롬프트는 각 자료의 <b>역할 우선순위</b>를 Seedance에 명시합니다. 실제 생성 시에는 같은 파일을 Seedance에도 함께 첨부하세요.</div>
+
+    <h3>① 내 제품 이미지 — 제품 형상 절대 기준</h3>
+    <div class="drop" data-role="product">
+      <div class="drop-head"><div class="kicker">PRODUCT IMAGES</div><button class="btn secondary pick" type="button">이미지 선택</button></div>
+      <input class="fileInput" type="file" accept="image/*" multiple hidden>
+      <div class="help">제품 모양, 색상, 로고, 비율, 부품 위치의 최우선 기준입니다.</div>
+      <div class="file-list"></div>
+    </div>
+
+    <h3>② 실제 사용 영상/이미지 — 동작 절대 기준</h3>
+    <div class="drop" data-role="usage">
+      <div class="drop-head"><div class="kicker">USAGE REFERENCES</div><button class="btn secondary pick" type="button">영상/이미지 선택</button></div>
+      <input class="fileInput" type="file" accept="video/*,image/*" multiple hidden>
+      <div class="help">손 위치, 제품을 잡는 방법, 접촉 부위, 움직임 방향, 실제 결과의 기준입니다.</div>
+      <div class="file-list"></div>
+    </div>
+
+    <h3>③ 벤치마킹 쇼핑쇼츠 — 연출/편집 기준</h3>
+    <div class="drop" data-role="benchmark">
+      <div class="drop-head"><div class="kicker">BENCHMARK SHORTS</div><button class="btn secondary pick" type="button">쇼츠 선택</button></div>
+      <input class="fileInput" type="file" accept="video/*" multiple hidden>
+      <div class="help">후킹 방식, 컷 속도, 카메라 구성, 텍스트 리듬, 나레이션 흐름만 참고합니다. 타 브랜드/인물/로고/고유 문구는 복제하지 않습니다.</div>
+      <div class="file-list"></div>
+    </div>
+
+    <h3>④ 로고 / 패키지 (선택)</h3>
+    <div class="drop" data-role="brand">
+      <div class="drop-head"><div class="kicker">BRAND ASSETS</div><button class="btn secondary pick" type="button">이미지 선택</button></div>
+      <input class="fileInput" type="file" accept="image/*" multiple hidden>
+      <div class="file-list"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">3</span> 쇼핑쇼츠 스타일</h2>
+    <div class="style-grid" id="styleGrid"></div>
+    <div style="height:12px"></div>
+    <label>첫 2초 훅 문구</label>
+    <input id="hook" placeholder="비워두면 스타일에 맞게 자동 구성">
+    <div class="grid2" style="margin-top:10px">
+      <div><label>나레이션 톤</label>
+        <select id="voiceTone">
+          <option>20~30대 한국 여성, 밝고 구매욕을 자극하는 자연스러운 톤</option>
+          <option>친구에게 추천하듯 편안한 UGC 톤</option>
+          <option>빠르고 자신감 있는 쇼핑호스트 톤</option>
+          <option>차분하고 고급스러운 프리미엄 광고 톤</option>
+          <option>남성, 또렷하고 신뢰감 있는 톤</option>
+        </select>
+      </div>
+      <div><label>모델/손 연출</label>
+        <select id="model">
+          <option>20~30대 한국 여성 모델, 자연스러운 홈 라이프스타일</option>
+          <option>손만 등장하는 제품 데모</option>
+          <option>20~30대 한국 남성 모델</option>
+          <option>모델 없이 제품 중심</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">4</span> 벤치마킹 범위</h2>
+    <div class="checks" id="benchmarkChecks">
+      <label class="check"><input type="checkbox" value="first-2-second hook structure" checked> 첫 2초 후킹 구조</label>
+      <label class="check"><input type="checkbox" value="shot order and pacing" checked> 컷 순서·속도</label>
+      <label class="check"><input type="checkbox" value="camera framing and close-up logic" checked> 카메라·클로즈업</label>
+      <label class="check"><input type="checkbox" value="on-screen text rhythm" checked> 화면 텍스트 리듬</label>
+      <label class="check"><input type="checkbox" value="voiceover energy and cadence" checked> 음성 톤·호흡</label>
+      <label class="check"><input type="checkbox" value="before-after reveal timing"> 전후 비교 타이밍</label>
+      <label class="check"><input type="checkbox" value="transition and sound-effect rhythm"> 전환·효과음 리듬</label>
+      <label class="check"><input type="checkbox" value="CTA placement"> CTA 위치</label>
+    </div>
+    <div style="height:10px"></div>
+    <label>벤치마킹 영상에서 특히 참고할 점 / 피할 점</label>
+    <textarea id="benchmarkNotes" placeholder="예: 첫 1초 제품 크기 반전 훅, 1~2초마다 컷 전환, 사용 후 결과를 바로 보여주는 방식. 중국어 자막/타사 로고는 제외."></textarea>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">5</span> 텍스트 · 음성 · 정확성</h2>
+    <div class="grid2">
+      <div>
+        <label>화면 텍스트 방식</label>
+        <select id="textMode">
+          <option value="short">짧은 한국어 키워드 4~6개</option>
+          <option value="minimal">최소 텍스트 2~3개</option>
+          <option value="none">화면 텍스트 없음</option>
+          <option value="custom">직접 입력 문구만 사용</option>
+        </select>
+      </div>
+      <div>
+        <label>음성</label>
+        <select id="audioMode">
+          <option value="voice">한국어 나레이션 + 배경음 + 효과음</option>
+          <option value="voiceOnly">한국어 나레이션 + 효과음, 배경음 최소</option>
+          <option value="silent">무음</option>
+        </select>
+      </div>
+    </div>
+    <div style="height:10px"></div>
+    <label>반드시 정확히 사용할 한글 문구 (선택, 한 줄에 하나)</label>
+    <textarea id="exactText" placeholder="예:
+작지만 강력하게
+구김은 빠르게
+여행 갈 때도 쏙"></textarea>
+    <div style="height:10px"></div>
+    <label>금지 / 수정 방지 사항</label>
+    <textarea id="negatives" placeholder="예: 제품 크기 과장 금지, 제품 버튼 추가 금지, 손가락 왜곡 금지, 실제 없는 스팀 기능 표현 금지"></textarea>
+    <div class="checks" style="margin-top:10px">
+      <label class="check"><input id="lockProduct" type="checkbox" checked> 제품 형상·색상·크기 고정</label>
+      <label class="check"><input id="lockMotion" type="checkbox" checked> 실제 사용 영상의 동작 우선</label>
+      <label class="check"><input id="safeKorean" type="checkbox" checked> 한글 오류 시 텍스트 생략</label>
+      <label class="check"><input id="noInvent" type="checkbox" checked> 없는 기능 임의 생성 금지</label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">6</span> 20초 장면 구성 미리보기</h2>
+    <div class="timeline" id="timeline"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">7</span> 생성 결과 영상 수정</h2>
+    <div class="small-note"><b>Seedance에서 나온 결과 영상을 다시 넣는 곳입니다.</b> 정상 장면은 유지하고, 문제 구간만 고치도록 초 단위 수정 지시를 만들 수 있습니다. 제품 이미지와 실제 사용 자료를 위에 함께 넣어두면 수정 정확도가 더 높아집니다.</div>
+
+    <h3>① 생성된 결과 영상 업로드</h3>
+    <div class="drop" data-role="generated">
+      <div class="drop-head"><div class="kicker">GENERATED RESULT VIDEO</div><button class="btn secondary pick" type="button">결과 영상 선택</button></div>
+      <input class="fileInput" type="file" accept="video/*" hidden>
+      <div class="help">수정할 최신 결과 영상 1개를 넣으세요. 새 파일을 넣으면 이전 결과 영상은 교체됩니다.</div>
+      <div class="file-list"></div>
+      <video id="generatedPreview" class="video-preview" controls playsinline></video>
+    </div>
+
+    <div class="grid2" style="margin-top:12px">
+      <div><label>수정 방식</label>
+        <select id="repairMode">
+          <option value="surgical">문제 구간만 수정 · 나머지 최대한 유지</option>
+          <option value="scene">지정 장면을 새로 생성해 교체</option>
+          <option value="full">전체 영상을 다시 생성하되 수정사항 반영</option>
+          <option value="textvoice">영상 연출은 유지하고 텍스트·음성 중심 수정</option>
+        </select>
+      </div>
+      <div><label>수정 프롬프트 언어</label>
+        <select id="repairLang"><option value="en" selected>영문 프롬프트</option><option value="ko">한글 프롬프트</option></select>
+      </div>
+    </div>
+
+    <h3>② 발견된 문제 유형</h3>
+    <div class="checks" id="correctionIssueChecks">
+      <label class="check"><input type="checkbox" value="product shape, size, color or component deformation"> 제품 형상·크기·색상 변형</label>
+      <label class="check"><input type="checkbox" value="incorrect product usage or physical motion"> 사용 동작·접촉 부위 오류</label>
+      <label class="check"><input type="checkbox" value="Korean on-screen text typo or corrupted typography"> 한글 텍스트 오류</label>
+      <label class="check"><input type="checkbox" value="Korean narration wording, pronunciation or duplication problem"> 음성·발음·중복 멘트</label>
+      <label class="check"><input type="checkbox" value="wrong or unwanted product/object appearing"> 엉뚱한 제품·물체 등장</label>
+      <label class="check"><input type="checkbox" value="model position, clothing, hands or body anatomy problem"> 모델 위치·복장·손 오류</label>
+      <label class="check"><input type="checkbox" value="shot timing, pacing or transition problem"> 컷 타이밍·속도·전환 오류</label>
+      <label class="check"><input type="checkbox" value="camera angle, framing or scale problem"> 카메라·구도·크기 오류</label>
+      <label class="check"><input type="checkbox" value="incorrect before-after result or unrealistic effect"> 결과·Before/After 표현 오류</label>
+      <label class="check"><input type="checkbox" value="logo, brand name or package corruption"> 로고·브랜드·패키지 오류</label>
+    </div>
+
+    <h3>③ 초 단위 수정 항목</h3>
+    <div class="help">문제 구간을 여러 개 등록할 수 있습니다. 시간은 정확히 몰라도 대략 입력하면 됩니다.</div>
+    <div class="correction-list" id="correctionList"></div>
+    <div class="actions"><button class="btn secondary" type="button" id="addCorrection">+ 수정 항목 추가</button></div>
+
+    <h3>④ 전체 수정 지시</h3>
+    <textarea id="repairNotes" placeholder="예: 처음 제품을 보여주는 장면과 마지막 장면은 마음에 드니 그대로 유지. 5~8초 사용 장면에서만 제품 형상과 손 동작을 실제 사용 영상대로 수정. 전체 길이와 기존 배경 분위기는 유지."></textarea>
+
+    <div class="checks" style="margin-top:10px">
+      <label class="check"><input id="preserveGood" type="checkbox" checked> 정상 장면은 변경하지 않기</label>
+      <label class="check"><input id="preserveTiming" type="checkbox" checked> 전체 길이·장면 순서 최대한 유지</label>
+      <label class="check"><input id="preserveStyle" type="checkbox" checked> 기존 조명·색감·광고 스타일 유지</label>
+      <label class="check"><input id="recheckRefs" type="checkbox" checked> 제품/사용 자료와 다시 대조</label>
+    </div>
+  </div>
+</section>
+
+<aside>
+  <div class="card sticky">
+    <h2><span class="num">8</span> 신규 제작 프롬프트</h2>
+    <div class="grid3">
+      <div><label>길이</label><select id="duration"><option value="20" selected>20초</option><option value="15">15초</option><option value="10">10초</option></select></div>
+      <div><label>화면비</label><select id="ratio"><option selected>9:16</option><option>4:3</option><option>16:9</option><option>1:1</option></select></div>
+      <div><label>언어</label><select id="promptLang"><option value="en" selected>영문 프롬프트</option><option value="ko">한글 프롬프트</option></select></div>
+    </div>
+    <div class="actions">
+      <button class="btn green" id="generate">프롬프트 생성</button>
+      <button class="btn" id="copy">복사</button>
+      <button class="btn secondary" id="downloadTxt">TXT 저장</button>
+    </div>
+    <div class="status" id="status"></div>
+    <pre class="prompt" id="prompt"></pre>
+    <hr>
+    <div class="actions">
+      <button class="btn secondary" id="saveProject">프로젝트 JSON 저장</button>
+      <button class="btn secondary" id="loadProjectBtn">프로젝트 불러오기</button>
+      <input id="loadProject" type="file" accept=".json,application/json" hidden>
+      <button class="btn danger" id="reset">초기화</button>
+    </div>
+    <hr>
+    <h2 style="margin-top:4px"><span class="num">9</span> 결과 영상 수정 프롬프트</h2>
+    <div class="help">7번에 생성 결과 영상을 넣고 문제 구간을 입력하면 아래 프롬프트가 자동 생성됩니다.</div>
+    <div class="actions">
+      <button class="btn green" id="generateRepair">수정 프롬프트 생성</button>
+      <button class="btn" id="copyRepair">수정 프롬프트 복사</button>
+      <button class="btn secondary" id="downloadRepair">수정 TXT 저장</button>
+    </div>
+    <div class="status" id="repairStatus"></div>
+    <pre class="prompt repair" id="repairPrompt"></pre>
+
+    <details style="margin-top:10px">
+      <summary>이 앱이 벤치마킹 영상을 사용하는 방식</summary>
+      <div class="help" style="margin-top:8px">
+        브라우저 단독 HTML이 영상의 의미를 AI처럼 자동 판독하는 것은 아닙니다. 대신 업로드한 벤치마킹 파일을 Seedance에 함께 넣는 것을 전제로,
+        어떤 요소를 참고하고 어떤 요소는 복제하지 말아야 하는지 역할을 명확히 써 줍니다. 파일 미리보기와 영상 길이/비율 확인은 자동입니다.
+        “특히 참고할 점”에 관찰한 특징을 적으면 결과가 더 정확해집니다.
+      </div>
+    </details>
+  </div>
+</aside>
+</main>
+
+<footer>
+  로컬 단일 HTML 앱 · 서버 업로드 없음 · 제품/사용법/벤치마크/생성 결과 영상은 브라우저 미리보기에만 사용됩니다.
+</footer>
+
+<script>
+const state={style:"hook_demo", files:{product:[],usage:[],benchmark:[],brand:[],generated:[]}, correctionSeq:0};
+const presets={
+ hook_demo:{name:"강한 훅 + 실사용 데모",desc:"첫 2초 궁금증 → 핵심 기능 → 결과 → CTA",hook:"이거, 생각보다 훨씬 괜찮은데요?",shots:[
+  ["0.0–2.0s","제품 또는 문제 상황을 강하게 보여주는 패턴 인터럽트 훅. 짧은 질문형 문구."],
+  ["2.0–5.0s","제품을 손에 들고 크기/형태를 명확히 보여준다."],
+  ["5.0–10.0s","실제 사용 동작을 가까이 보여주고 핵심 기능을 증명한다."],
+  ["10.0–15.0s","가장 만족스러운 결과/전후 차이를 보여준다."],
+  ["15.0–18.0s","휴대성·편의성·추가 장점 1~2개를 빠르게 정리한다."],
+  ["18.0–20.0s","클린 제품 샷 + 짧은 CTA."]
+ ]},
+ problem:{name:"문제 → 해결",desc:"불편함을 먼저 찌르고 제품으로 바로 해결",hook:"아직도 이거 때문에 불편하세요?",shots:[
+  ["0.0–3.0s","타깃 고객이 공감할 불편한 상황을 아주 명확하게 보여준다."],
+  ["3.0–5.0s","제품 등장. 해결책이라는 것을 한눈에 이해시킨다."],
+  ["5.0–11.0s","실제 사용법을 단계적으로 보여준다."],
+  ["11.0–15.0s","문제가 해결된 결과를 전후 비교로 보여준다."],
+  ["15.0–18.0s","핵심 장점 2개를 짧은 키워드로 강조한다."],
+  ["18.0–20.0s","제품 + CTA."]
+ ]},
+ ugc:{name:"UGC 리얼 후기",desc:"친구가 직접 써보고 추천하는 느낌",hook:"이거 왜 이제 알았지?",shots:[
+  ["0.0–2.5s","셀프 촬영 느낌의 리액션 훅. 제품을 카메라 가까이 보여준다."],
+  ["2.5–6.0s","사용 전 불편했던 점을 한 문장으로 말한다."],
+  ["6.0–12.0s","실제로 사용하면서 자연스럽게 기능을 설명한다."],
+  ["12.0–16.5s","결과를 카메라에 가까이 보여주며 짧게 리액션한다."],
+  ["16.5–20.0s","누구에게 유용한지 말하고 부담 없는 CTA로 마무리."]
+ ]},
+ before_after:{name:"전후 비교 집중",desc:"Before/After 차이를 시각적으로 크게",hook:"딱 몇 초만 보세요.",shots:[
+  ["0.0–2.0s","Before 상태를 클로즈업으로 보여주며 결과에 대한 기대를 만든다."],
+  ["2.0–4.0s","제품을 명확하게 노출한다."],
+  ["4.0–11.0s","실제 사용 동작을 끊지 않고 만족스럽게 보여준다."],
+  ["11.0–15.5s","Before/After를 같은 구도 또는 스플릿 느낌으로 비교한다."],
+  ["15.5–18.0s","핵심 효용을 한 문장으로 정리한다."],
+  ["18.0–20.0s","제품 샷 + CTA."]
+ ]},
+ comparison:{name:"기존 방식 비교",desc:"기존 불편 vs 제품 사용의 차이를 선명하게",hook:"둘 중 뭐가 더 편할까요?",shots:[
+  ["0.0–3.0s","기존 방식의 번거로운 장면을 짧게 보여준다."],
+  ["3.0–5.0s","새 제품을 대안으로 등장시킨다."],
+  ["5.0–11.0s","제품 사용 장면. 차이를 실제 행동으로 증명한다."],
+  ["11.0–15.5s","기존 방식과 새 방식의 결과/시간/편의 차이를 시각화한다."],
+  ["15.5–18.0s","구매 이유 2개를 짧게 강조한다."],
+  ["18.0–20.0s","제품 샷 + CTA."]
+ ]},
+ premium:{name:"프리미엄 감성",desc:"느낌 좋은 조명·디테일·고급스러운 카피",hook:"작은 차이가 일상을 바꿉니다.",shots:[
+  ["0.0–3.0s","제품 디테일 매크로와 고급스러운 첫 카피."],
+  ["3.0–7.0s","라이프스타일 공간에서 제품을 자연스럽게 사용하는 장면."],
+  ["7.0–12.0s","소재/작동/디테일을 부드러운 카메라 무빙으로 보여준다."],
+  ["12.0–16.0s","사용 결과와 생활 속 편리함을 보여준다."],
+  ["16.0–20.0s","브랜드/제품 히어로 샷 + 절제된 CTA."]
+ ]},
+ viral:{name:"빠른 바이럴형",desc:"1~1.5초 컷·강한 리듬·짧은 텍스트",hook:"잠깐, 이거 보세요.",shots:[
+  ["0.0–1.5s","강한 패턴 인터럽트. 아주 짧은 훅."],
+  ["1.5–4.0s","제품 reveal + 즉시 사용 시작."],
+  ["4.0–8.0s","빠른 2~3개 컷으로 핵심 기능."],
+  ["8.0–12.0s","가장 만족스러운 결과를 크게 보여준다."],
+  ["12.0–16.0s","다른 상황/다른 부위 사용을 빠르게 추가."],
+  ["16.0–18.5s","핵심 장점 키워드 연속 노출."],
+  ["18.5–20.0s","제품 클로즈업 + CTA."]
+ ]}
+};
+
+function escapeHtml(s){return (s||"").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]))}
+function initStyles(){
+ const g=document.getElementById("styleGrid");
+ Object.entries(presets).forEach(([k,p])=>{
+   const el=document.createElement("div"); el.className="style"+(k===state.style?" active":"");
+   el.dataset.style=k; el.innerHTML=`<b>${p.name}</b><span>${p.desc}</span>`;
+   el.onclick=()=>{state.style=k;document.querySelectorAll(".style").forEach(x=>x.classList.toggle("active",x===el));renderTimeline();generatePrompt()};
+   g.appendChild(el);
+ });
+}
+function renderTimeline(){
+ const p=presets[state.style]; const t=document.getElementById("timeline"); t.innerHTML="";
+ p.shots.forEach(s=>{const d=document.createElement("div");d.className="shot";d.innerHTML=`<div class="t">${s[0]}</div><div class="d">${s[1]}</div>`;t.appendChild(d)});
+}
+function humanSize(n){if(n<1024)return n+" B"; if(n<1048576)return (n/1024).toFixed(1)+" KB"; return (n/1048576).toFixed(1)+" MB"}
+function roleName(role){return {product:"제품 형상 기준",usage:"실제 사용 동작 기준",benchmark:"벤치마킹 연출 기준",brand:"브랜드/패키지 기준",generated:"수정할 생성 결과"}[role]}
+function addFiles(role, files, container){
+ if(role==="generated"){
+   state.files.generated=[]; container.innerHTML="";
+   const pv=document.getElementById("generatedPreview"); if(pv){pv.pause();pv.removeAttribute("src");pv.style.display="none";}
+ }
+ [...files].forEach(file=>{
+  if(role==="generated" && !file.type.startsWith("video/")) return;
+  const id=Math.random().toString(36).slice(2);
+  const item={id,name:file.name,type:file.type,size:file.size,file,duration:null,width:null,height:null,url:null};
+  state.files[role].push(item);
+  const row=document.createElement("div"); row.className="file"; row.dataset.id=id;
+  const media=file.type.startsWith("image/")?document.createElement("img"):document.createElement("video");
+  media.className="thumb"; item.url=URL.createObjectURL(file); media.src=item.url; if(media.tagName==="VIDEO"){media.muted=true;media.playsInline=true}
+  const info=document.createElement("div"); info.innerHTML=`<div class="file-name">${escapeHtml(file.name)}</div><div class="file-meta">${humanSize(file.size)}</div><span class="role">${roleName(role)}</span>`;
+  const del=document.createElement("button");del.className="btn danger";del.textContent="삭제";
+  del.onclick=()=>{state.files[role]=state.files[role].filter(x=>x.id!==id);row.remove(); if(role==="generated"){const pv=document.getElementById("generatedPreview");if(pv){pv.pause();pv.removeAttribute("src");pv.style.display="none";}} generatePrompt();generateRepairPrompt()};
+  row.append(media,info,del);container.appendChild(row);
+  if(media.tagName==="VIDEO"){
+    media.onloadedmetadata=()=>{
+      item.duration=media.duration; item.width=media.videoWidth; item.height=media.videoHeight;
+      info.querySelector(".file-meta").textContent=`${humanSize(file.size)} · ${media.duration.toFixed(1)}초 · ${media.videoWidth}×${media.videoHeight}`;
+      if(role==="generated"){
+        const pv=document.getElementById("generatedPreview"); if(pv){pv.src=item.url;pv.style.display="block";}
+      }
+      generateRepairPrompt();
+    }
+  } else {
+    media.onload=()=>{item.width=media.naturalWidth;item.height=media.naturalHeight;info.querySelector(".file-meta").textContent=`${humanSize(file.size)} · ${item.width}×${item.height}`;}
+  }
+ });
+ generatePrompt(); generateRepairPrompt();
+}
+document.querySelectorAll(".drop").forEach(drop=>{
+ const input=drop.querySelector(".fileInput"), list=drop.querySelector(".file-list"), role=drop.dataset.role;
+ drop.querySelector(".pick").onclick=()=>input.click();
+ input.onchange=e=>addFiles(role, role==="generated"?[e.target.files[0]].filter(Boolean):e.target.files, list);
+ ["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("drag")}));
+ ["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("drag")}));
+ drop.addEventListener("drop",e=>addFiles(role, role==="generated"?[e.dataTransfer.files[0]].filter(Boolean):e.dataTransfer.files, list));
+});
+
+function get(id){return document.getElementById(id)}
+function val(id){return get(id).value.trim()}
+function checkedBenchmark(){
+ return [...document.querySelectorAll("#benchmarkChecks input:checked")].map(x=>x.value);
+}
+function exactLines(){return val("exactText").split("\n").map(x=>x.trim()).filter(Boolean)}
+function fileSummary(role){
+ const f=state.files[role];
+ return f.length?f.map((x,i)=>`${i+1}. ${x.name}${x.duration?` (${x.duration.toFixed(1)}s)`:''}`).join("\n"):"None uploaded in this app yet";
+}
+function scaleShots(shots,duration){
+ const base=20; if(duration===20)return shots;
+ let prev=0; return shots.map(([range,desc],i)=>{
+   const nums=range.match(/[\d.]+/g).map(Number); const a=nums[0]/base*duration,b=nums[1]/base*duration;
+   return [`${a.toFixed(1)}–${b.toFixed(1)}s`,desc];
+ })
+}
+function addCorrectionRow(data={}){
+ const list=get("correctionList");
+ const id="corr_"+(++state.correctionSeq);
+ const row=document.createElement("div"); row.className="correction-row"; row.dataset.id=id;
+ row.innerHTML=`
+   <div class="correction-head">
+     <div><label>시작(초)</label><input class="cStart" type="number" min="0" step="0.1" placeholder="예: 4.0" value="${escapeHtml(String(data.start||""))}"></div>
+     <div><label>종료(초)</label><input class="cEnd" type="number" min="0" step="0.1" placeholder="예: 6.5" value="${escapeHtml(String(data.end||""))}"></div>
+     <div><label>문제 종류</label><select class="cType">
+       <option>제품 형상/크기/색상</option><option>실제 사용 동작</option><option>한글 텍스트</option><option>음성/발음</option>
+       <option>모델/손/복장</option><option>엉뚱한 제품/물체</option><option>카메라/구도</option><option>컷 속도/타이밍</option>
+       <option>결과/효과 표현</option><option>로고/패키지</option><option>기타</option>
+     </select></div>
+     <button class="btn danger removeCorrection" type="button">삭제</button>
+   </div>
+   <div class="correction-body">
+     <div><label>현재 문제점</label><textarea class="cProblem" placeholder="예: 파채를 만드는 장면에서 기존 멀티블레이드 제품이 등장함">${escapeHtml(data.problem||"")}</textarea></div>
+     <div><label>원하는 수정 결과</label><textarea class="cFix" placeholder="예: 처음부터 끝까지 첨부한 내 제품만 사용하고, 실제 사용 영상과 동일한 방향으로 움직이게 수정">${escapeHtml(data.fix||"")}</textarea></div>
+   </div>`;
+ list.appendChild(row);
+ if(data.type) row.querySelector(".cType").value=data.type;
+ row.querySelector(".removeCorrection").onclick=()=>{row.remove();generateRepairPrompt()};
+ row.querySelectorAll("input,select,textarea").forEach(x=>{x.addEventListener("input",generateRepairPrompt);x.addEventListener("change",generateRepairPrompt)});
+ generateRepairPrompt();
+}
+function correctionEntries(){
+ return [...document.querySelectorAll("#correctionList .correction-row")].map(row=>({
+   start:row.querySelector(".cStart").value.trim(), end:row.querySelector(".cEnd").value.trim(),
+   type:row.querySelector(".cType").value, problem:row.querySelector(".cProblem").value.trim(), fix:row.querySelector(".cFix").value.trim()
+ })).filter(x=>x.start||x.end||x.problem||x.fix);
+}
+function checkedCorrectionIssues(){return [...document.querySelectorAll("#correctionIssueChecks input:checked")].map(x=>x.value)}
+function repairModeText(mode,ko=false){
+ const en={surgical:"Make a surgical correction: change only the specified faulty moments and preserve all unaffected scenes as closely as possible.",scene:"Regenerate only the specified scene(s) and replace them while preserving the rest of the video.",full:"Regenerate the full video using the result video as the baseline, but apply all corrections below.",textvoice:"Preserve the visual edit as closely as possible and prioritize correcting on-screen text and Korean narration."};
+ const kr={surgical:"문제가 지정된 구간만 정밀 수정하고 정상 장면은 최대한 그대로 유지한다.",scene:"지정된 문제 장면만 새로 생성해 교체하고 나머지 영상은 유지한다.",full:"생성 결과 영상을 기준으로 전체를 다시 생성하되 아래 수정사항을 모두 반영한다.",textvoice:"영상 연출은 최대한 유지하고 화면 텍스트와 한국어 나레이션 수정에 우선순위를 둔다."};
+ return (ko?kr:en)[mode]|| (ko?kr.surgical:en.surgical);
+}
+function generateRepairPrompt(){
+ if(!get("repairPrompt")) return;
+ const ko=val("repairLang")==="ko";
+ const mode=val("repairMode")||"surgical";
+ const result=state.files.generated[0];
+ const entries=correctionEntries();
+ const issues=checkedCorrectionIssues();
+ const notes=val("repairNotes")|| (ko?"아래에 지정한 문제만 수정하고 정상 부분은 유지한다.":"Correct only the problems specified below and preserve the good parts.");
+ const name=val("productName")||"[PRODUCT NAME]", brand=val("brandName")||"[BRAND]";
+ const resultInfo=result?`${result.name}${result.duration?` (${result.duration.toFixed(1)}s, ${result.width}×${result.height})`:""}`:(ko?"[수정할 생성 결과 영상을 첨부하세요]":"[ATTACH THE GENERATED RESULT VIDEO TO FIX]");
+ const entryEn=entries.length?entries.map((x,i)=>{
+   const time=x.start||x.end?`${x.start||"?"}s–${x.end||"?"}s`:"time not specified";
+   return `${i+1}) TIME: ${time}\nTYPE: ${x.type}\nCURRENT PROBLEM: ${x.problem||"See the uploaded result video."}\nREQUIRED FIX: ${x.fix||"Correct this issue using the authoritative product/usage references."}`;
+ }).join("\n\n"):'1) No timestamp-specific correction entered. Apply the overall correction notes and checked issue categories.';
+ const entryKo=entries.length?entries.map((x,i)=>{
+   const time=x.start||x.end?`${x.start||"?"}초–${x.end||"?"}초`:"시간 미지정";
+   return `${i+1}) 구간: ${time}\n문제 종류: ${x.type}\n현재 문제: ${x.problem||"첨부한 생성 결과 영상에서 해당 오류를 확인한다."}\n필수 수정: ${x.fix||"제품/실사용 기준 자료와 대조해 정확하게 수정한다."}`;
+ }).join("\n\n"):'1) 초 단위 수정 항목이 입력되지 않았습니다. 전체 수정 지시와 선택한 문제 유형을 기준으로 수정한다.';
+ const preserveEn=[get("preserveGood").checked&&"Preserve all correct/unaffected scenes; do not improve or redesign them unnecessarily.",get("preserveTiming").checked&&"Preserve the current total duration, scene order and timing except where a correction requires a local change.",get("preserveStyle").checked&&"Preserve the current lighting, color grade, environment, model identity and overall ad style where they are already correct.",get("recheckRefs").checked&&"Re-check every corrected moment against the uploaded PRODUCT IMAGES and USAGE REFERENCES before generating."].filter(Boolean).map(x=>"- "+x).join("\n");
+ const preserveKo=[get("preserveGood").checked&&"정상 장면은 불필요하게 재설계하거나 바꾸지 않고 그대로 유지한다.",get("preserveTiming").checked&&"수정에 꼭 필요한 경우를 제외하고 현재 전체 길이, 장면 순서, 타이밍을 유지한다.",get("preserveStyle").checked&&"문제가 없는 기존 조명, 색감, 공간, 모델의 정체성, 광고 분위기를 유지한다.",get("recheckRefs").checked&&"수정되는 모든 구간을 제품 이미지와 실제 사용 참고자료에 다시 대조한다."].filter(Boolean).map(x=>"- "+x).join("\n");
+ const baseRefs=ko?`참고자료 우선순위\n1. 내 제품 이미지: 제품 형상·색상·크기·부품 위치의 절대 기준\n2. 실제 사용 영상/이미지: 손 위치·접촉 부위·움직임·사용 순서의 절대 기준\n3. 생성 결과 영상: 유지할 장면과 수정할 오류를 판단하는 기준\n4. 벤치마킹 쇼츠: 연출 스타일만 참고\n충돌 시 제품 정확성 > 실제 사용법 > 생성 결과의 기존 연출 > 벤치마킹 스타일 순으로 따른다.`:`REFERENCE PRIORITY\n1. PRODUCT IMAGES = absolute authority for geometry, color, scale and component positions.\n2. USAGE REFERENCES = absolute authority for hands, contact point, movement, direction and operation sequence.\n3. GENERATED RESULT VIDEO = baseline for what to preserve and what to repair.\n4. BENCHMARK SHORTS = style reference only.\nIf references conflict: PRODUCT ACCURACY > REAL USAGE > EXISTING RESULT STYLE > BENCHMARK STYLE.`;
+ const out=ko?`Seedance 2.5 생성 결과 영상 수정 프롬프트\n\n제품: ${name}\n브랜드: ${brand}\n수정할 결과 영상: ${resultInfo}\n수정 방식: ${repairModeText(mode,true)}\n\n핵심 지시\n첨부한 생성 결과 영상을 새로운 영상의 기준 영상으로 사용한다. 처음부터 완전히 다른 광고를 만들지 않는다. 아래에 지정된 오류를 정확히 수정하고, 문제가 없는 부분은 가능한 한 동일하게 유지한다.\n\n${baseRefs}\n\n선택한 문제 유형\n${issues.length?issues.map(x=>"- "+x).join("\n"):"- 별도 선택 없음"}\n\n초 단위 수정 지시\n${entryKo}\n\n전체 수정 지시\n${notes}\n\n유지 규칙\n${preserveKo||"- 수정이 필요한 부분 외에는 기존 영상 구조를 유지한다."}\n\n제품/동작 오류 방지\n- 다른 제품이나 기존 도구로 교체하지 않는다.\n- 제품의 크기, 모양, 색상, 손잡이, 날, 구멍, 버튼, 로고, 패키지를 임의로 바꾸지 않는다.\n- 실제 사용 참고자료와 다른 익숙한 동작으로 대체하지 않는다.\n- 결과는 제품이 실제 동작을 수행한 뒤에만 나타나게 한다.\n- 손과 손가락 해부 구조를 자연스럽게 유지한다.\n- 잘못된 한글을 만들지 않는다. 정확한 한글 생성이 어렵다면 오류 텍스트를 표시하지 않는다.\n- 수정 대상이 아닌 장면에 새 문구, 새 소품, 새 기능, 새 효과를 추가하지 않는다.\n\n최종 검수\n출력 전 각 수정 구간을 다시 확인하여 현재 문제점이 사라졌는지, 내 제품 이미지와 실제 사용법이 정확히 유지되었는지 확인한다.`:
+`Seedance 2.5 GENERATED-VIDEO CORRECTION PROMPT\n\nPRODUCT: ${name}\nBRAND: ${brand}\nGENERATED RESULT VIDEO TO FIX: ${resultInfo}\nCORRECTION MODE: ${repairModeText(mode,false)}\n\nCORE INSTRUCTION\nUse the uploaded generated result video as the BASELINE video. Do NOT create a completely different advertisement from scratch unless the selected correction mode explicitly requests full regeneration. Precisely fix the errors listed below while preserving all correct parts as closely as possible.\n\n${baseRefs}\n\nDETECTED / SELECTED ISSUE CATEGORIES\n${issues.length?issues.map(x=>"- "+x).join("\n"):"- No category selected; follow the detailed correction notes below."}\n\nTIMECODED CORRECTIONS\n${entryEn}\n\nOVERALL CORRECTION NOTES\n${notes}\n\nPRESERVATION RULES\n${preserveEn||"- Preserve the existing video structure outside the required corrections."}\n\nSTRICT PRODUCT / MOTION ERROR PREVENTION\n- Never replace the user's product with another tool or a more familiar product design.\n- Do not change product size, geometry, color, handle, blade, opening, button, logo, package or component positions.\n- Do not substitute a familiar usage motion for the motion shown in the actual usage reference.\n- The visible result may happen only AFTER the product physically performs the action.\n- Keep hands and fingers anatomically natural.\n- Do not generate misspelled or corrupted Korean. If exact Korean typography cannot be produced, omit the faulty text rather than inventing characters.\n- Do not add new text, props, features, effects or objects to scenes that are not being corrected.\n\nFINAL QUALITY CHECK\nBefore output, verify every corrected time range against the authoritative product images and usage references. Confirm that each listed error is gone and that unaffected scenes remain visually consistent with the uploaded result video.`;
+ get("repairPrompt").textContent=out;
+}
+
+function generatePrompt(){
+ const p=presets[state.style], duration=parseInt(val("duration")||"20"), ratio=val("ratio")||"9:16";
+ const name=val("productName")||"[PRODUCT NAME]";
+ const brand=val("brandName")||"[BRAND]";
+ const benefits=val("benefits")||"[Enter the real product benefits here]";
+ const target=val("target")||"online shoppers who value practical convenience";
+ const cta=val("cta")||"지금 확인해보세요";
+ const hook=val("hook")||p.hook;
+ const notes=val("benchmarkNotes")||"Follow only the general creative grammar of the benchmark reference: hook logic, pacing, camera rhythm and information order.";
+ const neg=val("negatives")||"No product deformation, no fake features, no distorted hands, no random text, no watermark.";
+ const bench=checkedBenchmark().join(", ");
+ const textLines=exactLines();
+ const lockProduct=get("lockProduct").checked, lockMotion=get("lockMotion").checked, safeKorean=get("safeKorean").checked, noInvent=get("noInvent").checked;
+ const shots=scaleShots(p.shots,duration);
+ const textMode=val("textMode"), audioMode=val("audioMode"), voiceTone=val("voiceTone"), model=val("model");
+ const lang=val("promptLang");
+
+ let textRule="";
+ if(textMode==="none") textRule="Do not display any on-screen text.";
+ else if(textMode==="custom") textRule=`Use ONLY these exact Korean phrases:\n${textLines.length?textLines.map(x=>`- "${x}"`).join("\n"):"- [ADD EXACT TEXT]"}\nDo not generate any other text.`;
+ else if(textMode==="minimal") textRule=`Use only 2–3 very short Korean text overlays. Keep each overlay under 10 Korean characters where possible.${textLines.length?`\nPrefer these exact phrases:\n${textLines.map(x=>`- "${x}"`).join("\n")}`:""}`;
+ else textRule=`Use 4–6 short Korean text overlays matched to the scenes. Keep them punchy and easy to read.${textLines.length?`\nUse these exact phrases when relevant:\n${textLines.map(x=>`- "${x}"`).join("\n")}`:""}`;
+ if(safeKorean) textRule += `\nIf accurate Korean typography cannot be generated, omit that text rather than showing misspelled or corrupted Korean.`;
+
+ const audioRule = audioMode==="silent" ? "No narration. No dialogue. Keep the video silent." :
+ audioMode==="voiceOnly" ? `Korean voiceover: ${voiceTone}. Use subtle product sound effects. Keep background music extremely low.` :
+ `Korean voiceover: ${voiceTone}. Add light modern shopping-short background music and subtle satisfying sound effects, always lower than the voice.`;
+
+ const roleRules = `
+REFERENCE ROLE HIERARCHY — CRITICAL
+1) PRODUCT IMAGES are the absolute authority for product identity:
+   shape, size, color, proportions, logo, buttons, openings, blades, handles, cords, attachments and package design.
+2) USAGE REFERENCES are the absolute authority for physical operation:
+   how the product is held, which side touches the object, contact point, hand position, wrist angle, movement direction, speed, repeated motion, order of actions and realistic result.
+3) BENCHMARK SHORTS are ONLY a creative/editing reference:
+   ${bench || "hook structure, pacing, framing and edit rhythm"}.
+   Do NOT copy identifiable people, brand assets, logos, exact wording, music, unique graphics, or a shot-for-shot sequence.
+   Recreate only the general advertising grammar using the user's own product and original scenes.
+4) BRAND ASSETS are the authority only for logo/brand/package appearance.
+When references conflict, use this priority: PRODUCT IDENTITY > ACTUAL USAGE > BENCHMARK STYLE > GENERAL AI ASSUMPTION.
+`;
+ const fileRefs = `
+FILES TO ATTACH TO SEEDANCE TOGETHER WITH THIS PROMPT
+[PRODUCT IMAGES]
+${fileSummary("product")}
+[USAGE REFERENCES]
+${fileSummary("usage")}
+[BENCHMARK SHORTS]
+${fileSummary("benchmark")}
+[BRAND ASSETS]
+${fileSummary("brand")}
+`;
+ const storyboard=shots.map((s,i)=>`SCENE ${i+1} — ${s[0]}\n${s[1]}`).join("\n\n");
+
+ const coreEnglish=`Create an original Korean e-commerce shopping short for Seedance 2.5.
+
+OUTPUT
+- Product: ${name}
+- Brand: ${brand}
+- Duration: exactly about ${duration} seconds
+- Aspect ratio: ${ratio}, vertical-first composition
+- Style: ${p.name} — ${p.desc}
+- Target audience: ${target}
+- Model / presentation: ${model}
+- Real benefits that may be shown: ${benefits}
+
+${roleRules}
+${fileRefs}
+
+BENCHMARKING INSTRUCTION
+Use the uploaded benchmark short(s) to study and adapt only these general aspects:
+${checkedBenchmark().map(x=>"- "+x).join("\n") || "- hook, pacing and framing"}
+User notes:
+${notes}
+
+Do not reproduce the benchmark creator's identity, brand, copyrighted music, exact script, exact captions, distinctive graphics or unique shot sequence.
+Make a new original shopping short with the user's own product.
+
+20-SECOND STORYBOARD
+HOOK LINE:
+"${hook}"
+
+${storyboard}
+
+VOICE / AUDIO
+${audioRule}
+
+Write a natural Korean voiceover that fits inside ${duration} seconds.
+The narration should:
+- open with the hook immediately
+- explain only features supported by the user's references
+- use short spoken sentences
+- sound conversational, persuasive and easy to understand
+- end naturally with: "${cta}"
+Do not repeat the same sentence twice.
+
+ON-SCREEN TEXT
+${textRule}
+
+VISUAL DIRECTION
+- realistic Korean e-commerce short
+- product must remain clearly visible and recognizable
+- show the product at a realistic scale relative to the hand, clothing, food or surrounding objects
+- use macro close-ups for the most important product interaction
+- show cause and effect: the result must happen only after the product physically performs the action
+- use quick but understandable cuts; no confusing jump in product state
+- natural hands, fingers and body anatomy
+- natural lighting and realistic material physics
+- do not invent product details outside the supplied references
+${lockProduct?'- LOCK product geometry, color, scale and component positions to the uploaded product images.':""}
+${lockMotion?'- LOCK the physical usage method to the uploaded usage reference. Do not replace it with a more familiar action.':""}
+${noInvent?'- NEVER invent a feature, material, function, result, button, screen, steam, blade, opening or accessory that is not visible or explicitly described.':""}
+
+NEGATIVE / ERROR PREVENTION
+${neg}
+- no product morphing
+- no brand or logo corruption
+- no duplicated product
+- no extra fingers
+- no floating objects
+- no impossible motion
+- no random English/Chinese/Korean text
+- no fake UI
+- no unrelated product appearing mid-scene
+- no price claims unless explicitly provided
+- no exaggerated performance beyond the reference evidence
+
+FINAL PRIORITY
+Accuracy of the user's product and actual usage is more important than matching the benchmark short.
+The benchmark controls STYLE only, never product identity or physical operation.
+`;
+
+ const coreKorean=`Seedance 2.5용 오리지널 한국 쇼핑쇼츠를 제작한다.
+
+출력 조건
+- 제품: ${name}
+- 브랜드: ${brand}
+- 길이: 약 ${duration}초
+- 화면비: ${ratio}
+- 스타일: ${p.name} — ${p.desc}
+- 타깃: ${target}
+- 모델/연출: ${model}
+- 실제로 보여줄 수 있는 핵심 장점: ${benefits}
+
+참고자료 역할 우선순위 — 매우 중요
+1. 제품 이미지는 제품 형상, 크기, 색상, 비율, 로고, 부품 위치의 절대 기준이다.
+2. 실제 사용 영상/이미지는 잡는 방법, 접촉 부위, 손 위치, 이동 방향, 속도, 동작 순서, 실제 결과의 절대 기준이다.
+3. 벤치마킹 쇼츠는 후킹, 컷 속도, 카메라, 텍스트 리듬, 음성 호흡 등 일반적인 광고 연출만 참고한다.
+4. 타 브랜드, 인물, 로고, 고유 문구, 음악, 그래픽, 독특한 장면 배열을 그대로 복제하지 않는다.
+충돌 시 우선순위: 제품 정확성 > 실제 사용법 > 벤치마킹 스타일 > AI의 일반적 추정.
+
+Seedance에 함께 첨부할 파일
+[제품 이미지]
+${fileSummary("product")}
+[실제 사용 자료]
+${fileSummary("usage")}
+[벤치마킹 쇼츠]
+${fileSummary("benchmark")}
+[브랜드 자료]
+${fileSummary("brand")}
+
+벤치마킹 범위
+${checkedBenchmark().map(x=>"- "+x).join("\n") || "- 후킹, 컷 속도, 카메라 구성"}
+추가 메모:
+${notes}
+
+장면 구성
+첫 훅 문구: "${hook}"
+
+${storyboard}
+
+음성/사운드
+${audioRule}
+${duration}초 안에 자연스럽게 들어가는 한국어 나레이션을 작성한다.
+첫 문장은 즉시 훅으로 시작하고, 실제 자료로 확인되는 기능만 말하며, 짧고 설득력 있게 진행한다.
+마지막은 자연스럽게 "${cta}"로 마무리한다.
+
+화면 텍스트
+${textRule}
+
+정확성 규칙
+- 실제 손과 제품의 크기 비율을 유지한다.
+- 제품이 실제로 작동한 뒤에만 결과가 나타나게 한다.
+- 손가락, 손목, 제품 접촉 위치가 자연스러워야 한다.
+${lockProduct?'- 제품 형상·색상·크기·부품 위치를 제품 이미지와 동일하게 고정한다.':""}
+${lockMotion?'- 실제 사용 영상의 동작을 최우선으로 고정하며 익숙한 다른 사용법으로 바꾸지 않는다.':""}
+${noInvent?'- 자료에 없는 기능, 소재, 버튼, 화면, 스팀, 날, 구멍, 부속품 등을 임의로 만들지 않는다.':""}
+
+금지 사항
+${neg}
+- 제품 변형 금지
+- 로고 훼손 금지
+- 제품 복제 금지
+- 손가락 왜곡 금지
+- 공중에 뜨는 물체 금지
+- 불가능한 움직임 금지
+- 엉뚱한 한글/중국어/영문 텍스트 금지
+- 다른 제품으로 교체 금지
+- 제공되지 않은 가격/성능 과장 금지
+
+최종 우선순위:
+벤치마킹 쇼츠와 비슷한 느낌보다 내 제품과 실제 사용법의 정확성이 더 중요하다.
+벤치마킹 영상은 오직 스타일에만 영향을 주며 제품의 정체성과 사용 동작을 변경해서는 안 된다.
+`;
+ get("prompt").textContent=lang==="ko"?coreKorean:coreEnglish;
+}
+["productName","brandName","benefits","target","cta","hook","voiceTone","model","benchmarkNotes","textMode","audioMode","exactText","negatives","duration","ratio","promptLang","lockProduct","lockMotion","safeKorean","noInvent"].forEach(id=>{
+ const el=get(id); el.addEventListener("input",generatePrompt); el.addEventListener("change",()=>{renderTimeline();generatePrompt()});
+});
+document.querySelectorAll("#benchmarkChecks input").forEach(x=>x.addEventListener("change",generatePrompt));
+["productName","brandName","exactText","negatives"].forEach(id=>{get(id).addEventListener("input",generateRepairPrompt);get(id).addEventListener("change",generateRepairPrompt)});
+get("generate").onclick=generatePrompt;
+get("copy").onclick=async()=>{await navigator.clipboard.writeText(get("prompt").textContent);flash("프롬프트를 복사했습니다.")};
+function flash(s){get("status").textContent=s;setTimeout(()=>get("status").textContent="",1800)}
+get("downloadTxt").onclick=()=>{
+ const blob=new Blob([get("prompt").textContent],{type:"text/plain;charset=utf-8"});
+ const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=(val("productName")||"seedance")+"_prompt.txt";a.click();URL.revokeObjectURL(a.href);
+};
+get("addCorrection").onclick=()=>addCorrectionRow();
+["repairMode","repairLang","repairNotes","preserveGood","preserveTiming","preserveStyle","recheckRefs"].forEach(id=>{const e=get(id);e.addEventListener("input",generateRepairPrompt);e.addEventListener("change",generateRepairPrompt)});
+document.querySelectorAll("#correctionIssueChecks input").forEach(x=>x.addEventListener("change",generateRepairPrompt));
+get("generateRepair").onclick=generateRepairPrompt;
+get("copyRepair").onclick=async()=>{await navigator.clipboard.writeText(get("repairPrompt").textContent);get("repairStatus").textContent="수정 프롬프트를 복사했습니다.";setTimeout(()=>get("repairStatus").textContent="",1800)};
+get("downloadRepair").onclick=()=>{
+ const blob=new Blob([get("repairPrompt").textContent],{type:"text/plain;charset=utf-8"});
+ const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=(val("productName")||"seedance")+"_repair_prompt.txt";a.click();URL.revokeObjectURL(a.href);
+};
+
+function projectData(){
+ return {
+  version:2, style:state.style,
+  fields:["productName","brandName","benefits","target","cta","hook","voiceTone","model","benchmarkNotes","textMode","audioMode","exactText","negatives","duration","ratio","promptLang","lockProduct","lockMotion","safeKorean","noInvent","repairMode","repairLang","repairNotes","preserveGood","preserveTiming","preserveStyle","recheckRefs"].reduce((o,id)=>{
+    const e=get(id);o[id]=e.type==="checkbox"?e.checked:e.value;return o;
+  },{}),
+  benchmarkChecks:checkedBenchmark(),
+  correctionIssues:checkedCorrectionIssues(),
+  corrections:correctionEntries(),
+  filenames:Object.fromEntries(Object.entries(state.files).map(([k,v])=>[k,v.map(x=>({name:x.name,type:x.type,size:x.size,duration:x.duration,width:x.width,height:x.height}))]))
+ };
+}
+get("saveProject").onclick=()=>{
+ const blob=new Blob([JSON.stringify(projectData(),null,2)],{type:"application/json;charset=utf-8"});
+ const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=(val("productName")||"shopping_shorts")+"_project.json";a.click();URL.revokeObjectURL(a.href);
+};
+get("loadProjectBtn").onclick=()=>get("loadProject").click();
+get("loadProject").onchange=e=>{
+ const f=e.target.files[0]; if(!f)return;
+ const r=new FileReader();r.onload=()=>{
+  try{
+   const d=JSON.parse(r.result); state.style=d.style||"hook_demo";
+   Object.entries(d.fields||{}).forEach(([id,v])=>{const el=get(id); if(!el)return; if(el.type==="checkbox")el.checked=!!v;else el.value=v});
+   document.querySelectorAll("#benchmarkChecks input").forEach(x=>x.checked=(d.benchmarkChecks||[]).includes(x.value));
+   document.querySelectorAll("#correctionIssueChecks input").forEach(x=>x.checked=(d.correctionIssues||[]).includes(x.value));
+   get("correctionList").innerHTML=""; state.correctionSeq=0; (d.corrections||[]).forEach(c=>addCorrectionRow(c)); if(!(d.corrections||[]).length) addCorrectionRow();
+   document.querySelectorAll(".style").forEach(x=>x.classList.toggle("active",x.dataset.style===state.style));
+   renderTimeline();generatePrompt();generateRepairPrompt();flash("프로젝트 설정을 불러왔습니다. 파일은 보안상 다시 선택해야 합니다.");
+  }catch(err){alert("프로젝트 파일을 읽을 수 없습니다.");}
+ }; r.readAsText(f);
+};
+get("reset").onclick=()=>{if(confirm("입력 내용을 초기화할까요?"))location.reload()};
+initStyles();renderTimeline();addCorrectionRow();generatePrompt();generateRepairPrompt();
+</script>
+</body>
+</html>
