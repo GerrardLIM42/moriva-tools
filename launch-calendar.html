@@ -343,7 +343,8 @@ function defaultReviewDates(startDay){
 function newOption(name, color){
   return { id: uid(), name: name || '옵션', color: color || PALETTE[Math.floor(Math.random()*PALETTE.length)], reviewStartDayIndex: DEFAULT_REVIEW_START, reviewDates: [],
     sellerShip: {optionId:'', exposedId:''}, rocket: {optionId:'', exposedId:''},
-    normalPrice: 0, costPrice: 0, coupangCat: '직접입력', coupangFeePct: 0, rocketSize: '직접입력', rocketFeePerUnit: 0, promo: 'none', promoStartDay: 0, promoEndDate: '', reviewCostTotal: 0 };
+    normalPrice: 0, costPrice: 0, coupangCat: '직접입력', coupangFeePct: 0, rocketSize: '직접입력', rocketFeePerUnit: 0, promo: 'none', promoStartDay: 0, promoEndDate: '', reviewCostTotal: 0,
+    isBundle: false, bundleComponents: [] };
 }
 function getOption(product, optionId){ return product.options.find(o=>o.id===optionId); }
 function optionLabel(p, o){ return p.options.length<=1 ? p.name : (p.name+' · '+o.name); }
@@ -475,6 +476,10 @@ function removeOption(product, optionId){
   if(product.options.length<=1) return false;
   product.options = product.options.filter(o=>o.id!==optionId);
   Object.values(product.days).forEach(day=>{ if(day.opt) delete day.opt[optionId]; });
+  // 삭제된 옵션을 구성품으로 참조하던 번들이 있으면 그 항목만 정리한다.
+  product.options.forEach(o=>{
+    if(Array.isArray(o.bundleComponents)) o.bundleComponents = o.bundleComponents.filter(c=>c.optionId!==optionId);
+  });
   if(product.primaryOptionId===optionId) product.primaryOptionId = product.options[0].id;
   return true;
 }
@@ -551,6 +556,14 @@ function migrateProduct(p){
       }
       delete o.promoDays;
       if(o.reviewCostTotal===undefined) o.reviewCostTotal = 0;
+      if(o.isBundle===undefined) o.isBundle = false;
+      if(!Array.isArray(o.bundleComponents)) o.bundleComponents = [];
+    });
+    // 번들 구성에서 삭제된 옵션을 참조하고 있으면 정리한다.
+    p.options.forEach(o=>{
+      if(Array.isArray(o.bundleComponents)){
+        o.bundleComponents = o.bundleComponents.filter(c=>c && c.optionId && p.options.some(x=>x.id===c.optionId) && Number(c.qty)>0);
+      }
     });
     if(!p.primaryOptionId || !p.options.some(o=>o.id===p.primaryOptionId)) p.primaryOptionId = p.options[0] ? p.options[0].id : null;
     Object.keys(p.days||{}).forEach(k=>{
@@ -1249,7 +1262,7 @@ function optionSelectHtml(p){
   // A single-option product has nothing to aggregate, so skip the redundant "전체 합계" choice
   // and just let the one option be edited directly.
   let opts = p.options.length>1 ? `<option value="ALL" ${cur==='ALL'?'selected':''}>전체 합계</option>` : '';
-  p.options.forEach(o=>{ opts += `<option value="${o.id}" ${cur===o.id?'selected':''}>${escHtml(o.name)}</option>`; });
+  p.options.forEach(o=>{ opts += `<option value="${o.id}" ${cur===o.id?'selected':''}>${o.isBundle?'🎁 ':''}${escHtml(o.name)}</option>`; });
   return `<select class="opt-select" onchange="setActiveOption('${p.id}', this.value)">${opts}</select>`;
 }
 function defaultOptionView(p){
@@ -1820,6 +1833,67 @@ function togglePromoRange(optionId){
   const sel = document.getElementById('opromo_'+optionId), box = document.getElementById('promorange_'+optionId);
   if(sel && box) box.style.display = (sel.value==='90') ? 'grid' : 'none';
 }
+/* ── 번들(묶음) 옵션 ──
+   번들 옵션은 다른 옵션들을 정해진 수량만큼 묶어 하나의 상품으로 파는 옵션이다.
+   구성 정보(bundleComponents)는 원가 자동계산과 참고용 기록일 뿐, 그 자체로는 그냥 옵션이므로
+   일별 기록표·캘린더·순이익 계산 등 기존 옵션 관련 기능을 별도 처리 없이 그대로 사용한다. */
+function toggleBundleSection(optionId){
+  const chk = document.getElementById('obundle_'+optionId), box = document.getElementById('bundlebox_'+optionId);
+  if(chk && box) box.style.display = chk.checked ? 'block' : 'none';
+}
+function bundleComponentOptionsHtml(p, excludeOptionId, selectedId){
+  return p.options.filter(x=>x.id!==excludeOptionId && !x.isBundle).map(x=>
+    `<option value="${x.id}" ${selectedId===x.id?'selected':''}>${escHtml(x.name)}</option>`
+  ).join('');
+}
+function bundleComponentRowHtml(p, optionId, comp){
+  return `<div class="revdate-row bundle-comp-row">
+    <select class="bc-opt" style="flex:1;">${bundleComponentOptionsHtml(p, optionId, comp?comp.optionId:'')}</select>
+    <span>×</span><input type="number" class="bc-qty" value="${comp?comp.qty:1}" min="1" style="width:52px;text-align:center;">
+    <button type="button" class="btn danger" onclick="this.closest('.bundle-comp-row').remove()">✕</button>
+  </div>`;
+}
+function bundleComponentRowsHtml(p, o){
+  const comps = (o.bundleComponents||[]);
+  return comps.map(c=>bundleComponentRowHtml(p, o.id, c)).join('');
+}
+function addBundleComponentRow(pid, optionId){
+  const p = getProduct(pid);
+  const list = document.getElementById('bundlecomp_'+optionId);
+  if(!p || !list) return;
+  const wrap = document.createElement('div');
+  wrap.innerHTML = bundleComponentRowHtml(p, optionId, null);
+  list.appendChild(wrap.firstElementChild);
+}
+/* 구성 옵션들의 원가×수량 합계를 계산해 원가 입력칸에 바로 채워 넣는다(저장 전 미리보기 계산이라
+   DOM에서 직접 읽는다). */
+function applyBundleAutoCost(pid, optionId){
+  const p = getProduct(pid);
+  const list = document.getElementById('bundlecomp_'+optionId);
+  if(!p || !list) return;
+  let total = 0;
+  list.querySelectorAll('.bundle-comp-row').forEach(row=>{
+    const optSel = row.querySelector('.bc-opt'), qtyEl = row.querySelector('.bc-qty');
+    const comp = optSel ? getOption(p, optSel.value) : null;
+    const qty = qtyEl ? (Number(qtyEl.value)||0) : 0;
+    if(comp) total += (Number(comp.costPrice)||0) * qty;
+  });
+  const costEl = document.getElementById('ocost_'+optionId);
+  if(costEl) costEl.value = total;
+}
+function handleAddBundleOption(pid){
+  const p = getProduct(pid);
+  if(p.options.filter(o=>!o.isBundle).length===0){
+    alert('번들을 구성할 기본 옵션이 먼저 필요합니다. 옵션을 추가한 뒤 번들을 만들어 주세요.');
+    return;
+  }
+  const name = prompt('새 번들 옵션명을 입력하세요 (예: 2개 묶음)', '번들'+(p.options.filter(o=>o.isBundle).length+1));
+  if(name===null) return;
+  const opt = addOption(p, name.trim() || '번들');
+  opt.isBundle = true;
+  saveState();
+  renderAll();
+}
 function renderSettingsView(area){
   const p = getProduct(state.selectedId);
   const previewHtml = p.image
@@ -1858,7 +1932,22 @@ function renderSettingsView(area){
         </label>
         <input type="color" value="${o.color}" id="oname_color_${o.id}" style="width:36px;padding:2px;">
         <input type="text" id="oname_${o.id}" value="${escAttr(o.name)}" placeholder="옵션명 (예: 블랙/L)">
+        ${o.isBundle?'<span class="badge-small">🎁 번들</span>':''}
         ${p.options.length>1?`<button class="btn danger" type="button" onclick="handleRemoveOption('${p.id}','${o.id}')">옵션 삭제</button>`:''}
+      </div>
+      <div class="field" style="margin:8px 0 10px;background:#fff8e8;border:1px solid #f0dfad;border-radius:6px;padding:8px 10px;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--sub);font-weight:700;">
+          <input type="checkbox" id="obundle_${o.id}" ${o.isBundle?'checked':''} onchange="toggleBundleSection('${o.id}')" style="width:auto;">
+          🎁 이 옵션은 번들(묶음) 상품입니다 — 여러 옵션을 묶어 하나의 상품으로 판매하고, 이 옵션 자체의 판매·리뷰·순이익을 기록합니다
+        </label>
+        <div id="bundlebox_${o.id}" style="display:${o.isBundle?'block':'none'};margin-top:8px;">
+          <div class="revdate-list" id="bundlecomp_${o.id}">${bundleComponentRowsHtml(p, o)}</div>
+          <div class="toolbar" style="margin-top:6px;margin-bottom:0;flex-wrap:wrap;">
+            <button class="btn" type="button" onclick="addBundleComponentRow('${p.id}','${o.id}')">+ 구성 옵션 추가</button>
+            <button class="btn" type="button" onclick="applyBundleAutoCost('${p.id}','${o.id}')">원가 자동 계산 (구성 합산 → 아래 원가칸에 채우기)</button>
+          </div>
+          <div style="font-size:10.5px;color:var(--sub);margin-top:4px;">번들 구성은 참고용 기록입니다. 실제 판매량·리뷰·순이익은 이 번들 옵션 자체 값으로 따로 기록하며, 구성 옵션의 재고에서 자동으로 차감되지는 않습니다.</div>
+        </div>
       </div>
       <div class="field" style="margin:8px 0 10px;">
         <label style="font-size:11px;color:var(--sub);">쿠팡 옵션ID · 노출상품ID — 상품은 판매자배송/로켓그로스로 각각 중복 등록되므로 따로 입력합니다 (판매자배송 재고는 보통 0)</label>
@@ -1956,6 +2045,7 @@ function renderSettingsView(area){
     ${optionCards}
     <div class="toolbar">
       <button class="btn" onclick="handleAddOption('${p.id}')">+ 옵션 추가</button>
+      <button class="btn" onclick="handleAddBundleOption('${p.id}')">🎁 번들 옵션 추가</button>
       <button class="btn primary" onclick="saveOptionSettings('${p.id}')">옵션 설정 저장</button>
     </div>
   </div>
@@ -2158,6 +2248,17 @@ function saveOptionSettings(pid){
     if(promoEndEl) o.promoEndDate = promoEndEl.value || '';
     const reviewCostEl = document.getElementById('oreviewcost_'+o.id);
     if(reviewCostEl) o.reviewCostTotal = Number(reviewCostEl.value)||0;
+    const bundleEl = document.getElementById('obundle_'+o.id);
+    if(bundleEl){
+      o.isBundle = bundleEl.checked;
+      const compList = document.getElementById('bundlecomp_'+o.id);
+      if(compList){
+        o.bundleComponents = [...compList.querySelectorAll('.bundle-comp-row')].map(row=>{
+          const optSel = row.querySelector('.bc-opt'), qtyEl = row.querySelector('.bc-qty');
+          return { optionId: optSel ? optSel.value : '', qty: qtyEl ? (Number(qtyEl.value)||0) : 0 };
+        }).filter(c=>c.optionId && c.qty>0);
+      }
+    }
     const list = document.getElementById('revdates_'+o.id);
     if(list){
       const days = [...list.querySelectorAll('.rd-day')].map(el=>Number(el.value));
