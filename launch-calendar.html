@@ -1926,17 +1926,63 @@ function setBundleQty(pid, optionId, qty){
     if(qtyEl) qtyEl.value = qty;
   }
 }
-function handleAddBundleOption(pid){
+/* 기준 옵션 이름의 끝 숫자(예: "화이트 1박스"의 "1")를 묶음 수량으로 바꿔 번들 옵션명을 만든다.
+   그런 패턴이 없으면 "{원래이름} N개 묶음" 형태로 만든다. */
+function smartBundleName(baseName, qty){
+  const m = baseName.match(/^(.*?)(\d+)(박스|개|팩|세트|입|묶음)$/);
+  if(m) return `${m[1]}${qty}${m[3]}`;
+  return `${baseName} ${qty}개 묶음`;
+}
+/* "🎁 번들 옵션 추가" — 기준이 되는 기존 옵션 하나를 고르고, 묶을 수량(2/3/4개 또는 직접입력, 여러 개
+   동시 체크 가능)을 선택하면 수량별로 별도의 번들 옵션을 한 번에 만들어 준다. 새로 만들어진 각 번들
+   옵션은 기준 옵션의 원가·정상 판매가에 수량을 곱한 값으로 미리 채워지고(추가 후 자유롭게 수정 가능),
+   그 외 나머지 필드(쿠팡 옵션ID·수수료율·물류비·프로모션 등)는 일반 옵션과 완전히 동일하게 비어 있는
+   상태로 시작해 옵션 설정 카드에서 그대로 입력할 수 있다. */
+function openAddBundleModal(pid){
   const p = getProduct(pid);
-  if(p.options.filter(o=>!o.isBundle).length===0){
+  const baseOptions = p.options.filter(o=>!o.isBundle);
+  if(baseOptions.length===0){
     alert('번들을 구성할 기본 옵션이 먼저 필요합니다. 옵션을 추가한 뒤 번들을 만들어 주세요.');
     return;
   }
-  const name = prompt('새 번들 옵션명을 입력하세요 (예: 2개 묶음)', '번들'+(p.options.filter(o=>o.isBundle).length+1));
-  if(name===null) return;
-  const opt = addOption(p, name.trim() || '번들');
-  opt.isBundle = true;
+  const optHtml = baseOptions.map(o=>`<option value="${o.id}">${escHtml(o.name)}</option>`).join('');
+  const body = `<h3>🎁 번들 옵션 추가</h3>
+    <div class="field"><label>기준 옵션 (묶을 옵션)</label>
+      <select id="bm_base">${optHtml}</select>
+    </div>
+    <div class="field"><label>묶음 수량 — 체크한 수량마다 별도의 번들 옵션이 만들어집니다</label>
+      <div class="toolbar" style="margin:4px 0;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:4px;"><input type="checkbox" class="bm-qty-chk" value="2" checked style="width:auto;">2개</label>
+        <label style="display:flex;align-items:center;gap:4px;"><input type="checkbox" class="bm-qty-chk" value="3" style="width:auto;">3개</label>
+        <label style="display:flex;align-items:center;gap:4px;"><input type="checkbox" class="bm-qty-chk" value="4" style="width:auto;">4개</label>
+        <label style="display:flex;align-items:center;gap:4px;">직접입력<input type="number" id="bm_qty_custom" min="2" style="width:60px;" placeholder="예: 5"></label>
+      </div>
+    </div>
+    <div style="font-size:11.5px;color:var(--sub);">원가·정상 판매가는 기준 옵션 값 × 수량으로 자동 계산되어 채워지며, 추가 후 옵션 설정 카드에서 다른 옵션처럼 자유롭게 값을 조정하거나 쿠팡 옵션ID 등을 입력할 수 있습니다.</div>
+    <div class="modal-actions"><button class="btn" onclick="closeModal()">취소</button><button class="btn primary" onclick="createBundleOptionsFromModal('${p.id}')">추가</button></div>`;
+  showModal(body);
+}
+function createBundleOptionsFromModal(pid){
+  const p = getProduct(pid);
+  const baseSel = document.getElementById('bm_base');
+  const base = baseSel ? getOption(p, baseSel.value) : null;
+  if(!base) return;
+  const qtys = [...document.querySelectorAll('.bm-qty-chk:checked')].map(el=>Number(el.value));
+  const customEl = document.getElementById('bm_qty_custom');
+  const customQty = Number(customEl && customEl.value);
+  if(customQty>1) qtys.push(customQty);
+  const uniqueQtys = [...new Set(qtys)].filter(q=>q>1);
+  if(uniqueQtys.length===0){ alert('묶음 수량을 하나 이상 선택하거나 입력하세요.'); return; }
+  uniqueQtys.forEach(qty=>{
+    const name = smartBundleName(base.name, qty);
+    const opt = addOption(p, name);
+    opt.isBundle = true;
+    opt.bundleComponents = [{ optionId: base.id, qty }];
+    opt.costPrice = (Number(base.costPrice)||0) * qty;
+    opt.normalPrice = (Number(base.normalPrice)||0) * qty;
+  });
   saveState();
+  closeModal();
   renderAll();
 }
 function renderSettingsView(area){
@@ -2101,7 +2147,7 @@ function renderSettingsView(area){
     ${optionCards}
     <div class="toolbar">
       <button class="btn" onclick="handleAddOption('${p.id}')">+ 옵션 추가</button>
-      <button class="btn" onclick="handleAddBundleOption('${p.id}')">🎁 번들 옵션 추가</button>
+      <button class="btn" onclick="openAddBundleModal('${p.id}')">🎁 번들 옵션 추가</button>
       <button class="btn primary" onclick="saveOptionSettings('${p.id}')">옵션 설정 저장</button>
     </div>
   </div>
