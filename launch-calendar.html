@@ -1938,14 +1938,14 @@ function smartBundleName(baseName, qty){
    옵션은 기준 옵션의 원가·정상 판매가에 수량을 곱한 값으로 미리 채워지고(추가 후 자유롭게 수정 가능),
    그 외 나머지 필드(쿠팡 옵션ID·수수료율·물류비·프로모션 등)는 일반 옵션과 완전히 동일하게 비어 있는
    상태로 시작해 옵션 설정 카드에서 그대로 입력할 수 있다. */
-function openAddBundleModal(pid){
+function openAddBundleModal(pid, preselectId){
   const p = getProduct(pid);
   const baseOptions = p.options.filter(o=>!o.isBundle);
   if(baseOptions.length===0){
     alert('번들을 구성할 기본 옵션이 먼저 필요합니다. 옵션을 추가한 뒤 번들을 만들어 주세요.');
     return;
   }
-  const optHtml = baseOptions.map(o=>`<option value="${o.id}">${escHtml(o.name)}</option>`).join('');
+  const optHtml = baseOptions.map(o=>`<option value="${o.id}" ${preselectId===o.id?'selected':''}>${escHtml(o.name)}</option>`).join('');
   const body = `<h3>🎁 번들 옵션 추가</h3>
     <div class="field"><label>기준 옵션 (묶을 옵션)</label>
       <select id="bm_base">${optHtml}</select>
@@ -2032,6 +2032,7 @@ function renderSettingsView(area){
           <input type="checkbox" id="obundle_${o.id}" ${o.isBundle?'checked':''} onchange="toggleBundleSection('${o.id}')" style="width:auto;">
           🎁 이 옵션은 번들(묶음) 상품입니다 — 기존 옵션 하나를 2개·3개·4개씩 묶어 하나의 상품으로 판매하고, 이 번들 옵션 자체의 판매량·매출·순이익을 별도로 기록합니다
         </label>
+        ${!o.isBundle?`<div style="margin-top:6px;"><button class="btn" type="button" onclick="openAddBundleModal('${p.id}','${o.id}')">🎁 이 옵션(${escHtml(o.name)})을 기준으로 번들 만들기</button> <span style="font-size:10.5px;color:var(--sub);">— 위 체크박스는 다른 옵션들을 묶어 이 옵션 자체를 번들로 만들 때만 사용하세요. "이 옵션을 N개씩 묶은 새 번들"을 만들려면 이 버튼을 누르세요.</span></div>`:''}
         <div id="bundlebox_${o.id}" style="display:${o.isBundle?'block':'none'};margin-top:8px;">
           <div class="revdate-list" id="bundlecomp_${o.id}">${bundleComponentRowsHtml(p, o)}</div>
           <div class="toolbar" style="margin-top:6px;margin-bottom:0;flex-wrap:wrap;gap:6px;">
