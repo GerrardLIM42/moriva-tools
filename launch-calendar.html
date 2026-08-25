@@ -343,7 +343,7 @@ function defaultReviewDates(startDay){
 function newOption(name, color){
   return { id: uid(), name: name || '옵션', color: color || PALETTE[Math.floor(Math.random()*PALETTE.length)], reviewStartDayIndex: DEFAULT_REVIEW_START, reviewDates: [],
     sellerShip: {optionId:'', exposedId:''}, rocket: {optionId:'', exposedId:''},
-    costPrice: 0, coupangCat: '직접입력', coupangFeePct: 0, rocketSize: '직접입력', rocketFeePerUnit: 0, promo: 'none', promoStartDay: 0, promoEndDate: '', reviewCostTotal: 0 };
+    normalPrice: 0, costPrice: 0, coupangCat: '직접입력', coupangFeePct: 0, rocketSize: '직접입력', rocketFeePerUnit: 0, promo: 'none', promoStartDay: 0, promoEndDate: '', reviewCostTotal: 0 };
 }
 function getOption(product, optionId){ return product.options.find(o=>o.id===optionId); }
 function optionLabel(p, o){ return p.options.length<=1 ? p.name : (p.name+' · '+o.name); }
@@ -406,13 +406,18 @@ function calcDayProfitAgg(p, d, dayIndex){
 /* 제품 전체 기간의 누적 손익(요약 카드용). 리뷰비용은 옵션마다 리뷰가 끝난 뒤 한 번에
    입력한 총액(reviewCostTotal)을 여기서 딱 한 번 더해서 빼준다(하루하루 나눠 계산하지 않음). */
 function calcCumulativeProfit(p){
-  const out = { revenue:0, coupangFee:0, growthCost:0, natCost:0, reviewCost:0, netProfit:0 };
+  const out = { revenue:0, coupangFee:0, growthCost:0, natCost:0, reviewCost:0, netProfit:0, listRevenue:0 };
   for(let i=0;i<=p.maxDayIndex;i++){
     const d = p.days[i];
     if(!d) continue;
     const r = calcDayProfitAgg(p, d, i);
     out.revenue += r.revenue; out.coupangFee += r.coupangFee; out.growthCost += r.growthCost;
     out.natCost += r.natCost; out.netProfit += r.netProfit;
+    (p.options||[]).forEach(o=>{
+      const od = (d.opt && d.opt[o.id]) || blankOptDay();
+      const qty = (Number(od.naturalSales)||0) + (Number(od.reviewActual)||0);
+      out.listRevenue += (Number(o.normalPrice)||0) * qty;
+    });
   }
   out.reviewCost = (p.options||[]).reduce((s,o)=> s + (Number(o.reviewCostTotal)||0), 0);
   out.netProfit -= out.reviewCost;
@@ -519,6 +524,7 @@ function migrateProduct(p){
       if(o.rocket.optionId===undefined) o.rocket.optionId = '';
       if(o.rocket.exposedId===undefined) o.rocket.exposedId = '';
       if(o.costPrice===undefined) o.costPrice = 0;
+      if(o.normalPrice===undefined) o.normalPrice = 0;
       if(o.coupangFeePct===undefined) o.coupangFeePct = 0;
       if(o.rocketFeePerUnit===undefined) o.rocketFeePerUnit = 0;
       if(o.coupangCat===undefined) o.coupangCat = '직접입력';
@@ -1183,6 +1189,9 @@ function renderSummary(){
     <div class="stat"><div class="label">누적 매출</div><div class="value">${won(profitSum.revenue)}</div></div>
     <div class="stat"><div class="label">누적 비용 (원가+수수료+물류비+리뷰비용)</div><div class="value">${won(profitSum.natCost+profitSum.coupangFee+profitSum.growthCost+profitSum.reviewCost)}</div></div>
     <div class="stat"><div class="label">누적 실제 순이익</div><div class="value" style="color:${profitColor}">${won(profitSum.netProfit)}</div></div>
+    <div class="stat"><div class="label">쿠팡 매출 (정상 판매가 기준)</div><div class="value">${won(profitSum.listRevenue)}</div><div style="font-size:10.5px;color:var(--sub);margin-top:3px">옵션 설정에서 정상 판매가를 입력하세요</div></div>
+    <div class="stat"><div class="label">실제 매출 비중</div><div class="value">${profitSum.listRevenue>0 ? (profitSum.revenue/profitSum.listRevenue*100).toFixed(1)+'%' : '-'}</div></div>
+    <div class="stat"><div class="label">순이익 비중</div><div class="value" style="color:${profitColor}">${profitSum.listRevenue>0 ? (profitSum.netProfit/profitSum.listRevenue*100).toFixed(1)+'%' : '-'}</div></div>
   </div>`;
   area.innerHTML = html;
   /* 같은 날짜에 대해서는 한 번만 팝업으로 알린다(입력할 때마다 계속 뜨지 않도록). */
@@ -1856,9 +1865,15 @@ function renderSettingsView(area){
       </div>
       <div class="field" style="margin:8px 0 10px;background:#f5f6fa;border-radius:6px;padding:8px 10px;">
         <label style="font-size:11px;color:var(--sub);">💰 실제 손익 계산용 값 — 일별 기록표의 "판매가" 입력과 함께 순이익을 자동 계산합니다</label>
-        <div style="margin-top:4px;">
-          <div style="font-size:10.5px;color:var(--sub);margin-bottom:2px;">원가 (개당, 원)</div>
-          <input type="number" id="ocost_${o.id}" value="${o.costPrice||0}" placeholder="0" style="max-width:160px;">
+        <div style="margin-top:4px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div>
+            <div style="font-size:10.5px;color:var(--sub);margin-bottom:2px;">원가 (개당, 원)</div>
+            <input type="number" id="ocost_${o.id}" value="${o.costPrice||0}" placeholder="0">
+          </div>
+          <div>
+            <div style="font-size:10.5px;color:var(--sub);margin-bottom:2px;">🏷️ 쿠팡 정상 판매가 (개당, 원)</div>
+            <input type="number" id="onormal_${o.id}" value="${o.normalPrice||0}" placeholder="0">
+          </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
           <div>
@@ -1895,7 +1910,7 @@ function renderSettingsView(area){
           <div style="font-size:10.5px;color:var(--sub);margin-bottom:2px;">📋 리뷰비용 총액 (리뷰 종료 후 실제 정산한 총 금액, 원) — 누적 순이익에서 한 번만 차감됩니다</div>
           <input type="number" id="oreviewcost_${o.id}" value="${o.reviewCostTotal||0}" placeholder="0" style="max-width:200px;">
         </div>
-        <div style="font-size:10.5px;color:var(--sub);margin-top:6px;">일별 순이익 = 매출(판매가×총판매량) − 쿠팡수수료 − 물류비(로켓그로스물류비×총판매량) − 원가×총판매량. 총판매량 = 자연판매량+리뷰판매량. 리뷰비용 총액은 여기에 포함되지 않고 누적 순이익에서만 한 번 차감됩니다. 카테고리·사이즈를 "직접입력"으로 두면 옆 숫자칸 값을 그대로 사용합니다. 로켓그로스 비용 무료 프로모션은 지정한 기간에 판매된 수량에만 적용되고, 그 기간이 지나면 정상 물류비가 부과됩니다.</div>
+        <div style="font-size:10.5px;color:var(--sub);margin-top:6px;">일별 순이익 = 매출(판매가×총판매량) − 쿠팡수수료 − 물류비(로켓그로스물류비×총판매량) − 원가×총판매량. 총판매량 = 자연판매량+리뷰판매량. 리뷰비용 총액은 여기에 포함되지 않고 누적 순이익에서만 한 번 차감됩니다. 카테고리·사이즈를 "직접입력"으로 두면 옆 숫자칸 값을 그대로 사용합니다. 로켓그로스 비용 무료 프로모션은 지정한 기간에 판매된 수량에만 적용되고, 그 기간이 지나면 정상 물류비가 부과됩니다. 쿠팡 정상 판매가를 입력하면 상단 요약에서 정상가 기준 매출 대비 실제 매출·순이익 비중을 확인할 수 있습니다.</div>
       </div>
       ${reviewSection}
     </div>`;
@@ -2113,6 +2128,8 @@ function saveOptionSettings(pid){
     if(rkExpEl) o.rocket.exposedId = rkExpEl.value.trim();
     const costEl = document.getElementById('ocost_'+o.id);
     if(costEl) o.costPrice = Number(costEl.value)||0;
+    const normalEl = document.getElementById('onormal_'+o.id);
+    if(normalEl) o.normalPrice = Number(normalEl.value)||0;
     const catEl = document.getElementById('ocat_'+o.id);
     if(catEl) o.coupangCat = catEl.value;
     const feeEl = document.getElementById('ofee_'+o.id);
