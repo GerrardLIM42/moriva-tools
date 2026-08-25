@@ -424,6 +424,21 @@ function calcCumulativeProfit(p){
   out.netProfit -= out.reviewCost;
   return out;
 }
+/* 옵션 하나만의 누적 판매량·매출(개별 옵션 카드에서 "이 옵션 누적" 표시용).
+   번들 옵션도 그냥 하나의 옵션이므로 이 함수로 그 번들만의 판매량·매출을 바로 확인할 수 있다. */
+function calcOptionCumulative(p, o){
+  let qty = 0, revenue = 0, listRevenue = 0;
+  for(let i=0;i<=p.maxDayIndex;i++){
+    const d = p.days[i];
+    if(!d) continue;
+    const od = (d.opt && d.opt[o.id]) || blankOptDay();
+    const q = (Number(od.naturalSales)||0) + (Number(od.reviewActual)||0);
+    qty += q;
+    revenue += q * (Number(od.sellPrice)||0);
+    listRevenue += q * (Number(o.normalPrice)||0);
+  }
+  return { qty, revenue, listRevenue };
+}
 
 function ensureDay(product, dayIndex){
   if(!product.days[dayIndex]){
@@ -1881,6 +1896,36 @@ function applyBundleAutoCost(pid, optionId){
   const costEl = document.getElementById('ocost_'+optionId);
   if(costEl) costEl.value = total;
 }
+/* 구성 옵션들의 정상 판매가×수량 합계를 계산해 이 번들 옵션의 정상 판매가 칸에 채워 넣는다. */
+function applyBundleAutoPrice(pid, optionId){
+  const p = getProduct(pid);
+  const list = document.getElementById('bundlecomp_'+optionId);
+  if(!p || !list) return;
+  let total = 0;
+  list.querySelectorAll('.bundle-comp-row').forEach(row=>{
+    const optSel = row.querySelector('.bc-opt'), qtyEl = row.querySelector('.bc-qty');
+    const comp = optSel ? getOption(p, optSel.value) : null;
+    const qty = qtyEl ? (Number(qtyEl.value)||0) : 0;
+    if(comp) total += (Number(comp.normalPrice)||0) * qty;
+  });
+  const normalEl = document.getElementById('onormal_'+optionId);
+  if(normalEl) normalEl.value = total;
+}
+/* "2개/3개/4개" 빠른 수량 버튼 — 번들 구성 행이 없으면 하나 만들고, 있으면 첫 번째 행의 수량을
+   바로 지정한 개수로 바꿔서 "옵션 하나를 N개씩 묶어 파는" 가장 흔한 번들 형태를 빠르게 설정한다. */
+function setBundleQty(pid, optionId, qty){
+  const list = document.getElementById('bundlecomp_'+optionId);
+  if(!list) return;
+  let row = list.querySelector('.bundle-comp-row');
+  if(!row){
+    addBundleComponentRow(pid, optionId);
+    row = list.querySelector('.bundle-comp-row');
+  }
+  if(row){
+    const qtyEl = row.querySelector('.bc-qty');
+    if(qtyEl) qtyEl.value = qty;
+  }
+}
 function handleAddBundleOption(pid){
   const p = getProduct(pid);
   if(p.options.filter(o=>!o.isBundle).length===0){
@@ -1902,6 +1947,7 @@ function renderSettingsView(area){
 
   let optionCards = p.options.map(o=>{
     const isPrimary = isPrimaryOption(p, o.id);
+    const optCum = calcOptionCumulative(p, o);
     const dates = o.reviewDates || [];
     const sum = dates.reduce((a,rd)=>a+Number(rd.qty||0),0);
     const rowsHtml = dates.map(rd=>reviewDateRowHtml(rd.dayIndex, rd.qty, o.id)).join('');
@@ -1938,15 +1984,22 @@ function renderSettingsView(area){
       <div class="field" style="margin:8px 0 10px;background:#fff8e8;border:1px solid #f0dfad;border-radius:6px;padding:8px 10px;">
         <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--sub);font-weight:700;">
           <input type="checkbox" id="obundle_${o.id}" ${o.isBundle?'checked':''} onchange="toggleBundleSection('${o.id}')" style="width:auto;">
-          🎁 이 옵션은 번들(묶음) 상품입니다 — 여러 옵션을 묶어 하나의 상품으로 판매하고, 이 옵션 자체의 판매·리뷰·순이익을 기록합니다
+          🎁 이 옵션은 번들(묶음) 상품입니다 — 기존 옵션 하나를 2개·3개·4개씩 묶어 하나의 상품으로 판매하고, 이 번들 옵션 자체의 판매량·매출·순이익을 별도로 기록합니다
         </label>
         <div id="bundlebox_${o.id}" style="display:${o.isBundle?'block':'none'};margin-top:8px;">
           <div class="revdate-list" id="bundlecomp_${o.id}">${bundleComponentRowsHtml(p, o)}</div>
-          <div class="toolbar" style="margin-top:6px;margin-bottom:0;flex-wrap:wrap;">
-            <button class="btn" type="button" onclick="addBundleComponentRow('${p.id}','${o.id}')">+ 구성 옵션 추가</button>
-            <button class="btn" type="button" onclick="applyBundleAutoCost('${p.id}','${o.id}')">원가 자동 계산 (구성 합산 → 아래 원가칸에 채우기)</button>
+          <div class="toolbar" style="margin-top:6px;margin-bottom:0;flex-wrap:wrap;gap:6px;">
+            <button class="btn" type="button" onclick="addBundleComponentRow('${p.id}','${o.id}')">+ 묶을 옵션 추가</button>
+            <span style="font-size:10.5px;color:var(--sub);align-self:center;">빠른 수량:</span>
+            <button class="btn" type="button" onclick="setBundleQty('${p.id}','${o.id}',2)">2개</button>
+            <button class="btn" type="button" onclick="setBundleQty('${p.id}','${o.id}',3)">3개</button>
+            <button class="btn" type="button" onclick="setBundleQty('${p.id}','${o.id}',4)">4개</button>
           </div>
-          <div style="font-size:10.5px;color:var(--sub);margin-top:4px;">번들 구성은 참고용 기록입니다. 실제 판매량·리뷰·순이익은 이 번들 옵션 자체 값으로 따로 기록하며, 구성 옵션의 재고에서 자동으로 차감되지는 않습니다.</div>
+          <div class="toolbar" style="margin-top:6px;margin-bottom:0;flex-wrap:wrap;gap:6px;">
+            <button class="btn" type="button" onclick="applyBundleAutoCost('${p.id}','${o.id}')">원가 자동 계산 (구성 합산 → 원가칸에 채우기)</button>
+            <button class="btn" type="button" onclick="applyBundleAutoPrice('${p.id}','${o.id}')">정상 판매가 자동 계산 (구성 합산 → 정상가칸에 채우기)</button>
+          </div>
+          <div style="font-size:10.5px;color:var(--sub);margin-top:4px;">예: 기존 옵션 하나를 골라 수량 2로 두면 "2개 묶음" 번들이 됩니다. 아래 원가·정상 판매가는 이 번들 옵션 자체의 값으로, 직접 입력하거나 위 자동 계산 버튼으로 채울 수 있습니다. 일별 기록표에 이 번들 옵션으로 판매량을 입력하면 판매량·매출이 이 옵션 기준으로 따로 집계됩니다(아래 "이 옵션 누적" 참고).</div>
         </div>
       </div>
       <div class="field" style="margin:8px 0 10px;">
@@ -1975,6 +2028,9 @@ function renderSettingsView(area){
             <div style="font-size:10.5px;color:var(--sub);margin-bottom:2px;">🏷️ 쿠팡 정상 판매가 (개당, 원)</div>
             <input type="number" id="onormal_${o.id}" value="${o.normalPrice||0}" placeholder="0">
           </div>
+        </div>
+        <div style="font-size:10.5px;color:var(--sub);margin-top:6px;background:#fff;border:1px solid var(--line);border-radius:6px;padding:6px 8px;">
+          📊 이 옵션 누적: 판매량 ${optCum.qty}개 · 실제 매출 ${won(optCum.revenue)} · 정상가 기준 매출 ${won(optCum.listRevenue)}
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
           <div>
