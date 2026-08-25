@@ -451,6 +451,16 @@ function applyOptionSchedule(product, option){
     product.days[di].opt[option.id].reviewPlan = (Number(product.days[di].opt[option.id].reviewPlan)||0) + (Number(rd.qty)||0);
   });
 }
+/* 일별 기록표·날짜 모달에서 리뷰계획을 직접 수정하면, "옵션 / 리뷰스케줄 설정" 탭의
+   리뷰 진행일 목록(option.reviewDates)에도 그 값을 반영한다 — 두 화면이 항상 같은
+   데이터를 보여주도록 유지한다. 수량 0이면 그 날짜의 항목은 목록에서 제거한다. */
+function syncReviewDateForDay(option, dayIndex, qty){
+  if(!option) return;
+  if(!Array.isArray(option.reviewDates)) option.reviewDates = [];
+  option.reviewDates = option.reviewDates.filter(rd => Number(rd.dayIndex) !== Number(dayIndex));
+  if(Number(qty) > 0) option.reviewDates.push({dayIndex: Number(dayIndex), qty: Number(qty)});
+  option.reviewDates.sort((a,b)=>a.dayIndex-b.dayIndex);
+}
 
 function addOption(product, name, color){
   const opt = newOption(name, color || PALETTE[product.options.length % PALETTE.length]);
@@ -1426,6 +1436,7 @@ function saveDayModal(dateStr){
         od.reviewPlan = Number(pe.value)||0;
         od.reviewActual = Number(document.getElementById(`f_act_${p.id}_${o.id}`).value)||0;
         od.reviewWritten = Number(document.getElementById(`f_writ_${p.id}_${o.id}`).value)||0;
+        syncReviewDateForDay(o, di, od.reviewPlan);
       }
     });
   });
@@ -1529,6 +1540,7 @@ function updateOptDay(pid, optionId, dayIndex, field, value){
   const d = ensureDay(p, dayIndex);
   const od = d.opt[optionId] || (d.opt[optionId]=blankOptDay());
   od[field] = Number(value)||0;
+  if(field==='reviewPlan') syncReviewDateForDay(getOption(p, optionId), dayIndex, od.reviewPlan);
   saveState();
   const tEl = document.getElementById(`total_${pid}_${dayIndex}`);
   if(tEl) tEl.innerHTML = '<b>'+((Number(od.reviewActual)||0)+(Number(od.naturalSales)||0))+'</b>';
