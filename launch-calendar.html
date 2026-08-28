@@ -2713,10 +2713,42 @@ function ordLastBox(p, oid){
   }
   return 0;
 }
-/* 다음 차수 제안 = 하루 평균 × 커버 일수 − 남은 재고 (박스 배수/10개 단위로 올림) */
+/* ── 번들 옵션의 재고 연동 ──
+   번들 옵션(예: "화이트 3박스")은 따로 재고를 갖지 않고, 구성 요소인 기준 옵션(예: "화이트 1박스")의
+   재고에서 판매량×수량만큼 함께 소진되는 것으로 본다. */
+function ordBundlesReferencing(p, baseOid){
+  return (p.options||[]).filter(o=>o.isBundle && Array.isArray(o.bundleComponents) && o.bundleComponents.some(c=>c.optionId===baseOid));
+}
+/* baseOid를 구성 요소로 쓰는 모든 번들의 (판매량 × 수량) 합 = baseOid 재고에서 추가로 소진된 양 */
+function ordBundleConsumedSold(p, baseOid){
+  let s = 0;
+  ordBundlesReferencing(p, baseOid).forEach(b=>{
+    (b.bundleComponents||[]).forEach(c=>{ if(c.optionId===baseOid) s += ordSold(p, b.id) * (Number(c.qty)||0); });
+  });
+  return s;
+}
+function ordBundleConsumedDailyAvg(p, baseOid){
+  let s = 0;
+  ordBundlesReferencing(p, baseOid).forEach(b=>{
+    (b.bundleComponents||[]).forEach(c=>{ if(c.optionId===baseOid) s += ordDailyAvg(p, b.id) * (Number(c.qty)||0); });
+  });
+  return s;
+}
+/* 번들이 아닌 옵션의 실제 남은 재고 = 총 입고 − 이 옵션 자체 판매 − 이 옵션을 구성 요소로 쓰는 번들들의 소진량.
+   번들 옵션 자체는 별도 재고가 없으므로 null을 반환한다(화면에서는 "재고연동"으로 표시). */
+function ordRemain(p, oid){
+  const o = getOption(p, oid);
+  if(o && o.isBundle) return null;
+  return ordReceived(p,oid) - ordSold(p,oid) - ordBundleConsumedSold(p,oid);
+}
+/* 다음 차수 제안 = 하루 평균 × 커버 일수 − 남은 재고 (박스 배수/10개 단위로 올림).
+   번들 옵션은 따로 발주하지 않으므로(기준 옵션을 발주) 0을 반환하고,
+   기준 옵션은 그 옵션을 소진시키는 번들 판매분까지 더해 계산한다. */
 function ordSuggest(p, oid){
-  const remain = ordReceived(p,oid) - ordSold(p,oid);
-  const avg = ordDailyAvg(p,oid);
+  const o = getOption(p, oid);
+  if(o && o.isBundle) return 0;
+  const remain = ordRemain(p,oid);
+  const avg = ordDailyAvg(p,oid) + ordBundleConsumedDailyAvg(p,oid);
   const cover = Number(p.orderCoverDays)||40;
   const need = Math.max(0, Math.ceil(avg*cover - remain));
   if(need<=0) return 0;
@@ -3218,14 +3250,37 @@ function renderOrdersView(area){
 
   /* ── 재고 현황 + 다음 차수 제안 ── */
   const invRows = p.options.map(o=>{
-    const rec = ordReceived(p,o.id), sold = ordSold(p,o.id), remain = rec-sold;
-    const avg = ordDailyAvg(p,o.id);
+    if(o.isBundle){
+      const baseNames = (o.bundleComponents||[]).map(c=>{
+        const base = getOption(p, c.optionId);
+        return base ? `${base.name}×${c.qty}` : null;
+      }).filter(Boolean).join(', ');
+      const linkedTitle = `재고를 따로 갖지 않고 기준 옵션(${escAttr(baseNames)}) 재고에서 함께 소진됩니다`;
+      const sold = ordSold(p,o.id);
+      const avg = ordDailyAvg(p,o.id);
+      return `<tr>
+        <td class="ord-name">${p.primaryOptionId===o.id?'<span class="ord-pri">★</span> ':''}${escHtml(o.name)} <span class="badge-small">🎁 번들</span></td>
+        <td><span class="badge-small" title="${linkedTitle}">🔗 재고연동</span></td>
+        <td>${fmtC(sold)}</td>
+        <td><span class="badge-small" title="${linkedTitle}">🔗 재고연동</span></td>
+        <td>${avg>0?avg.toFixed(1):'-'}</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>`;
+    }
+    const rec = ordReceived(p,o.id), sold = ordSold(p,o.id);
+    const bundleSold = ordBundleConsumedSold(p,o.id);
+    const remain = rec - sold - bundleSold;
+    const avg = ordDailyAvg(p,o.id) + ordBundleConsumedDailyAvg(p,o.id);
     const daysLeft = avg>0 ? Math.floor(Math.max(0,remain)/avg) : null;
     const sug = ordSuggest(p,o.id);
+    const soldCell = bundleSold>0
+      ? `${fmtC(sold+bundleSold)}<div class="ord-basehint">(자체 ${fmtC(sold)} + 번들 소진 ${fmtC(bundleSold)})</div>`
+      : fmtC(sold);
     return `<tr>
       <td class="ord-name">${p.primaryOptionId===o.id?'<span class="ord-pri">★</span> ':''}${escHtml(o.name)}</td>
       <td>${fmtC(rec)}</td>
-      <td>${fmtC(sold)}</td>
+      <td>${soldCell}</td>
       <td class="${remain<0?'ord-neg':''}"><b>${fmtC(remain)}</b></td>
       <td>${avg>0?avg.toFixed(1):'-'}</td>
       <td>${daysLeft===null?'-':(daysLeft+'일')}</td>
