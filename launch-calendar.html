@@ -3289,23 +3289,29 @@ function renderOrdersView(area){
     }
     const rec = ordReceived(p,o.id), sold = ordSold(p,o.id);
     const bundleSold = ordBundleConsumedSold(p,o.id);
-    const remain = rec - sold - bundleSold;
-    const avg = ordDailyAvg(p,o.id) + ordBundleConsumedDailyAvg(p,o.id);
-    const daysLeft = avg>0 ? Math.floor(Math.max(0,remain)/avg) : null;
     const sug = ordSuggest(p,o.id);
     const soldCell = bundleSold>0
       ? `${fmtC(sold+bundleSold)}<div class="ord-basehint">(자체 ${fmtC(sold)} + 번들 소진 ${fmtC(bundleSold)})</div>`
       : fmtC(sold);
     /* "화이트 2박스"처럼 번들은 아니지만 실제로는 여러 개를 한 세트로 묶어 파는 옵션은
-       발주 수량 자체(rec, remain)는 그대로 개별 개수로 계산하되, 재고 현황 표시만
-       설정한 묶음 수로 나눠서(세트 단위로) 보여준다. */
+       발주 수량 자체(rec)는 그대로 개별 개수로 계산하되, 재고 현황 표시(총입고·남은재고)만
+       설정한 묶음 수로 나눠서(세트 단위로) 보여준다. 이때 "누적 판매"는 이미 이 옵션(세트)
+       단위로 기록되어 있으므로, 남은 재고도 총입고를 먼저 세트 단위로 나눈 뒤 판매량을
+       그대로 빼야 "판매 6개 = 재고 6개 소진"이 정확히 맞는다. */
     const stockGroupQty = Number(o.stockGroupQty)||1;
-    const recCell = stockGroupQty>1
-      ? `${fmtC(Math.floor(rec/stockGroupQty))}<div class="ord-basehint">(실제 ${fmtC(rec)}개 ÷ ${stockGroupQty}개씩 묶음)</div>`
-      : fmtC(rec);
-    const remainCell = stockGroupQty>1
-      ? `${fmtC(Math.floor(remain/stockGroupQty))}<div class="ord-basehint">(실제 ${fmtC(remain)}개 ÷ ${stockGroupQty}개씩 묶음)</div>`
-      : fmtC(remain);
+    let remain, recCell, remainCell;
+    if(stockGroupQty>1){
+      const recG = Math.floor(rec/stockGroupQty);
+      remain = recG - sold - bundleSold;
+      recCell = `${fmtC(recG)}<div class="ord-basehint">(실제 ${fmtC(rec)}개 ÷ ${stockGroupQty}개씩 묶음)</div>`;
+      remainCell = fmtC(remain);
+    } else {
+      remain = rec - sold - bundleSold;
+      recCell = fmtC(rec);
+      remainCell = fmtC(remain);
+    }
+    const avg = ordDailyAvg(p,o.id) + ordBundleConsumedDailyAvg(p,o.id);
+    const daysLeft = avg>0 ? Math.floor(Math.max(0,remain)/avg) : null;
     return `<tr>
       <td class="ord-name">${p.primaryOptionId===o.id?'<span class="ord-pri">★</span> ':''}${escHtml(o.name)}</td>
       <td>${recCell}</td>
