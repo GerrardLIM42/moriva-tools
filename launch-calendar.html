@@ -1775,14 +1775,40 @@ function toggleCompare(key, checked){
 
 /* ---------------- Chart View ---------------- */
 let chartInstance = null;
+let optCompareChartInstance = null;
+/* 옵션별 판매량 비교에서 어떤 지표를 보여줄지("판매량 합계"가 기본) — 탭을 오갈 때도 유지되도록
+   activeOptionView처럼 productId -> metric key 맵으로 기억해둔다. */
+let optCompareMetric = {};
+const OPT_COMPARE_METRICS = {
+  total: { label:'총 판매량 (리뷰+자연)', get:(od)=>(Number(od.reviewActual)||0)+(Number(od.naturalSales)||0) },
+  natural: { label:'자연판매량', get:(od)=>Number(od.naturalSales)||0 },
+  review: { label:'리뷰 판매', get:(od)=>Number(od.reviewActual)||0 }
+};
+function setOptCompareMetric(pid, val){
+  optCompareMetric[pid] = val;
+  renderView();
+}
 function renderChartView(area){
   const p = getProduct(state.selectedId);
   if(!activeOptionView[p.id] || (activeOptionView[p.id]==='ALL' && p.options.length===1)) activeOptionView[p.id] = defaultOptionView(p);
   const viewOpt = activeOptionView[p.id];
+  const showCompare = p.options.length>1;
+  const metricKey = OPT_COMPARE_METRICS[optCompareMetric[p.id]] ? optCompareMetric[p.id] : 'total';
+  const metricOptsHtml = Object.entries(OPT_COMPARE_METRICS).map(([k,m])=>
+    `<option value="${k}" ${metricKey===k?'selected':''}>${escHtml(m.label)}</option>`
+  ).join('');
   area.innerHTML = `<div class="card">
     <div class="toolbar" style="align-items:center;"><span>표시 옵션:</span> ${optionSelectHtml(p)}</div>
     <canvas id="chartCanvas"></canvas>
-  </div>`;
+  </div>
+  ${showCompare?`<div class="card">
+    <div class="toolbar" style="align-items:center;margin-bottom:8px;">
+      <span style="font-weight:700;font-size:13px;">🆚 옵션별 판매량 비교</span>
+      <span>지표:</span>
+      <select class="opt-select" onchange="setOptCompareMetric('${p.id}', this.value)">${metricOptsHtml}</select>
+    </div>
+    <canvas id="optCompareCanvas" height="90"></canvas>
+  </div>`:''}`;
   const labels=[], views=[], reviewSales=[], reviewWrittenArr=[], naturalSales=[];
   for(let i=0;i<=p.maxDayIndex;i++){
     const d = p.days[i];
@@ -1820,6 +1846,31 @@ function renderChartView(area){
       }
     }
   });
+  if(optCompareChartInstance){ optCompareChartInstance.destroy(); optCompareChartInstance = null; }
+  if(showCompare){
+    const metric = OPT_COMPARE_METRICS[metricKey];
+    const compCtx = document.getElementById('optCompareCanvas');
+    optCompareChartInstance = new Chart(compCtx, {
+      type:'line',
+      data:{
+        labels,
+        datasets: p.options.map(o=>({
+          label: (o.isBundle?'🎁 ':'')+o.name,
+          data: labels.map((_, i)=>{
+            const d = p.days[i]; if(!d) return 0;
+            const od = d.opt[o.id] || blankOptDay();
+            return metric.get(od);
+          }),
+          borderColor: o.color, backgroundColor: o.color, tension:.25
+        }))
+      },
+      options:{
+        responsive:true,
+        interaction:{ mode:'index', intersect:false },
+        scales:{ y:{ title:{display:true,text:metric.label} } }
+      }
+    });
+  }
 }
 
 /* ---------------- Settings View (options & review schedule) ---------------- */
