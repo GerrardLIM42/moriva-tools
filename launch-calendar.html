@@ -2049,6 +2049,10 @@ function renderSettingsView(area){
           <div style="font-size:10.5px;color:var(--sub);margin-top:4px;">예: 기존 옵션 하나를 골라 수량 2로 두면 "2개 묶음" 번들이 됩니다. 아래 원가·정상 판매가는 이 번들 옵션 자체의 값으로, 직접 입력하거나 위 자동 계산 버튼으로 채울 수 있습니다. 일별 기록표에 이 번들 옵션으로 판매량을 입력하면 판매량·매출이 이 옵션 기준으로 따로 집계됩니다(아래 "이 옵션 누적" 참고).</div>
         </div>
       </div>
+      ${!o.isBundle?`<div class="field" style="margin:8px 0 10px;background:#eef4fb;border:1px solid #cfe0f2;border-radius:6px;padding:8px 10px;">
+        <label style="font-size:11px;color:var(--sub);font-weight:700;">📦 재고 묶음 표시 — 이 옵션이 실은 기존 상품 여러 개를 한 세트로 묶어 파는 상품이라면(예: "2박스"), 아래에 묶음 수를 입력하세요. 발주 계산표·제안 수량은 그대로 개별 개수 기준으로 계산되고, 아래 "재고 현황" 표의 총입고·남은재고만 입력한 수만큼 나눠서(세트 단위로) 표시됩니다.</label>
+        <input type="number" min="1" id="ostockgroup_${o.id}" value="${o.stockGroupQty||1}" style="max-width:90px;margin-top:4px;" onchange="updOptionStockGroupQty('${p.id}','${o.id}',this.value)"> <span style="font-size:10.5px;color:var(--sub);">개씩 묶어서 표시 (기본값 1 = 그대로 표시)</span>
+      </div>`:''}
       <div class="field" style="margin:8px 0 10px;">
         <label style="font-size:11px;color:var(--sub);">쿠팡 옵션ID · 노출상품ID — 상품은 판매자배송/로켓그로스로 각각 중복 등록되므로 따로 입력합니다 (판매자배송 재고는 보통 0)</label>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
@@ -3181,6 +3185,15 @@ function updOptionBoxDim(pid, oid, field, value, nextId){
     if(el){ el.focus(); el.select(); }
   }
 }
+/* 번들은 아니지만("화이트 2박스"처럼) 실제로는 기존 상품 여러 개를 한 세트로 묶어 파는 옵션의
+   "재고 표시 묶음 수". 발주 계산표·제안 수량 등은 그대로 개별 개수로 계산하고,
+   재고 현황 표의 총입고·남은재고만 이 값으로 나눠서 세트 단위로 보여준다. */
+function updOptionStockGroupQty(pid, oid, value){
+  const p = getProduct(pid); if(!p) return;
+  const o = getOption(p, oid); if(!o) return;
+  o.stockGroupQty = Math.max(1, Math.round(Number(value))||1);
+  saveState(); renderView();
+}
 
 function renderOrdersView(area){
   const p = getVisibleProducts()[0];
@@ -3283,11 +3296,21 @@ function renderOrdersView(area){
     const soldCell = bundleSold>0
       ? `${fmtC(sold+bundleSold)}<div class="ord-basehint">(자체 ${fmtC(sold)} + 번들 소진 ${fmtC(bundleSold)})</div>`
       : fmtC(sold);
+    /* "화이트 2박스"처럼 번들은 아니지만 실제로는 여러 개를 한 세트로 묶어 파는 옵션은
+       발주 수량 자체(rec, remain)는 그대로 개별 개수로 계산하되, 재고 현황 표시만
+       설정한 묶음 수로 나눠서(세트 단위로) 보여준다. */
+    const stockGroupQty = Number(o.stockGroupQty)||1;
+    const recCell = stockGroupQty>1
+      ? `${fmtC(Math.floor(rec/stockGroupQty))}<div class="ord-basehint">(실제 ${fmtC(rec)}개 ÷ ${stockGroupQty}개씩 묶음)</div>`
+      : fmtC(rec);
+    const remainCell = stockGroupQty>1
+      ? `${fmtC(Math.floor(remain/stockGroupQty))}<div class="ord-basehint">(실제 ${fmtC(remain)}개 ÷ ${stockGroupQty}개씩 묶음)</div>`
+      : fmtC(remain);
     return `<tr>
       <td class="ord-name">${p.primaryOptionId===o.id?'<span class="ord-pri">★</span> ':''}${escHtml(o.name)}</td>
-      <td>${fmtC(rec)}</td>
+      <td>${recCell}</td>
       <td>${soldCell}</td>
-      <td class="${remain<0?'ord-neg':''}"><b>${fmtC(remain)}</b></td>
+      <td class="${remain<0?'ord-neg':''}"><b>${remainCell}</b></td>
       <td>${avg>0?avg.toFixed(1):'-'}</td>
       <td>${daysLeft===null?'-':(daysLeft+'일')}</td>
       <td class="ord-final">${sug>0?fmtC(sug):'-'}</td>
