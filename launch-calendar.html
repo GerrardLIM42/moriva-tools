@@ -922,6 +922,9 @@ function openIdExtractModal(pid){
 function normalizeOptName(s){
   return String(s||'').toLowerCase().replace(/\s+/g,'').replace(/[\/\-_,·]/g,'');
 }
+function optNameTokens(s){
+  return String(s||'').toLowerCase().split(/[\s\/\-_,·]+/).map(t=>t.trim()).filter(Boolean);
+}
 function matchOptionByName(p, name){
   const target = normalizeOptName(name);
   if(!target) return null;
@@ -931,7 +934,21 @@ function matchOptionByName(p, name){
     const on = normalizeOptName(o.name);
     return on && (target.indexOf(on)>=0 || on.indexOf(target)>=0);
   });
-  return found || null;
+  if(found) return found;
+  /* 쿠팡 Wing 화면은 옵션을 "상품명, 1박스, 화이트"처럼 등록된 옵션명("화이트 1박스")과
+     다른 단어 순서로 보여줄 때가 있다(색상/수량 순서가 반대이거나 상품명이 앞에 붙는 경우 등).
+     위의 문자열 포함 검사는 순서가 어긋나면 실패하므로, 마지막 단계로 옵션명을 단어 단위로
+     쪼개 순서와 무관하게 모든 단어가 추출된 이름 안에 들어있는지 확인한다. 여러 옵션이
+     조건을 만족하면 더 많은 단어가 일치하는(더 구체적인) 옵션을 선택한다. */
+  const targetTokens = optNameTokens(name);
+  let best = null, bestScore = 0;
+  p.options.forEach(o=>{
+    const tokens = optNameTokens(o.name);
+    if(!tokens.length) return;
+    const allIn = tokens.every(t=>targetTokens.some(tt=>tt.includes(t) || t.includes(tt)));
+    if(allIn && tokens.length > bestScore){ best = o; bestScore = tokens.length; }
+  });
+  return best;
 }
 function applyIdExtraction(p, parsed){
   const results = { matched: [], unmatched: [] };
