@@ -671,10 +671,223 @@
     }
 
 
+    function ActualTab({ snap }) {
+      /* snap: 탭을 오갈 때(또는 저장/불러오기) 내용이 사라지지 않도록 담아 두는 보관함
+         계산 방식: 한 번 발주한 총 투입 비용(제품비+운송비+물류비+리뷰비)을 실제 판매 옵션들의
+         총 물리 수량(수량×세트당개수 합)으로 나눠 개당 원가를 구하고, 옵션별 실제 판매가를 기준으로
+         쿠팡 수수료·순부가세를 반영한 실제 순이익/마진율을 계산한다. */
+      const seed = (snap && snap.current) || null;
+      const mkAOpt = (n) => ({ id: Date.now() + n, name: `옵션 ${n}`, qty: "", price: "", perUnit: "1" });
+      const [costs, setCosts] = React.useState(() =>
+        (seed && seed.costs && typeof seed.costs === "object") ? seed.costs
+          : { productCost: "", shippingCost: "", logisticsCost: "", reviewCost: "" });
+      const [includeReview, setIncludeReview] = React.useState(() => seed ? seed.includeReview !== false : true);
+      const [aOpts, setAOpts] = React.useState(() =>
+        (seed && Array.isArray(seed.opts) && seed.opts.length) ? seed.opts : [mkAOpt(1), mkAOpt(2)]);
+      const [feeRate, setFeeRate] = React.useState(() => seed ? (seed.feeRate || "10.8") : "10.8");
+      const [includeFee, setIncludeFee] = React.useState(() => seed ? seed.includeFee !== false : true);
+      const [includeVat, setIncludeVat] = React.useState(() => seed ? seed.includeVat !== false : true);
+
+      // 화면이 바뀔 때마다 현재 내용을 보관해 둔다(다른 탭으로 옮겨도 그대로 남는다)
+      if (snap) snap.current = { costs, includeReview, opts: aOpts, feeRate, includeFee, includeVat };
+
+      const setCost  = (k, v) => setCosts(p => ({ ...p, [k]: v }));
+      const updAOpt  = (i, k, v) => setAOpts(p => p.map((o, j) => j === i ? { ...o, [k]: v } : o));
+      const addAOpt  = () => setAOpts(p => [...p, mkAOpt(p.length + 1)]);
+      const delAOpt  = (i) => setAOpts(p => p.length > 1 ? p.filter((_, j) => j !== i) : p);
+
+      const R = React.useMemo(() => {
+        const totalCost = nv(costs.productCost) + nv(costs.shippingCost) + nv(costs.logisticsCost)
+          + (includeReview ? nv(costs.reviewCost) : 0);
+        const totalQty = aOpts.reduce((s, o) => s + nv(o.qty) * (nv(o.perUnit) || 1), 0);
+        const costPerUnit = totalQty > 0 ? totalCost / totalQty : 0;
+
+        const rows = aOpts.map(o => {
+          const qty = nv(o.qty), price = nv(o.price), perUnit = nv(o.perUnit) || 1;
+          const revenue = qty * price;
+          const fee = includeFee ? revenue * (nv(feeRate) / 100) : 0;
+          const cogs = costPerUnit * qty * perUnit;
+          const vatOut = includeVat ? revenue / 11 : 0;
+          const vatIn = includeVat ? cogs / 11 : 0;
+          const netVat = vatOut - vatIn;
+          const netProfit = revenue - fee - cogs - netVat;
+          const marginRate = revenue > 0 ? (netProfit / revenue) * 100 : 0;
+          const perSaleProfit = qty > 0 ? netProfit / qty : 0;
+          return { ...o, qty, price, perUnit, revenue, fee, cogs, netVat, netProfit, marginRate, perSaleProfit };
+        });
+
+        const totalRevenue    = rows.reduce((s, r) => s + r.revenue, 0);
+        const totalFee        = rows.reduce((s, r) => s + r.fee, 0);
+        const totalNetVat     = rows.reduce((s, r) => s + r.netVat, 0);
+        const totalNetProfit  = rows.reduce((s, r) => s + r.netProfit, 0);
+        const totalMarginRate = totalRevenue > 0 ? (totalNetProfit / totalRevenue) * 100 : 0;
+
+        return { totalCost, totalQty, costPerUnit, rows,
+          totalRevenue, totalFee, totalNetVat, totalNetProfit, totalMarginRate };
+      }, [costs, includeReview, aOpts, feeRate, includeFee, includeVat]);
+
+      const W = (n) => (isFinite(n) ? Math.round(n).toLocaleString("ko-KR") : "0");
+      const box = { background:"#FFFDF8", border:"1px solid #DCD5C3", borderRadius:12, padding:14, marginBottom:12 };
+      const lab = { fontSize:11.5, fontWeight:800, color:"#6B7684", marginBottom:5, display:"block" };
+      const inp = { width:"100%", padding:"8px 10px", border:"1px solid #DCD5C3", borderRadius:8,
+        fontSize:13, fontFamily:"inherit", background:"#fff", boxSizing:"border-box" };
+      const btn = { padding:"9px 14px", borderRadius:9, border:"1px solid #DCD5C3", background:"#fff",
+        fontSize:12.5, fontWeight:800, cursor:"pointer", fontFamily:"inherit", color:"#1B2A3D" };
+
+      return (
+        <div style={{ maxWidth:1080, margin:"0 auto" }}>
+
+          {/* 안내 */}
+          <div style={{ ...box, background:"#F1EEE6", borderColor:"#E0D7C2" }}>
+            <div style={{ fontSize:12.5, lineHeight:1.75, color:"#4A5568" }}>
+              한 번 발주한 <b>총 투입 비용</b>(제품비+운송비+물류비+리뷰비)을 <b>실제 판매 옵션들의 총 수량</b>으로 나눠
+              개당 원가를 구하고, 옵션별 실제 판매가를 기준으로 <b>수수료·부가세 반영 순이익</b>을 계산합니다.
+              <br/>여러 개를 한 세트로 묶어 파는 옵션(예: "2박스")은 <b>세트당 개수</b>를 입력하면 물리 수량 기준으로 원가가 정확히 안분됩니다.
+            </div>
+          </div>
+
+          {/* 1. 총 투입 비용 */}
+          <div style={box}>
+            <b style={{ fontSize:14, display:"block", marginBottom:12 }}>① 총 투입 비용</b>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))", gap:10 }}>
+              <div><label style={lab}>제품 구매비 (₩)</label>
+                <input style={inp} inputMode="numeric" placeholder="0"
+                  value={costs.productCost} onChange={e => setCost("productCost", e.target.value)} /></div>
+              <div><label style={lab}>운송비 (₩)</label>
+                <input style={inp} inputMode="numeric" placeholder="0"
+                  value={costs.shippingCost} onChange={e => setCost("shippingCost", e.target.value)} /></div>
+              <div><label style={lab}>3PL 물류비 (₩)</label>
+                <input style={inp} inputMode="numeric" placeholder="0"
+                  value={costs.logisticsCost} onChange={e => setCost("logisticsCost", e.target.value)} /></div>
+              <div><label style={lab}>리뷰 작업비 (₩)</label>
+                <input style={inp} inputMode="numeric" placeholder="0"
+                  value={costs.reviewCost} onChange={e => setCost("reviewCost", e.target.value)} /></div>
+            </div>
+            <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer",
+              fontSize:12.5, color:"#6B7684", marginTop:12 }}>
+              <input type="checkbox" checked={includeReview} onChange={e => setIncludeReview(e.target.checked)} />
+              원가 계산에 리뷰 작업비 포함
+            </label>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline",
+              marginTop:14, paddingTop:12, borderTop:"1px dashed #DCD5C3" }}>
+              <span style={{ fontSize:12.5, color:"#6B7684" }}>
+                개당 원가 (총 {W(R.totalQty)}개 기준)
+              </span>
+              <span style={{ fontSize:19, fontWeight:900, color:"#D98E3D", fontFamily:"JetBrains Mono, monospace" }}>
+                ₩{W(R.costPerUnit)}
+              </span>
+            </div>
+          </div>
+
+          {/* 2. 판매 옵션 */}
+          <div style={box}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
+              flexWrap:"wrap", gap:8, marginBottom:12 }}>
+              <b style={{ fontSize:14 }}>② 판매 옵션 ({aOpts.length}개)</b>
+              <button style={btn} onClick={addAOpt}>+ 옵션 추가</button>
+            </div>
+            {aOpts.map((o, i) => (
+              <div key={o.id} style={{ border:"1px solid #E8E1D2", borderRadius:10, padding:12, marginBottom:10 }}>
+                <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:10 }}>
+                  <input style={{ ...inp, fontWeight:800 }} placeholder={"옵션명 " + (i+1)}
+                    value={o.name} onChange={e => updAOpt(i, "name", e.target.value)} />
+                  {aOpts.length > 1 && (
+                    <button style={{ ...btn, padding:"8px 11px", color:"#B8453A" }}
+                      onClick={() => delAOpt(i)}>✕</button>
+                  )}
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))", gap:9 }}>
+                  <div><label style={lab}>판매 수량</label>
+                    <input style={inp} inputMode="numeric" placeholder="0"
+                      value={o.qty} onChange={e => updAOpt(i,"qty",e.target.value)} /></div>
+                  <div><label style={lab}>판매가 (₩)</label>
+                    <input style={inp} inputMode="numeric" placeholder="0"
+                      value={o.price} onChange={e => updAOpt(i,"price",e.target.value)} /></div>
+                  <div><label style={lab}>세트당 개수(묶음)</label>
+                    <input style={inp} inputMode="numeric" placeholder="1"
+                      value={o.perUnit} onChange={e => updAOpt(i,"perUnit",e.target.value)} /></div>
+                </div>
+              </div>
+            ))}
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))", gap:10, marginTop:6 }}>
+              <div><label style={lab}>쿠팡 수수료율 (%)</label>
+                <input style={inp} inputMode="decimal" placeholder="예: 10.8"
+                  value={feeRate} onChange={e => setFeeRate(e.target.value)} /></div>
+            </div>
+            <div style={{ display:"flex", gap:20, marginTop:12, flexWrap:"wrap" }}>
+              <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", fontSize:12.5, color:"#6B7684" }}>
+                <input type="checkbox" checked={includeFee} onChange={e => setIncludeFee(e.target.checked)} />
+                수수료 반영
+              </label>
+              <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", fontSize:12.5, color:"#6B7684" }}>
+                <input type="checkbox" checked={includeVat} onChange={e => setIncludeVat(e.target.checked)} />
+                부가세 반영
+              </label>
+            </div>
+          </div>
+
+          {/* 3. 결과 */}
+          <div style={{ ...box, background:"#1B2A3D", borderColor:"#1B2A3D", color:"#fff" }}>
+            <b style={{ fontSize:14, display:"block", marginBottom:12 }}>③ 옵션별 마진 결과</b>
+            {R.rows.map((r, i) => (
+              <div key={r.id} style={{ background:"rgba(255,255,255,.06)", borderRadius:10,
+                padding:"11px 13px", marginBottom:8 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
+                  flexWrap:"wrap", gap:8, marginBottom:8 }}>
+                  <b style={{ fontSize:13 }}>
+                    {r.name || "옵션 " + (i+1)}
+                    <span style={{ fontWeight:400, color:"rgba(255,255,255,.5)", fontSize:11.5, marginLeft:6 }}>
+                      {W(r.qty)}{r.perUnit > 1 ? "세트" : "개"} · {r.perUnit > 1 ? ("세트당 " + r.perUnit + "개") : "개당"} {W(r.price)}원
+                    </span>
+                  </b>
+                  <span style={{ fontSize:17, fontWeight:900, color: mc(r.marginRate) }}>
+                    {fp(r.marginRate)}%
+                  </span>
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",
+                  gap:8, fontSize:11.5 }}>
+                  <div><span style={{ color:"rgba(255,255,255,.5)" }}>매출 </span>₩{W(r.revenue)}</div>
+                  {includeFee && <div><span style={{ color:"rgba(255,255,255,.5)" }}>수수료 </span>−₩{W(r.fee)}</div>}
+                  <div><span style={{ color:"rgba(255,255,255,.5)" }}>원가 </span>−₩{W(r.cogs)}</div>
+                  {includeVat && <div><span style={{ color:"rgba(255,255,255,.5)" }}>순부가세 </span>−₩{W(r.netVat)}</div>}
+                </div>
+                <div style={{ marginTop:8, paddingTop:8, borderTop:"1px dashed rgba(255,255,255,.15)",
+                  display:"flex", justifyContent:"space-between", alignItems:"baseline" }}>
+                  <span style={{ fontSize:11, color:"rgba(255,255,255,.55)" }}>
+                    {r.perUnit > 1 ? "세트당" : "개당"} 순이익
+                  </span>
+                  <span style={{ fontSize:15, fontWeight:900, color:"#E8B563" }}>
+                    ₩{W(r.perSaleProfit)} <span style={{ fontSize:11, color:"rgba(255,255,255,.5)", fontWeight:400 }}>
+                      (총이익 ₩{W(r.netProfit)})</span>
+                  </span>
+                </div>
+              </div>
+            ))}
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",
+              gap:10, marginTop:14, paddingTop:12, borderTop:"1px solid rgba(255,255,255,.12)" }}>
+              {[["합계 매출", "₩"+W(R.totalRevenue)], ["합계 순이익", "₩"+W(R.totalNetProfit)],
+                ["전체 순마진율", fp(R.totalMarginRate)+"%"]].map(([k,v]) => (
+                <div key={k} style={{ background:"rgba(255,255,255,.07)", borderRadius:9, padding:"9px 11px" }}>
+                  <div style={{ fontSize:10.5, color:"rgba(255,255,255,.55)", fontWeight:700 }}>{k}</div>
+                  <div style={{ fontSize:15, fontWeight:900, marginTop:2, color:"#E8B563" }}>{v}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize:11, color:"rgba(255,255,255,.45)", marginTop:10, lineHeight:1.7 }}>
+              ※ 부가세는 매출부가세(매출÷11) − 매입부가세(원가÷11) 방식으로 계산되며, 원가 항목 전액에 대해 세금계산서 수취가 가능하다는 전제입니다.
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+
     function App() {
-      const [tab, setTab] = useState("simple"); // "simple" | "customs"
+      const [tab, setTab] = useState("simple"); // "simple" | "customs" | "actual"
       const customsSnap = React.useRef(null);  // 통관 탭 내용 보관(탭 이동·저장에 사용)
       const [customsKey, setCustomsKey] = React.useState(0); // 불러오기 시 통관 탭 다시 그리기
+      const actualSnap = React.useRef(null);   // 실판매 정산 탭 내용 보관(탭 이동·저장에 사용)
+      const [actualKey, setActualKey] = React.useState(0); // 불러오기 시 실판매 정산 탭 다시 그리기
       const saveApi     = React.useRef(null);  // 저장 보관함이 쓰는 현재 상태 함수
       const [sp,    setSp   ] = useState("");
       const [ch,    setCh   ] = useState("rocket");
@@ -844,7 +1057,8 @@
           v: 2,
           tab,
           main: collectState(),
-          customs: customsSnap.current || null
+          customs: customsSnap.current || null,
+          actual: actualSnap.current || null
         }),
         restore: (d) => {
           if (!d) return;
@@ -853,6 +1067,8 @@
           restoreState(main);
           customsSnap.current = d.customs || null;
           setCustomsKey(k => k + 1);       // 통관 탭을 저장된 내용으로 다시 그린다
+          actualSnap.current = d.actual || null;
+          setActualKey(k => k + 1);        // 실판매 정산 탭을 저장된 내용으로 다시 그린다
           if (d.tab) setTab(d.tab);
           window.scrollTo({ top: 0, behavior: "smooth" });
         },
@@ -865,6 +1081,8 @@
           parts.push(m.ch === "rocket" ? "로켓그로스" : "마켓플레이스");
           const nb = (d && d.customs && (d.customs.bundles || []).length) || 0;
           if (nb) parts.push("통관 " + nb + "묶음");
+          const na = (d && d.actual && (d.actual.opts || []).length) || 0;
+          if (na) parts.push("실판매 " + na + "옵션");
           return parts.join(" · ");
         }
       };
@@ -1179,7 +1397,7 @@
 
           {/* TABS */}
           <div style={{ maxWidth: 1080, margin: "0 auto 16px", display: "flex", gap: 8 }}>
-            {[["simple", "간편 계산"], ["customs", "통관 정밀 계산"]].map(([k, t]) => (
+            {[["simple", "간편 계산"], ["customs", "통관 정밀 계산"], ["actual", "실판매 정산"]].map(([k, t]) => (
               <button key={k} onClick={() => setTab(k)}
                 style={{ flex: 1, padding: "11px 14px", borderRadius: 10, cursor: "pointer",
                   fontFamily: "inherit", fontSize: 13.5, fontWeight: 800,
@@ -1204,6 +1422,10 @@
                 setTab("simple");
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }} />
+          )}
+
+          {tab === "actual" && (
+            <ActualTab key={actualKey} snap={actualSnap} />
           )}
 
           {/* MAIN GRID */}
