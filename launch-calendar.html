@@ -1209,13 +1209,33 @@ function renderSummary(){
   const inRange = todayIdx>=0 && todayIdx<=p.maxDayIndex;
   const todayPhase = inRange ? (p.days[todayIdx].phase||'-') : (todayIdx<0 ? '런칭 예정' : '트래킹 기간 종료');
   let lastViews = null, cumPurchase=0, cumWritten=0, cumNatural=0, reviewTargetSum = p.options.reduce((s,o)=>s+(o.reviewDates||[]).reduce((a,rd)=>a+Number(rd.qty||0),0),0);
+  /* 옵션별 비교 표(📊 옵션별 판매량 비교)에 쓸 누적 리뷰판매·자연판매량을 옵션 단위로도 함께 집계한다 */
+  const optSalesTotals = {};
+  p.options.forEach(o=> optSalesTotals[o.id] = {review:0, natural:0});
   for(let i=0;i<=p.maxDayIndex;i++){
     const d = p.days[i];
     if(d.views28!==null && d.views28!==undefined && d.views28!=='') lastViews = d.views28;
     cumPurchase += dayAgg(d,'reviewActual');
     cumWritten += dayAgg(d,'reviewWritten');
     cumNatural += dayAgg(d,'naturalSales');
+    p.options.forEach(o=>{
+      const od = d.opt[o.id] || blankOptDay();
+      optSalesTotals[o.id].review += Number(od.reviewActual)||0;
+      optSalesTotals[o.id].natural += Number(od.naturalSales)||0;
+    });
   }
+  /* 옵션별 총판매량(리뷰+자연) 기준 내림차순 정렬 — 어느 옵션이 잘 팔리는지 한눈에 비교할 수 있도록 */
+  const optCompareRows = p.options.map(o=>{
+    const t = optSalesTotals[o.id] || {review:0, natural:0};
+    return { o, review:t.review, natural:t.natural, total:t.review+t.natural };
+  }).sort((a,b)=>b.total-a.total);
+  const optCompareMax = Math.max(1, ...optCompareRows.map(r=>r.total));
+  const optCompareRowsHtml = optCompareRows.map(r=>`<tr>
+    <td class="name-cell"><span class="dot" style="background:${r.o.color};width:10px;height:10px;border-radius:50%;display:inline-block;"></span>${escHtml(r.o.name)}</td>
+    <td>${r.review.toLocaleString()}</td>
+    <td>${r.natural.toLocaleString()}</td>
+    <td><b>${r.total.toLocaleString()}</b><div style="background:${r.o.color}22;height:6px;border-radius:3px;margin-top:4px;"><div style="background:${r.o.color};height:6px;border-radius:3px;width:${(r.total/optCompareMax*100).toFixed(1)}%;"></div></div></td>
+  </tr>`).join('');
   const thumbHtml = p.image ? `<img class="prod-thumb" src="${p.image}">` : `<span class="dot" style="background:${p.color};width:36px;height:36px;border-radius:10px;display:inline-block;"></span>`;
   const optChips = p.options.map(o=>`<span class="option-tag" style="background:${o.color}22;color:${o.color};">${escHtml(o.name)}</span>`).join('');
   const profitSum = calcCumulativeProfit(p);
@@ -1241,13 +1261,20 @@ function renderSummary(){
     <div class="stat"><div class="label">누적 리뷰 판매 (전체옵션)</div><div class="value">${cumPurchase.toLocaleString()} <span class="badge-small">계획 ${reviewTargetSum}</span></div></div>
     <div class="stat"><div class="label">누적 리뷰 작성 (전체옵션)</div><div class="value">${cumWritten.toLocaleString()}</div></div>
     <div class="stat"><div class="label">누적 자연판매량 (전체옵션)</div><div class="value">${cumNatural.toLocaleString()}</div></div>
+    <div class="stat"><div class="label">누적 총 판매량 (전체옵션)</div><div class="value">${(cumPurchase+cumNatural).toLocaleString()}</div></div>
     <div class="stat"><div class="label">누적 매출</div><div class="value">${won(profitSum.revenue)}</div></div>
     <div class="stat"><div class="label">누적 비용 (원가+수수료+물류비+리뷰비용)</div><div class="value">${won(profitSum.natCost+profitSum.coupangFee+profitSum.growthCost+profitSum.reviewCost)}</div></div>
     <div class="stat"><div class="label">누적 실제 순이익</div><div class="value" style="color:${profitColor}">${won(profitSum.netProfit)}</div></div>
     <div class="stat"><div class="label">쿠팡 매출 (정상 판매가 기준)</div><div class="value">${won(profitSum.listRevenue)}</div><div style="font-size:10.5px;color:var(--sub);margin-top:3px">옵션 설정에서 정상 판매가를 입력하세요</div></div>
     <div class="stat"><div class="label">실제 매출 비중</div><div class="value">${profitSum.listRevenue>0 ? (profitSum.revenue/profitSum.listRevenue*100).toFixed(1)+'%' : '-'}</div></div>
     <div class="stat"><div class="label">순이익 비중</div><div class="value" style="color:${profitColor}">${profitSum.listRevenue>0 ? (profitSum.netProfit/profitSum.listRevenue*100).toFixed(1)+'%' : '-'}</div></div>
-  </div>`;
+  </div>` + (p.options.length>1 ? `<div class="card" style="margin-top:0;">
+    <div style="font-weight:700;font-size:13px;margin-bottom:8px;">📊 옵션별 판매량 비교 (누적, 총판매량 기준 정렬)</div>
+    <table class="comparetable">
+      <thead><tr><th style="text-align:left;">옵션</th><th>리뷰 판매</th><th>자연판매량</th><th>총 판매량</th></tr></thead>
+      <tbody>${optCompareRowsHtml}</tbody>
+    </table>
+  </div>` : '');
   area.innerHTML = html;
   /* 같은 날짜에 대해서는 한 번만 팝업으로 알린다(입력할 때마다 계속 뜨지 않도록). */
   if(secondOrderAlert && p.secondOrderAlertAckedEnd !== streakEnd){
