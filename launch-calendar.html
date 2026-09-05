@@ -1224,11 +1224,11 @@ function renderSummary(){
       optSalesTotals[o.id].natural += Number(od.naturalSales)||0;
     });
   }
-  /* 옵션별 총판매량(리뷰+자연) 기준 내림차순 정렬 — 어느 옵션이 잘 팔리는지 한눈에 비교할 수 있도록 */
+  /* 옵션 등록 순서 그대로 비교 표를 만든다(정렬하지 않음) */
   const optCompareRows = p.options.map(o=>{
     const t = optSalesTotals[o.id] || {review:0, natural:0};
     return { o, review:t.review, natural:t.natural, total:t.review+t.natural };
-  }).sort((a,b)=>b.total-a.total);
+  });
   const optCompareMax = Math.max(1, ...optCompareRows.map(r=>r.total));
   const optCompareRowsHtml = optCompareRows.map(r=>`<tr>
     <td class="name-cell"><span class="dot" style="background:${r.o.color};width:10px;height:10px;border-radius:50%;display:inline-block;"></span>${escHtml(r.o.name)}</td>
@@ -1269,7 +1269,7 @@ function renderSummary(){
     <div class="stat"><div class="label">실제 매출 비중</div><div class="value">${profitSum.listRevenue>0 ? (profitSum.revenue/profitSum.listRevenue*100).toFixed(1)+'%' : '-'}</div></div>
     <div class="stat"><div class="label">순이익 비중</div><div class="value" style="color:${profitColor}">${profitSum.listRevenue>0 ? (profitSum.netProfit/profitSum.listRevenue*100).toFixed(1)+'%' : '-'}</div></div>
   </div>` + (p.options.length>1 ? `<div class="card" style="margin-top:0;">
-    <div style="font-weight:700;font-size:13px;margin-bottom:8px;">📊 옵션별 판매량 비교 (누적, 총판매량 기준 정렬)</div>
+    <div style="font-weight:700;font-size:13px;margin-bottom:8px;">📊 옵션별 판매량 비교 (누적)</div>
     <table class="comparetable">
       <thead><tr><th style="text-align:left;">옵션</th><th>리뷰 판매</th><th>자연판매량</th><th>총 판매량</th></tr></thead>
       <tbody>${optCompareRowsHtml}</tbody>
@@ -2788,9 +2788,10 @@ function ordCalc(round, oid, options){
 function ordRoundTotal(p, round){
   return ordCalcAll(round, ordableOptions(p)).reduce((s,c)=> s + c.finalQty, 0);
 }
-/* 옵션별 총 입고(모든 차수 최종 주문 합) */
+/* 옵션별 총 입고 = 입고완료일을 입력해 "입고 완료"로 표시한 차수만 합산한다.
+   아직 입고완료 처리하지 않은 발주(주문만 하고 실제 도착 전인 차수)는 재고로 잡지 않는다. */
 function ordReceived(p, oid){
-  return (p.orders||[]).reduce((s,rd)=> s + ordCalc(rd, oid, ordableOptions(p)).finalQty, 0);
+  return (p.orders||[]).filter(rd=>rd.receivedDate).reduce((s,rd)=> s + ordCalc(rd, oid, ordableOptions(p)).finalQty, 0);
 }
 /* 옵션별 누적 판매 = 일별 기록표의 리뷰 판매 + 자연 판매 */
 function ordSold(p, oid){
@@ -2901,7 +2902,7 @@ function addOrderRound(pid, fromSuggest){
   const p = getProduct(pid); if(!p) return;
   p.orders = p.orders||[];
   const prev = p.orders[p.orders.length-1] || null;
-  const round = { id: uid(), date: formatDate(new Date()), totalQty: prev ? prev.totalQty : 500, includeExtra: prev ? !!prev.includeExtra : true, rows: {} };
+  const round = { id: uid(), date: formatDate(new Date()), expectedDate: '', receivedDate: '', totalQty: prev ? prev.totalQty : 500, includeExtra: prev ? !!prev.includeExtra : true, rows: {} };
   ordableOptions(p).forEach(o=>{
     const prevRow = prev ? ordRow(prev, o.id) : null;
     round.rows[o.id] = {
@@ -3336,6 +3337,9 @@ function renderOrdersView(area){
     const rsumCls = rsum===0 ? '' : (Math.abs(rdiff)<=0.5 ? ' ok' : ' warn');
     const extraSum = ordExtraSum(rd);
     const baseQty = ordBase(rd);
+    const receivedBadge = rd.receivedDate
+      ? `<span class="badge-small" style="background:#e6f4ea;color:#1f7a4d;">✅ 입고완료 ${escHtml(rd.receivedDate)}</span>`
+      : (rd.expectedDate ? `<span class="badge-small" style="background:#fff7ed;color:#b45309;">⏳ 입고예정 ${escHtml(rd.expectedDate)}</span>` : `<span class="badge-small">📦 입고 대기</span>`);
     return `<div class="card ord-card">
       <div class="ord-head">
         <b>${ri+1}차 발주</b>
@@ -3343,7 +3347,12 @@ function renderOrdersView(area){
           onchange="updOrderRound('${p.id}','${rd.id}','date',this.value)"></label>
         <label>총 주문수량 <input class="ord-in ord-total" inputmode="numeric" value="${fmtC(rd.totalQty)}"
           onchange="updOrderRound('${p.id}','${rd.id}','totalQty',this.value)"></label>
+        <label>입고예정일 <input type="date" class="ord-date" value="${escAttr(rd.expectedDate||'')}"
+          onchange="updOrderRound('${p.id}','${rd.id}','expectedDate',this.value)"></label>
+        <label>입고완료일 <input type="date" class="ord-date" value="${escAttr(rd.receivedDate||'')}"
+          onchange="updOrderRound('${p.id}','${rd.id}','receivedDate',this.value)"></label>
         <span class="ord-sum">최종 합계 <b>${fmtC(total)}개</b></span>
+        ${receivedBadge}
         <button class="btn danger ord-del" onclick="deleteOrderRound('${p.id}','${rd.id}')">삭제</button>
       </div>
       <div class="ord-head ord-subhead">
@@ -3520,6 +3529,7 @@ function renderOrdersView(area){
     <h3 style="margin-top:0">재고 현황 · 다음 차수 제안</h3>
     <div style="font-size:12px;color:var(--sub);margin-bottom:10px;line-height:1.7;">
       누적 판매는 <b>일별 기록표</b>의 리뷰 판매 + 자연 판매를 자동으로 더한 값입니다.
+      <b>총 입고</b>는 아래 발주 차수에서 <b>입고완료일</b>을 입력한 차수만 반영됩니다 — 발주만 하고 아직 입고완료 처리하지 않은 차수는 재고로 잡히지 않습니다.
       제안 수량 = 최근 7일 하루 평균 판매 × 커버 일수 − 남은 재고 (박스당 개수를 적어 두었으면 박스 배수, 없으면 10개 단위로 올림)
     </div>
     <div class="ord-head" style="margin-bottom:10px;">
