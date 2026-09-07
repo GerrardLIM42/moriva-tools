@@ -60,13 +60,32 @@
       { label: "직접입력",     fee: null },
     ];
     const RKTS = [
-      { label: "극소형 (50g 이하)",  fee: 1800 },
-      { label: "소형 (2kg 이하)",    fee: 2500 },
-      { label: "중형 (5kg 이하)",    fee: 3500 },
-      { label: "대형 (10kg 이하)",   fee: 5000 },
-      { label: "특대형 (10kg 초과)", fee: 7500 },
-      { label: "직접입력",           fee: null  },
+      { label: "극소형",  fee: 1800 },
+      { label: "소형",    fee: 2500 },
+      { label: "중형",    fee: 3500 },
+      { label: "대형1",   fee: 5000 },
+      { label: "대형2",   fee: 6500 },
+      { label: "특대형",  fee: 7500 },
+      { label: "직접입력", fee: null  },
     ];
+    // 사이즈 유형별 입출고비 — 판매가 구간별로 다름(쿠팡 로켓그로스 요금표 기준, 프로모션 종료 후 정상 청구 요금)
+    // 열 순서 = RKTS[0..5] (극소형,소형,중형,대형1,대형2,특대형)
+    const RKT_INOUT_TIERS = [
+      { max: 5000,     fees: [700,  1150, 1450, 1675, 1675, 1675] },
+      { max: 10000,    fees: [800,  1175, 1450, 1825, 1825, 1825] },
+      { max: 15000,    fees: [950,  1175, 1450, 1825, 1825, 1825] },
+      { max: 20000,    fees: [1000, 1175, 1450, 1825, 1825, 1825] },
+      { max: 30000,    fees: [1050, 1175, 1450, 1825, 1825, 1825] },
+      { max: 40000,    fees: [1475, 1475, 1825, 1825, 1825, 1825] },
+      { max: Infinity, fees: [1650, 1750, 2000, 2400, 2400, 2400] },
+    ];
+    // 사이즈 유형별 배송비 — 판매가와 무관하게 고정(할인 반영된 정상 청구 요금)
+    const RKT_SHIP_FEE = [1350, 1550, 2100, 2200, 4100, 5600];
+    function rktInoutFee(sizeIdx, price) {
+      const t = RKT_INOUT_TIERS.find(t => price < t.max) || RKT_INOUT_TIERS[RKT_INOUT_TIERS.length - 1];
+      const f = t.fees[sizeIdx];
+      return typeof f === "number" ? f : 0;
+    }
 
     // ── HELPERS ───────────────────────────────────────────────────────────────
     const nv  = v => parseFloat(String(v).replace(/,/g, "")) || 0;
@@ -918,7 +937,7 @@
       const [mCat,     setMCat    ] = useState("ACTIVE");
       const [pMemo,    setPMemo   ] = useState("");
       // 옵션: {name, imgUrl, bp, inputMode("margin"|"price"), targetMargin, sp}
-      const mkOpt = (n) => ({ name: `옵션 ${n}`, imgUrl: "", bp: "", inputMode: "margin", targetMargin: tm, sp: "" });
+      const mkOpt = (n) => ({ name: `옵션 ${n}`, imgUrl: "", bp: "", inputMode: "margin", targetMargin: tm, sp: "", bundleQty: "1" });
       const [options,   setOptions  ] = useState(() => [mkOpt(1)]);
       const [activeOpt, setActiveOpt] = useState(0);
       // ── UI 상태 ──
@@ -984,20 +1003,30 @@
         const vt  = simpleMode ? 0 : (vat ? (bk + cst) * 0.1 : 0);
         const imp = bk + cst + vt + (simpleMode ? 0 : nv(fw)) + (simpleMode ? 0 : nv(cl));
         const catF = CATS[ci].fee !== null ? CATS[ci].fee : nv(ccf);
-        const log  = (ch === "rocket" && promo === "90") ? 0
-          : ch === "rocket" ? (RKTS[ri].fee !== null ? RKTS[ri].fee : nv(crf)) : nv(ms);
+        const bundleQty = Math.max(1, nv(opt.bundleQty) || 1);
+        const isTieredRocket = ch === "rocket" && RKTS[ri].fee !== null;
         const pA = ch === "rocket" && promo !== "none";
         const varR = catF/100 + nv(ar)/100 + (pA ? 0 : nv(rr)/100 * 0.3);
-        const fixC = imp + log;
-        if (opt.inputMode === "price") {
-          const SP = nv(opt.sp);
-          const mr = SP > 0 ? ((SP - fixC - SP*varR) / SP * 100) : 0;
-          return { sp: SP, marginRate: mr };
-        } else {
+        // 물류비(입출고비)는 판매가 구간에 따라 달라질 수 있어 판매가를 추정→재계산을 반복해 수렴시킨다.
+        // 번들(묶음) 옵션은 입출고비만 세트당 물리 개수(bundleQty)만큼 곱하고, 배송비는 항상 1회만 부과한다.
+        let SP = nv(opt.sp) || nv(opt.bp) * 10 || 20000;
+        let log = 0, fixC = imp;
+        for (let iter = 0; iter < 4; iter++) {
+          log = (ch === "rocket" && promo === "90") ? 0
+            : isTieredRocket ? (rktInoutFee(ri, SP) * bundleQty + RKT_SHIP_FEE[ri])
+            : ch === "rocket" ? nv(crf) : nv(ms);
+          fixC = imp + log;
+          if (opt.inputMode === "price") { SP = nv(opt.sp); break; }
           const tgt = nv(opt.targetMargin);
           const denom = 1 - varR - tgt/100;
-          const SP = denom > 0.001 ? fixC / denom : 0;
-          return { sp: SP, marginRate: tgt };
+          SP = denom > 0.001 ? fixC / denom : 0;
+        }
+        if (opt.inputMode === "price") {
+          const mr = SP > 0 ? ((SP - fixC - SP*varR) / SP * 100) : 0;
+          return { sp: SP, marginRate: mr, logistic: log };
+        } else {
+          const tgt = nv(opt.targetMargin);
+          return { sp: SP, marginRate: tgt, logistic: log };
         }
       };
 
@@ -1235,22 +1264,32 @@
         const impTotal  = buyKrw + customs + vatAmt + fwAmt + clAmt;
         const catFee    = CATS[ci].fee !== null ? CATS[ci].fee : nv(ccf);
         const promoActive = ch === "rocket" && promo !== "none";
-        const baseLogistic = ch === "rocket"
-          ? (RKTS[ri].fee !== null ? RKTS[ri].fee : nv(crf)) : nv(ms);
-        const logistic  = (ch === "rocket" && promo === "90") ? 0 : baseLogistic;
+        const bundleQty = Math.max(1, nv(activeOption && activeOption.bundleQty) || 1);
+        const isTieredRocket = ch === "rocket" && RKTS[ri].fee !== null;
         const varRate   = catFee / 100 + nv(ar) / 100 + (promoActive ? 0 : (nv(rr) / 100) * 0.3);
-        const fixedC    = impTotal + logistic;
 
-        // SP 결정: 활성 옵션 inputMode에 따라
-        let SP;
-        if (activeOption && activeOption.inputMode === "price") {
-          SP = nv(activeOption.sp);
-        } else if (activeOption && activeOption.inputMode === "margin") {
+        // 물류비(입출고비+배송비)는 판매가 구간에 따라 달라질 수 있어(입출고비) 판매가를 추정→재계산을 반복해 수렴시킨다.
+        // 번들(묶음) 옵션은 입출고비만 세트당 물리 개수(bundleQty)만큼 곱하고, 배송비는 항상 1회만 부과한다.
+        let SP = nv(activeOption ? activeOption.sp : sp) || nv(rawBp) * 10 || 20000;
+        let inoutFee = 0, shipFee = 0, logistic = 0, fixedC = impTotal;
+        for (let iter = 0; iter < 4; iter++) {
+          if (ch === "rocket" && promo === "90") {
+            inoutFee = 0; shipFee = 0;
+          } else if (isTieredRocket) {
+            inoutFee = rktInoutFee(ri, SP) * bundleQty;
+            shipFee  = RKT_SHIP_FEE[ri];
+          } else if (ch === "rocket") {
+            inoutFee = nv(crf); shipFee = 0;
+          } else {
+            inoutFee = nv(ms); shipFee = 0;
+          }
+          logistic = inoutFee + shipFee;
+          fixedC = impTotal + logistic;
+          if (activeOption && activeOption.inputMode === "price") { SP = nv(activeOption.sp); break; }
+          if (!activeOption) { SP = nv(sp); break; }
           const tgt = nv(activeOption.targetMargin);
           const denom = 1 - varRate - tgt / 100;
           SP = denom > 0.001 ? fixedC / denom : 0;
-        } else {
-          SP = nv(sp);
         }
 
         const commission = SP * (catFee / 100);
@@ -1286,7 +1325,7 @@
           ? fixedC / (1 - totalVarRate - tgtForMin / 100) : 0;
         return {
           SP, buyKrw, customs, vatAmt, fwAmt, clAmt, impTotal,
-          catFee, commission, logistic, adCost, retCost, sellTotal,
+          catFee, commission, logistic, inoutFee, shipFee, adCost, retCost, sellTotal,
           vatBurden, outputVAT, inputVATCredit,
           totalCost, margin, marginRate, bepPrice, minPrice, effRate,
           promoActive, fixedC, varRate,
@@ -1598,12 +1637,23 @@
                       <select value={ri} onChange={e => setRi(Number(e.target.value))} style={SELECT_STYLE}>
                         {RKTS.map((r, i) => (
                           <option key={i} value={i}>
-                            {r.label}{r.fee !== null ? ` — ${r.fee.toLocaleString()}원` : ""}
+                            {r.label}{r.fee === null ? " — 직접입력" : ""}
                           </option>
                         ))}
                       </select>
-                      {RKTS[ri].fee === null && (
+                      {RKTS[ri].fee === null ? (
                         <NumIn label="로켓그로스 물류비" unit="KRW" value={crf} onChange={setCrf} />
+                      ) : (
+                        <React.Fragment>
+                          <div style={{ fontSize: 10, color: "#8B95A1", marginTop: -8, marginBottom: 10 }}>
+                            입출고비는 판매가 구간별로 산정 · 배송비는 ₩{RKT_SHIP_FEE[ri].toLocaleString()} 고정 (프로모션 종료 후 정상 청구 기준)
+                          </div>
+                          <NumIn label="번들(묶음) 수량 — 세트당 물리 개수" unit="개" value={options[0].bundleQty}
+                            onChange={v => updateOpt(0, "bundleQty", v)} placeholder="1" />
+                          <div style={{ fontSize: 10, color: "#8B95A1", marginTop: -8, marginBottom: 10 }}>
+                            입출고비는 세트당 개수만큼 곱해 부과되고, 배송비는 항상 1회만 부과됩니다.
+                          </div>
+                        </React.Fragment>
                       )}
                       {promo === "90" && (
                         <div style={{ fontSize: 10, color: "#1A7A4C", marginTop: -8, marginBottom: 12 }}>
@@ -1913,7 +1963,14 @@
                   🛒 판매/운영비{C.promoActive ? ` · 로켓그로스 ${promo === "90" ? "첫 90일" : "+270일"} 혜택 적용 중` : ""}
                 </div>
                 <CostRow label={`  · 카테고리 수수료 (${fp(C.catFee)}%)`} value={C.commission} />
-                <CostRow label={`  · ${ch === "rocket" ? "로켓그로스 물류비" : "마켓플레이스 배송비"}${promo === "90" ? " (혜택 0원)" : ""}`} value={C.logistic} />
+                {ch === "rocket" && RKTS[ri].fee !== null ? (
+                  <React.Fragment>
+                    <CostRow label={`  · 입출고비${promo === "90" ? " (혜택 0원)" : ""}`} value={C.inoutFee} />
+                    <CostRow label={`  · 배송비${promo === "90" ? " (혜택 0원)" : ""}`} value={C.shipFee} />
+                  </React.Fragment>
+                ) : (
+                  <CostRow label={`  · ${ch === "rocket" ? "로켓그로스 물류비" : "마켓플레이스 배송비"}${promo === "90" ? " (혜택 0원)" : ""}`} value={C.logistic} />
+                )}
                 <CostRow label={`  · 광고비 (${ar}%)`}         value={C.adCost} />
                 <CostRow label={`  · 반품비용 (${rr}% × 30%)${C.promoActive ? " (혜택 0원)" : ""}`} value={C.retCost} />
                 <CostRow label="판매/운영비 소계" value={C.sellTotal} accent="#C2703D" bold />
