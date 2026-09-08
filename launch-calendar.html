@@ -370,7 +370,7 @@ function newOption(name, color){
   return { id: uid(), name: name || '옵션', color: color || PALETTE[Math.floor(Math.random()*PALETTE.length)], reviewStartDayIndex: DEFAULT_REVIEW_START, reviewDates: [],
     sellerShip: {optionId:'', exposedId:''}, rocket: {optionId:'', exposedId:''},
     normalPrice: 0, costPrice: 0, coupangCat: '직접입력', coupangFeePct: 0, rocketSize: '직접입력', rocketFeePerUnit: 0, promo: 'none', promoStartDay: 0, promoEndDate: '', reviewCostTotal: 0,
-    isBundle: false, bundleComponents: [] };
+    isBundle: false, bundleComponents: [], monthlyReturns: [] };
 }
 function getOption(product, optionId){ return product.options.find(o=>o.id===optionId); }
 function optionLabel(p, o){ return p.options.length<=1 ? p.name : (p.name+' · '+o.name); }
@@ -459,6 +459,10 @@ function calcCumulativeProfit(p){
   }
   out.reviewCost = (p.options||[]).reduce((s,o)=> s + (Number(o.reviewCostTotal)||0), 0);
   out.netProfit -= out.reviewCost;
+  const ret = calcCumulativeReturns(p);
+  out.returnQty = ret.returnQty;
+  out.returnLoss = ret.returnLoss;
+  out.netProfit -= out.returnLoss;
   return out;
 }
 /* 옵션 하나만의 누적 판매량·매출(개별 옵션 카드에서 "이 옵션 누적" 표시용).
@@ -475,6 +479,45 @@ function calcOptionCumulative(p, o){
     listRevenue += q * (Number(o.normalPrice)||0);
   }
   return { qty, revenue, listRevenue };
+}
+/* 옵션의 특정 "월"(YYYY-MM)에 실제 판매된 자연판매+리뷰판매 기록으로부터 평균 판매가를 구한다.
+   그 달에 판매 기록이 전혀 없으면 정상 판매가(normalPrice)를 대신 쓴다 - 반품 매출 차감액을
+   추정할 때 사용자가 매번 가격을 다시 입력하지 않아도 되게 하기 위함. */
+function optionMonthAvgPrice(p, o, month){
+  let qty = 0, revenue = 0;
+  for(let i=0;i<=p.maxDayIndex;i++){
+    const d = p.days[i];
+    if(!d) continue;
+    const od = (d.opt && d.opt[o.id]) || blankOptDay();
+    const q = (Number(od.naturalSales)||0) + (Number(od.reviewActual)||0);
+    if(q<=0) continue;
+    if(formatDate(dateForDay(p, i)).slice(0,7) !== month) continue;
+    qty += q;
+    revenue += q * (Number(od.sellPrice)||0);
+  }
+  return qty>0 ? revenue/qty : (Number(o.normalPrice)||0);
+}
+/* 옵션 하나의 월별 반품 목록(monthlyReturns)을 집계 - 반품 수량 합계와, 각 반품 건을
+   해당 월의 평균 판매가로 환산한 매출 차감액 합계(loss)를 반환한다.
+   반품 처리비는 없고(사용자 확인), 매출만 다시 차감한다. */
+function calcOptionReturns(p, o){
+  let qty = 0, loss = 0;
+  (o.monthlyReturns||[]).forEach(mr=>{
+    const q = Number(mr.qty)||0;
+    if(q<=0 || !mr.month) return;
+    qty += q;
+    loss += q * optionMonthAvgPrice(p, o, mr.month);
+  });
+  return { qty, loss };
+}
+/* 제품 전체 옵션의 누적 반품 수량ㆍ매출 차감액(요약 카드용). */
+function calcCumulativeReturns(p){
+  let qty = 0, loss = 0;
+  (p.options||[]).forEach(o=>{
+    const r = calcOptionReturns(p, o);
+    qty += r.qty; loss += r.loss;
+  });
+  return { returnQty: qty, returnLoss: loss };
 }
 
 function ensureDay(product, dayIndex){
@@ -610,6 +653,7 @@ function migrateProduct(p){
       if(o.reviewCostTotal===undefined) o.reviewCostTotal = 0;
       if(o.isBundle===undefined) o.isBundle = false;
       if(!Array.isArray(o.bundleComponents)) o.bundleComponents = [];
+      if(!Array.isArray(o.monthlyReturns)) o.monthlyReturns = [];
     });
     // 번들 구성에서 삭제된 옵션을 참조하고 있으면 정리한다.
     p.options.forEach(o=>{
@@ -1299,7 +1343,10 @@ function renderSummary(){
     <div class="stat"><div class="label">누적 리뷰 작성 (전체옵션)</div><div class="value">${cumWritten.toLocaleString()}</div></div>
     <div class="stat"><div class="label">누적 자연판매량 (전체옵션)</div><div class="value">${cumNatural.toLocaleString()}</div></div>
     <div class="stat"><div class="label">누적 총 판매량 (전체옵션)</div><div class="value">${(cumPurchase+cumNatural).toLocaleString()}</div></div>
+    <div class="stat"><div class="label">누적 반품 수량 (전체옵션)</div><div class="value">${profitSum.returnQty.toLocaleString()}</div></div>
+    <div class="stat"><div class="label">순판매량 (판매−반품)</div><div class="value">${((cumPurchase+cumNatural)-profitSum.returnQty).toLocaleString()}</div></div>
     <div class="stat"><div class="label">누적 매출</div><div class="value">${won(profitSum.revenue)}</div></div>
+    <div class="stat"><div class="label">반품 매출 차감액</div><div class="value" style="color:var(--danger)">−${won(profitSum.returnLoss)}</div></div>
     <div class="stat"><div class="label">누적 비용 (원가+수수료+물류비+리뷰비용)</div><div class="value">${won(profitSum.natCost+profitSum.coupangFee+profitSum.growthCost+profitSum.reviewCost)}</div></div>
     <div class="stat"><div class="label">누적 실제 순이익</div><div class="value" style="color:${profitColor}">${won(profitSum.netProfit)}</div></div>
     <div class="stat"><div class="label">쿠팡 매출 (정상 판매가 기준)</div><div class="value">${won(profitSum.listRevenue)}</div><div style="font-size:10.5px;color:var(--sub);margin-top:3px">옵션 설정에서 정상 판매가를 입력하세요</div></div>
@@ -2132,6 +2179,9 @@ function renderSettingsView(area){
   let optionCards = p.options.map(o=>{
     const isPrimary = isPrimaryOption(p, o.id);
     const optCum = calcOptionCumulative(p, o);
+    const monthlyReturns = o.monthlyReturns || [];
+    const returnRowsHtml = monthlyReturns.map(mr=>monthlyReturnRowHtml(mr.month, mr.qty, o.id)).join('');
+    const optRet = calcOptionReturns(p, o);
     const dates = o.reviewDates || [];
     const sum = dates.reduce((a,rd)=>a+Number(rd.qty||0),0);
     const rowsHtml = dates.map(rd=>reviewDateRowHtml(rd.dayIndex, rd.qty, o.id)).join('');
@@ -2261,6 +2311,14 @@ function renderSettingsView(area){
           <div style="font-size:10.5px;color:var(--sub);margin-bottom:2px;">📋 리뷰비용 총액 (리뷰 종료 후 실제 정산한 총 금액, 원) — 누적 순이익에서 한 번만 차감됩니다</div>
           <input type="number" id="oreviewcost_${o.id}" value="${o.reviewCostTotal||0}" placeholder="0" style="max-width:200px;">
         </div>
+        <div style="margin-top:8px;">
+          <div style="font-size:10.5px;color:var(--sub);margin-bottom:2px;">📦 월별 반품 (달마다 반품된 수량 - 반품 처리비는 없고 매출만 그 달 평균 판매가 기준으로 누적 순이익에서 다시 차감됩니다. 반품 수량은 판매량과 별도로 집계됩니다)</div>
+          <div class="revdate-list" id="monthlyret_${o.id}">${returnRowsHtml}</div>
+          <div class="toolbar" style="margin-top:6px;margin-bottom:0;flex-wrap:wrap;">
+            <button class="btn" type="button" onclick="addMonthlyReturnRow('${o.id}')">+ 월별 반품 추가</button>
+          </div>
+          <div style="font-size:10.5px;color:var(--sub);margin-top:4px;">📊 이 옵션 누적 반품: ${optRet.qty}개 · 매출 차감 ${won(optRet.loss)}</div>
+        </div>
         <div style="font-size:10.5px;color:var(--sub);margin-top:6px;">일별 순이익 = 매출(판매가×총판매량) − 쿠팡수수료 − 물류비(로켓그로스물류비×총판매량) − 원가×총판매량. 총판매량 = 자연판매량+리뷰판매량. 리뷰비용 총액은 여기에 포함되지 않고 누적 순이익에서만 한 번 차감됩니다. 카테고리·사이즈를 "직접입력"으로 두면 옆 숫자칸 값을 그대로 사용합니다. 표준 사이즈를 고르면 입출고비는 그날의 판매가 구간에 따라 자동 산정되고 배송비는 사이즈별로 고정되며, 번들(묶음) 옵션은 입출고비만 세트당 물리 개수만큼 곱해지고 배송비는 항상 1회만 부과됩니다. 로켓그로스 비용 무료 프로모션은 지정한 기간에 판매된 수량에만 적용되고, 그 기간이 지나면 입출고비·배송비가 정상 부과됩니다. 쿠팡 정상 판매가를 입력하면 상단 요약에서 정상가 기준 매출 대비 실제 매출·순이익 비중을 확인할 수 있습니다.</div>
       </div>
       ${reviewSection}
@@ -2330,6 +2388,20 @@ function saveSettings(pid){
   if(regEl) p.registeredProductId = regEl.value.trim();
   saveState();
   renderAll();
+}
+/* Renders one editable "월별 반품" row: a month(YYYY-MM) picker + quantity input + remove button */
+function monthlyReturnRowHtml(month, qty, optionId){
+  return `<div class="revdate-row">
+    <input type="month" class="mr-month" value="${month||''}" style="max-width:130px;">
+    <span>·</span><input type="number" class="mr-qty" value="${qty}" placeholder="수량" min="0">
+    <span>개</span>
+    <button type="button" class="btn danger" onclick="this.closest('.revdate-row').remove()">✕</button>
+  </div>`;
+}
+function addMonthlyReturnRow(optionId){
+  const list = document.getElementById('monthlyret_'+optionId);
+  if(!list) return;
+  list.insertAdjacentHTML('beforeend', monthlyReturnRowHtml('', 0, optionId));
 }
 /* Renders one editable "리뷰 진행일" row: a D+n day input + quantity input + remove button */
 function reviewDateRowHtml(dayIndex, qty, optionId){
@@ -2498,6 +2570,12 @@ function saveOptionSettings(pid){
     if(promoEndEl) o.promoEndDate = promoEndEl.value || '';
     const reviewCostEl = document.getElementById('oreviewcost_'+o.id);
     if(reviewCostEl) o.reviewCostTotal = Number(reviewCostEl.value)||0;
+    const retList = document.getElementById('monthlyret_'+o.id);
+    if(retList){
+      const months = [...retList.querySelectorAll('.mr-month')].map(el=>el.value);
+      const retQtys = [...retList.querySelectorAll('.mr-qty')].map(el=>Number(el.value)||0);
+      o.monthlyReturns = months.map((m,i)=>({month:m, qty:retQtys[i]})).filter(mr=>mr.month && mr.qty>0);
+    }
     const bundleEl = document.getElementById('obundle_'+o.id);
     if(bundleEl){
       o.isBundle = bundleEl.checked;
