@@ -1621,19 +1621,19 @@ function renderProductTableView(area){
     const isToday = sameDate(dateForDay(p,i), today);
     const deltaClass = delta===null? '' : (delta>=0?'delta-up':'delta-down');
     const isPrimaryView = !isAgg && viewOpt===p.primaryOptionId;
-    let planV, actV, writV, natV, dis, disReview, sellV;
+    let planV, actV, writV, natV, dis, disReview, sellV, od;
     if(isAgg){
       planV = dayAgg(d,'reviewPlan'); actV = dayAgg(d,'reviewActual'); writV = dayAgg(d,'reviewWritten'); natV = dayAgg(d,'naturalSales'); dis='disabled'; disReview='disabled';
       sellV = '';
     } else {
-      const od = d.opt[viewOpt] || blankOptDay();
+      od = d.opt[viewOpt] || blankOptDay();
       planV = od.reviewPlan||0; actV = od.reviewActual||0; writV = od.reviewWritten||0; natV = od.naturalSales||0;
       dis=''; disReview = isPrimaryView ? '' : 'disabled';
       sellV = od.sellPrice||0;
     }
     const profitRow = calcDayProfitAgg(p, d, i);
     const profitClass = profitRow.netProfit>=0 ? 'profit-pos' : 'profit-neg';
-    const totalAllV = getTotalSales(d);
+    const totalV = isAgg ? getTotalSales(d) : ((od.naturalSales||0)+(od.reviewActual||0));
     rows += `<tr class="${isToday?'today-row':''}">
       <td>D+${i}</td>
       <td>${dateStr}</td>
@@ -1644,7 +1644,7 @@ function renderProductTableView(area){
       <td><input type="number" style="width:60px" value="${d.views28===null||d.views28===undefined?'':d.views28}" oninput="updateDayField('${p.id}',${i},'views28',this.value)"></td>
       <td class="${deltaClass}" id="delta_${p.id}_${i}">${delta===null?'-':(delta>0?'+':'')+delta}</td>
       <td><input type="number" style="width:56px" ${dis} value="${natV}" oninput="updateOptDay('${p.id}','${viewOpt}',${i},'naturalSales',this.value)"></td>
-      <td id="total_${p.id}_${i}"><b>${totalAllV}</b></td>
+      <td id="total_${p.id}_${i}"><b>${totalV}</b></td>
       <td><input type="number" style="width:72px" ${dis} value="${sellV}" oninput="updateOptDay('${p.id}','${viewOpt}',${i},'sellPrice',this.value)" placeholder="원"></td>
       <td id="profit_${p.id}_${i}" class="${profitClass}"><b>${won(profitRow.netProfit)}</b></td>
       <td class="memo"><textarea oninput="updateDayField('${p.id}',${i},'memo',this.value)">${escHtml(d.memo)}</textarea></td>
@@ -1674,7 +1674,7 @@ function renderProductTableView(area){
     <div>
     <table class="datatable">
       <thead><tr>
-        <th>일차</th><th>날짜</th><th>단계</th><th>리뷰계획</th><th>리뷰판매</th><th>리뷰작성</th><th>28일조회수</th><th>증감폭</th><th>자연판매량</th><th>총판매량<br><span style="font-weight:400;font-size:9.5px;color:var(--sub);">(전체 합계)</span></th><th>판매가</th><th>순이익</th><th>메모</th><th>일정조정</th>
+        <th>일차</th><th>날짜</th><th>단계</th><th>리뷰계획</th><th>리뷰판매</th><th>리뷰작성</th><th>28일조회수</th><th>증감폭</th><th>자연판매량</th><th>총판매량<br><span style="font-weight:400;font-size:9.5px;color:var(--sub);">(${escHtml(viewOptName)})</span></th><th>판매가</th><th>순이익</th><th>메모</th><th>일정조정</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
@@ -1756,7 +1756,10 @@ function updateOptDay(pid, optionId, dayIndex, field, value){
   if(field==='reviewPlan') syncReviewDateForDay(getOption(p, optionId), dayIndex, od.reviewPlan);
   saveState();
   const tEl = document.getElementById(`total_${pid}_${dayIndex}`);
-  if(tEl) tEl.innerHTML = '<b>'+getTotalSales(d)+'</b>';
+  if(tEl){
+    const totalV = (state.view==='table') ? ((od.naturalSales||0)+(od.reviewActual||0)) : getTotalSales(d);
+    tEl.innerHTML = '<b>'+totalV+'</b>';
+  }
   const pEl = document.getElementById(`profit_${pid}_${dayIndex}`);
   if(pEl){
     const r = calcDayProfitAgg(p, d, dayIndex);
