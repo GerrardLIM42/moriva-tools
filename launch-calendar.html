@@ -1688,7 +1688,7 @@ function renderProductTableView(area){
 function renderOptionSalesView(area){
   const p = getProduct(state.selectedId);
   const today = new Date();
-  const optTh = p.options.map(o=>`<th><span class="dot" style="background:${o.color};margin-right:4px;"></span>${escHtml(o.name)}</th>`).join('');
+  const optTh = p.options.map(o=>`<th><span class="dot" style="background:${o.color};margin-right:4px;"></span>${escHtml(o.name)}<br><span style="font-weight:400;font-size:9.5px;color:var(--sub);">자연·리뷰</span></th>`).join('');
   let rows = '';
   for(let i=0;i<=p.maxDayIndex;i++){
     const d = ensureDay(p, i);
@@ -1699,7 +1699,11 @@ function renderOptionSalesView(area){
     const profitClass = profitRow.netProfit>=0 ? 'profit-pos' : 'profit-neg';
     const optTds = p.options.map(o=>{
       const od = d.opt[o.id] || blankOptDay();
-      return `<td><input type="number" style="width:64px" value="${od.naturalSales||0}" oninput="updateOptDay('${p.id}','${o.id}',${i},'naturalSales',this.value)"></td>`;
+      const isPrimary = o.id===p.primaryOptionId;
+      return `<td class="opt-qty-cell"><div class="opt-qty-mini">
+        <div class="opt-qty-row"><span>자연</span><input type="number" value="${od.naturalSales||0}" oninput="updateOptDay('${p.id}','${o.id}',${i},'naturalSales',this.value)"></div>
+        <div class="opt-qty-row"><span>리뷰</span><input type="number" ${isPrimary?'':'disabled'} value="${od.reviewActual||0}" oninput="updateOptDay('${p.id}','${o.id}',${i},'reviewActual',this.value)"></div>
+      </div></td>`;
     }).join('');
     rows += `<tr class="${isToday?'today-row':''}">
       <td>D+${i}</td>
@@ -1718,7 +1722,7 @@ function renderOptionSalesView(area){
       <span style="flex:1"></span>
       <button class="btn" onclick="addRows('${p.id}',5)">+5일 추가</button>
     </div>
-    <div style="font-size:11px;color:var(--sub);margin-bottom:8px;">각 날짜별로 옵션마다 자연판매량을 바로 입력할 수 있습니다. 총판매량·순이익은 전체 옵션(자연판매+리뷰판매) 기준으로 자동 계산됩니다. 리뷰계획/판매/작성·판매가·메모 등 다른 항목은 "일별 기록표" 탭에서 입력하세요.</div>
+    <div style="font-size:11px;color:var(--sub);margin-bottom:8px;">각 날짜별로 옵션마다 자연판매량과 리뷰판매량을 바로 입력할 수 있습니다(리뷰판매는 주력 옵션에서만 입력 가능). 총판매량·순이익은 전체 옵션(자연판매+리뷰판매) 기준으로 자동 계산됩니다. 리뷰계획·리뷰작성·판매가·메모 등 다른 항목은 "일별 기록표" 탭에서 입력하세요.</div>
     <div>
     <table class="datatable">
       <thead><tr>
