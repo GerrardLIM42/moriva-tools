@@ -2619,7 +2619,6 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
   /* ---------------- render: main grid ---------------- */
 
   function renderGrid(){
-    saveCollapsedFolders();
     const filtered = getFiltered();
     if(items.length === 0){
       gridArea.innerHTML = `<div class="empty">
@@ -2663,6 +2662,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     bindInteractiveEvents(gridArea);
     updateSelectAllBtn();
     updateCollapseAllBtn();
+    saveCollapsedFolders();
   }
 
   /* ---------------- render: folder card view (폴더 자체를 카드로 나열) ---------------- */
