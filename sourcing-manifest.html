@@ -1212,7 +1212,46 @@
   let confirmTimer = null;
   const expandedIds = new Set();
   const expandedOptionIds = new Set();
-  const collapsedFolders = new Set();
+  const COLLAPSED_FOLDERS_KEY = 'moriva_sourcing_collapsed_folders_v1';
+  const SEEN_FOLDERS_KEY = 'moriva_sourcing_seen_folders_v1';
+  function loadFolderKeySet(storageKey){
+    try{
+      const raw = localStorage.getItem(storageKey);
+      if(!raw) return new Set();
+      const arr = JSON.parse(raw);
+      return new Set(Array.isArray(arr) ? arr : []);
+    }catch(e){ return new Set(); }
+  }
+  function saveCollapsedFolders(){
+    try{ localStorage.setItem(COLLAPSED_FOLDERS_KEY, JSON.stringify(Array.from(collapsedFolders))); }catch(e){}
+  }
+  function saveSeenFolderKeys(){
+    try{ localStorage.setItem(SEEN_FOLDERS_KEY, JSON.stringify(Array.from(seenFolderKeysForCollapse))); }catch(e){}
+  }
+  const collapsedFolders = loadFolderKeySet(COLLAPSED_FOLDERS_KEY);
+  const seenFolderKeysForCollapse = loadFolderKeySet(SEEN_FOLDERS_KEY);
+  // 처음 보는 폴더는 접힌 상태로 시작한다(기존 화면과 동일). 이미 본 적 있는
+  // 폴더는 사용자가 마지막으로 펼침/접음한 상태를 그대로 기억한다.
+  function ensureFolderCollapseDefaults(keys){
+    let changed = false;
+    (keys || []).forEach(k => {
+      if(!seenFolderKeysForCollapse.has(k)){
+        seenFolderKeysForCollapse.add(k);
+        collapsedFolders.add(k);
+        changed = true;
+      }
+    });
+    if(changed) saveSeenFolderKeys();
+  }
+  function folderRecencyScore(node){
+    const subtreeItems = collectSubtreeItems(node);
+    let max = 0;
+    subtreeItems.forEach(it => {
+      const ts = Number(it.updatedAt || it.createdAt || 0);
+      if(ts > max) max = ts;
+    });
+    return max;
+  }
   const hiddenFolderKeys = new Set();  // 숨긴 폴더 key 목록 (하위폴더 포함 함께 숨김)
   let hiddenFoldersPanelOpen = false;
   let draftOptions = [];
@@ -2580,6 +2619,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
   /* ---------------- render: main grid ---------------- */
 
   function renderGrid(){
+    saveCollapsedFolders();
     const filtered = getFiltered();
     if(items.length === 0){
       gridArea.innerHTML = `<div class="empty">
@@ -2611,7 +2651,8 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
       const noneItems = sortList(filtered.filter(it => !((it.folder || '').trim())));
       const treeSourceItems = filtered.filter(it => (it.folder || '').trim());
       const tree = buildFolderTree(treeSourceItems);
-      const topKeys = Object.keys(tree).sort((a, b) => a.localeCompare(b, 'ko'));
+      const topKeys = Object.keys(tree).sort((a, b) => folderRecencyScore(tree[b]) - folderRecencyScore(tree[a]));
+      ensureFolderCollapseDefaults(noneItems.length ? topKeys.concat(['__NONE__']) : topKeys);
       let html = topKeys.map(k => renderFolderNode(tree[k])).join('');
       if(noneItems.length){
         html += renderFolderNode({ key: '__NONE__', label: '미분류', depth: 0, items: noneItems, children: {} });
