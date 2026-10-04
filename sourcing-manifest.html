@@ -785,6 +785,13 @@
     <button type="button" class="btn ghost tmb-clear" id="target-margin-clear-btn">지우기</button>
   </section>
 
+  <section class="target-margin-bar" id="simple-rate-bar">
+    <span class="tmb-label">💴 간편 비율 환율 (₩/¥)</span>
+    <input type="number" id="simple-rate-input" step="0.1" min="0" placeholder="300" />
+    <span class="tmb-hint">새 상품을 추가할 때 '간편 비율' 환율 기본값으로 들어가요. 이미 등록된 상품은 바뀌지 않아요.</span>
+    <button type="button" class="btn ghost tmb-clear" id="simple-rate-reset-btn">300으로 초기화</button>
+  </section>
+
   <section class="stats-bar" id="stats-bar"></section>
 
   <section class="controls">
@@ -2213,7 +2220,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
       setSeg($('#seg-importmode'), b.dataset.val);
       const rateInput = $('#f-rate');
       if(b.dataset.val === 'simple'){
-        rateInput.value = 300;
+        rateInput.value = getSimpleRate();
       } else if(b.dataset.val === 'detail'){
         if(liveRate){
           rateInput.value = liveRate.toFixed(2);
@@ -3801,7 +3808,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
       $('#f-category').value = presetCategory;
       setSeg($('#seg-bundle'), 'false');
       $('#f-bundleqty').value = 2;
-      $('#f-rate').value = 300;
+      $('#f-rate').value = getSimpleRate();
       setSeg($('#seg-importmode'), 'simple');
       $('#f-duty').value = 8;
       $('#f-vat').checked = true;
@@ -4239,6 +4246,24 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     showLiveRateEditMode(liveRate);
   }
   $('#live-rate-refresh-btn').addEventListener('click', fetchLiveRate);
+
+  /* ---------------- simple-ratio default rate ---------------- */
+  function getSimpleRate(){
+    const v = parseFloat(localStorage.getItem('moriva_simple_rate'));
+    return (isFinite(v) && v > 0) ? v : 300;
+  }
+  $('#simple-rate-input').value = getSimpleRate();
+  $('#simple-rate-input').addEventListener('input', () => {
+    const v = parseFloat($('#simple-rate-input').value);
+    try{
+      if(isFinite(v) && v > 0) localStorage.setItem('moriva_simple_rate', String(v));
+      else localStorage.removeItem('moriva_simple_rate');
+    }catch(e){}
+  });
+  $('#simple-rate-reset-btn').addEventListener('click', () => {
+    try{ localStorage.removeItem('moriva_simple_rate'); }catch(e){}
+    $('#simple-rate-input').value = 300;
+  });
 
   /* ---------------- target margin ---------------- */
   $('#target-margin-input').addEventListener('input', () => {
