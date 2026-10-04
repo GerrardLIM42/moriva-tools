@@ -2206,11 +2206,19 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     items.forEach(it => { const f = (it.folder || '').trim(); if(f) set.add(f); });
     return Array.from(set).sort((a,b) => a.localeCompare(b, 'ko'));
   }
-  function fillFolderSelect(selectedValue){
-    const folders = getFolderList();
+  function fillFolderSelect(selectedValue, showHidden){
+    // 숨긴 폴더(상위 폴더가 숨겨진 하위폴더 포함)는 기본으로 목록에서 빼고,
+    // 맨 아래 "숨긴 폴더 보기"를 한 번 누르면 함께 보여준다.
+    // 숨긴 폴더 안의 항목을 수정 중일 때는 그 폴더가 선택된 채로 보이게 한다.
+    const all = getFolderList();
+    const isHid = f => isFolderHidden(f);
+    const keepSel = (selectedValue && all.includes(selectedValue)) ? selectedValue : null;
+    const folders = all.filter(f => showHidden || !isHid(f) || f === keepSel);
+    const hiddenLeft = all.filter(f => isHid(f) && !folders.includes(f)).length;
     const sel = $('#f-folder-select');
     let html = `<option value="">미분류 (폴더 없음)</option>`;
-    html += folders.map(f => `<option value="${escapeHtml(f)}">${escapeHtml(f)}</option>`).join('');
+    html += folders.map(f => `<option value="${escapeHtml(f)}">${isHid(f) ? '🙈 ' : ''}${escapeHtml(f)}</option>`).join('');
+    if(hiddenLeft > 0) html += `<option value="__SHOWHIDDEN__">🙈 숨긴 폴더 ${hiddenLeft}개 보기…</option>`;
     html += `<option value="__NEW__">➕ 새 폴더 추가</option>`;
     sel.innerHTML = html;
     if(selectedValue && folders.includes(selectedValue)) sel.value = selectedValue;
@@ -2218,7 +2226,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     else sel.value = '';
     toggleNewFolderField();
   }
-  function toggleNewFolderField(){
+    function toggleNewFolderField(){
     const isNew = $('#f-folder-select').value === '__NEW__';
     $('#new-folder-field').style.display = isNew ? '' : 'none';
     if(isNew) $('#f-folder-new').focus();
@@ -2227,7 +2235,10 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     const sel = $('#f-folder-select').value;
     return sel === '__NEW__' ? $('#f-folder-new').value.trim() : sel;
   }
-  $('#f-folder-select').addEventListener('change', toggleNewFolderField);
+  $('#f-folder-select').addEventListener('change', () => {
+    if($('#f-folder-select').value === '__SHOWHIDDEN__'){ fillFolderSelect('', true); return; }
+    toggleNewFolderField();
+  });
 
   /* ---------------- seg helpers ---------------- */
   function setSeg(containerEl, value){
