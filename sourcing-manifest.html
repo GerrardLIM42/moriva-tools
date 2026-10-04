@@ -799,7 +799,7 @@
     <button class="tab star-filter-btn" id="star-filter-btn" title="별표 항목만 보기">☆ 별표만</button>
     <div class="spacer"></div>
     <select id="tax-type-select" title="과세 유형">
-      <option value="simplified">🧾 간이과세</option>
+      <option value="simplified">🧾 간이과세 (1.5%)</option>
       <option value="general">🧾 일반과세</option>
       <option value="exempt">🧾 면세사업자</option>
     </select>
@@ -1153,9 +1153,28 @@
   // 로켓그로스 상품 사이즈별 물류비(₩) — 직접입력 선택 시 수동 입력
   const ROCKET_SIZES = {
     '극소형 (50g 이하)':1800, '소형 (2kg 이하)':2500, '중형 (5kg 이하)':3500,
-    '대형 (10kg 이하)':5000, '특대형 (10kg 초과)':7500,
+    '대형 (10kg 이하)':5000, '대형2':6500, '특대형 (10kg 초과)':7500,
     '직접입력':null
   };
+  // 위 금액은 "사이즈 구분용" 표시값이다. 실제 물류비는 마진 계산기와 같은 방식으로 계산한다:
+  //   입출고비(판매가 구간별, 번들이면 개수만큼) + 배송비(사이즈별 고정)
+  // 사이즈 순서 = [극소형, 소형, 중형, 대형1, 대형2, 특대형]
+  const ROCKET_IDX = { '극소형 (50g 이하)':0, '소형 (2kg 이하)':1, '중형 (5kg 이하)':2, '대형 (10kg 이하)':3, '대형2':4, '특대형 (10kg 초과)':5 };
+  const RKT_INOUT_TIERS = [
+    { max: 5000,     fees: [700,  1150, 1450, 1675, 1675, 1675] },
+    { max: 10000,    fees: [800,  1175, 1450, 1825, 1825, 1825] },
+    { max: 15000,    fees: [950,  1175, 1450, 1825, 1825, 1825] },
+    { max: 20000,    fees: [1000, 1175, 1450, 1825, 1825, 1825] },
+    { max: 30000,    fees: [1050, 1175, 1450, 1825, 1825, 1825] },
+    { max: 40000,    fees: [1475, 1475, 1825, 1825, 1825, 1825] },
+    { max: Infinity, fees: [1650, 1750, 2000, 2400, 2400, 2400] }
+  ];
+  const RKT_SHIP_FEE = [1350, 1550, 2100, 2200, 4100, 5600];
+  function rktInoutFee(sizeIdx, price){
+    const t = RKT_INOUT_TIERS.find(t => price < t.max) || RKT_INOUT_TIERS[RKT_INOUT_TIERS.length - 1];
+    const f = t.fees[sizeIdx];
+    return typeof f === 'number' ? f : 0;
+  }
   // 브랜드 카테고리 → 쿠팡 카테고리 자동 매핑
   const BRAND_TO_COUPANG = {
     ACTIVE:'스포츠/레저', CAMP:'스포츠/레저', HOME:'생활/주방', PET:'반려동물', BAG:'패션잡화', ETC:'생활/주방'
@@ -1509,10 +1528,11 @@
     const v = COUPANG_CATS[it.coupangCat];
     return (v !== null && v !== undefined) ? v : (it.feeManual || 0);
   }
-  function resolveLogistic(it){
+  function resolveLogistic(it, sell, qty){
     if(it.channel === 'market') return it.marketShip || 0;
-    const v = ROCKET_SIZES[it.rocketSize];
-    return (v !== null && v !== undefined) ? v : (it.rocketFeeManual || 0);
+    const idx = ROCKET_IDX[it.rocketSize];
+    if(idx === undefined) return it.rocketFeeManual || 0;   // 직접입력
+    return rktInoutFee(idx, sell || 0) * (qty || 1) + RKT_SHIP_FEE[idx];
   }
 
   function calc(it){
@@ -1532,17 +1552,19 @@
 
     // 판매 부가세: 일반과세자는 판매가의 10/110을 부가세로 납부
     // 간이과세자(기본) / 면세사업자는 판매 부가세 없음
-    const sellVatAmt = (taxType === 'general') ? Math.round((it.sell || 0) * 10 / 110) : 0;
+    const sellVatAmt = (taxType === 'general') ? (it.sell || 0) / 11 : 0;
     // 일반과세자는 수입 부가세를 매입세액공제로 돌려받음 → vatAmt 차감
     const vatCredit = (taxType === 'general') ? vatAmt : 0;
-    const netSellVat = sellVatAmt - vatCredit; // 실제 추가 부담 (음수면 환급)
+    // 간이과세자(도소매): 판매가 × 부가가치율 15% × 10% = 판매가의 1.5% (마진 계산기와 동일)
+    const simpleTaxAmt = (taxType === 'simplified') ? (it.sell || 0) * 0.015 : 0;
+    const netSellVat = (taxType === 'general') ? Math.max(0, sellVatAmt - vatCredit) : simpleTaxAmt;
 
     const promo = it.channel === 'rocket' ? (it.promo || 'none') : 'none';
     const promoActive = promo !== 'none';
 
     const feePct = resolveFee(it);
     const commission = (it.sell || 0) * feePct / 100;
-    const baseLogistic = resolveLogistic(it);
+    const baseLogistic = resolveLogistic(it, it.sell || 0, qty);
     const logistic = (promo === '90') ? 0 : baseLogistic;
     const adCost = (it.sell || 0) * (it.ad || 0) / 100;
     const retCost = promoActive ? 0 : (it.sell || 0) * (it.ret || 0) / 100 * 0.3;
@@ -1554,7 +1576,7 @@
 
     return { qty, buyKrw, customs, vatAmt, forwarding, clearance, impTotal, importExtra,
       feePct, commission, baseLogistic, logistic, adCost, retCost, sellTotal,
-      sellVatAmt, vatCredit, netSellVat,
+      sellVatAmt, vatCredit, simpleTaxAmt, netSellVat,
       totalCost, margin, marginPct, promo, promoActive };
   }
 
@@ -1582,18 +1604,26 @@
   }
 
   function calcTargetSell(it, targetPct){
-    // 광고비·반품비·수수료처럼 판매가에 비례하는 비용 비율을 뺀 "여유 비율"로 고정비를 나눠 목표 마진을 만족하는 판매가를 역산
+    // 물류비(입출고비)가 판매가 구간에 따라 달라지므로 판매가를 추정→재계산하며 수렴시킨다 (마진 계산기와 동일한 방식)
     const feePct = resolveFee(it);
     const promoActive = it.channel === 'rocket' && it.promo && it.promo !== 'none';
     const effectiveRetPct = promoActive ? 0 : (it.ret || 0) * 0.3;
-    const totalPctCost = feePct + (it.ad || 0) + effectiveRetPct;
+    const taxPct = taxType === 'general' ? 100 / 11 : (taxType === 'simplified' ? 1.5 : 0);
+    const totalPctCost = feePct + (it.ad || 0) + effectiveRetPct + taxPct;
     const availablePct = 100 - targetPct - totalPctCost;
     if(availablePct <= 0){
       return { achievable:false, totalPctCost };
     }
-    const fixedCosts = calc({ ...it, sell:0 }).totalCost;
-    const targetSell = fixedCosts * 100 / availablePct;
-    return { achievable:true, targetSell, fixedCosts, totalPctCost };
+    let sell = 20000, fixedCosts = 0;
+    for(let i = 0; i < 10; i++){
+      const c0 = calc({ ...it, sell });
+      fixedCosts = c0.impTotal + c0.logistic - c0.vatCredit;   // 일반과세는 수입부가세가 매입공제로 돌아온다
+      const next = fixedCosts * 100 / availablePct;
+      const done = Math.abs(next - sell) < 1;
+      sell = next;
+      if(done) break;
+    }
+    return { achievable:true, targetSell: sell, fixedCosts, totalPctCost };
   }
 
   function marginColor(marginPct){
@@ -2034,7 +2064,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
   }
   function fillRocketSizeOptions(targetId){
     $(targetId || '#f-rocketsize').innerHTML = Object.entries(ROCKET_SIZES).map(([label, fee]) =>
-      `<option value="${label}">${label}${fee !== null ? ' — ' + fee.toLocaleString() + '원' : ' — 직접입력'}</option>`
+      `<option value="${label}">${label}${fee !== null ? '' : ' — 직접입력'}</option>`
     ).join('');
   }
   function renderStatusFilterOptions(){
@@ -2269,8 +2299,8 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
   function updateReadouts(){
     const draft = readFormItem();
     const fee = resolveFee(draft);
-    const logi = resolveLogistic(draft);
     const c = calc(draft);
+    const logi = c.baseLogistic;
     $('#fee-readout').textContent = `→ 적용 수수료 ${fee.toFixed(1)}%`;
     $('#logistic-readout').textContent = c.promo === '90'
       ? `→ 적용 물류비 ${won(logi)} (프로모션으로 0원 처리됨)`
@@ -3408,20 +3438,10 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
         const readout     = row.querySelector('.qe-margin-readout');
 
         function calcSellFromMargin(pct){
-          // sell = cost / (1 - pct/100) where cost = all non-sell costs
-          // Use calc() with sell=0 to get base cost estimate, then back-calculate
-          const tempMerged = { ...it, cny: srcOpt.cny, sell: 0 };
-          const costBase = calc(tempMerged);
-          // cost = buyKrw + commission_on_sell + logistic + ad_on_sell + ret_on_sell
-          // simplified back-calc: sell = costBase.cost / (1 - feeRatio - adRatio - retRatio)
-          const feeRatio = (costBase.feePct || 0) / 100;
-          const adRatio  = (it.ad || 0) / 100;
-          const retRatio = (it.ret || 0) / 100 * 0.3;
-          const fixedCost = costBase.buyKrw + (costBase.promoActive ? 0 : costBase.logistic);
-          const varRatio  = feeRatio + adRatio + retRatio;
-          const targetRatio = (100 - pct) / 100;
-          if(targetRatio <= varRatio) return 0;
-          return Math.round(fixedCost / (targetRatio - varRatio) / 100) * 100;
+          // 목표 마진율을 만족하는 판매가 (수입비용·물류·수수료·광고·반품·부가세 모두 반영)
+          const t = calcTargetSell({ ...it, cny: srcOpt.cny }, pct);
+          if(!t.achievable) return 0;
+          return Math.round(t.targetSell / 100) * 100;
         }
 
         function updateReadout(){
@@ -3535,7 +3555,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
         <div class="ledger">
           <div class="row"><span>수입원가 (관부가세·물류 포함)</span><span>${won(c.impTotal)}</span></div>
           <div class="row"><span>판매·운영비 (수수료 ${c.feePct.toFixed(1)}%+물류+광고+반품+포장)</span><span>${won(c.sellTotal)}</span></div>
-          ${taxType === 'general' ? `<div class="row tax-row"><span>부가세 납부 (일반과세·매입공제 반영)</span><span>${won(c.netSellVat)}</span></div>` : ''}
+          ${taxType !== 'exempt' ? `<div class="row tax-row"><span>${taxType === 'general' ? '부가세 납부 (일반과세·매입공제 반영)' : '부가세 (간이과세 1.5%)'}</span><span>${won(c.netSellVat)}</span></div>` : ''}
           <div class="row"><span>쿠팡 판매가</span><span>${won(rep.sell)}</span></div>
           <div class="row margin" style="color:${mColor}"><span>예상 마진 (${pct(c.marginPct)})</span><span>${won(c.margin)}</span></div>
           ${targetPriceRowHtml(repMerged, rep.sell)}
@@ -3565,7 +3585,8 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
           <div class="row"><span>매입세액공제 (수입부가세 환급)</span><span>-${won(c.vatCredit)}</span></div>
           <div class="row"><span>순 부가세 부담</span><span>${won(c.netSellVat)}</span></div>
           ` : taxType === 'simplified' ? `
-          <div class="note">🧾 간이과세 — 연 4,800만원 미만 부가세 면제. 판매 부가세 별도 반영 없음.</div>
+          <div class="row"><span>간이과세 부가세 (판매가×1.5%)</span><span>${won(c.simpleTaxAmt)}</span></div>
+          <div class="note">🧾 간이과세 도소매 기준(부가가치율 15%×10%). 연 4,800만원 미만이라 납부가 면제되면 면세사업자로 선택하세요.</div>
           ` : `
           <div class="note">🧾 면세사업자 — 부가세 납부 의무 없음.</div>
           `}
@@ -4283,7 +4304,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     if(targetMarginPct === null) return '';
     const t = calcTargetSell(merged, targetMarginPct);
     if(!t.achievable){
-      return `<div class="row target-row"><span>🎯 타겟 ${targetMarginPct}% 적정가</span><span style="color:var(--seal)">달성 불가 (수수료+광고비+반품비 ${t.totalPctCost.toFixed(1)}%가 너무 높음)</span></div>`;
+      return `<div class="row target-row"><span>🎯 타겟 ${targetMarginPct}% 적정가</span><span style="color:var(--seal)">달성 불가 (수수료+광고비+반품비+부가세 ${t.totalPctCost.toFixed(1)}%가 너무 높음)</span></div>`;
     }
     const diff = (currentSell||0) - t.targetSell;
     const diffHtml = diff >= 0
