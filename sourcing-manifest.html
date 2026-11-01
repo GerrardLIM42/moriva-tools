@@ -1534,7 +1534,8 @@
     if(it.channel === 'market') return it.marketShip || 0;
     const idx = ROCKET_IDX[it.rocketSize];
     if(idx === undefined) return it.rocketFeeManual || 0;   // 직접입력
-    return rktInoutFee(idx, sell || 0) * (qty || 1) + RKT_SHIP_FEE[idx];
+    // 묶음은 중국에서 묶음 상태로 입고 → 입출고비·배송비 모두 1회만 부과 (qty 곱하지 않음)
+    return rktInoutFee(idx, sell || 0) + RKT_SHIP_FEE[idx];
   }
 
   function calc(it){
@@ -2317,7 +2318,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     $('#fee-readout').textContent = `→ 적용 수수료 ${fee.toFixed(1)}%`;
     $('#logistic-readout').textContent = c.promo === '90'
       ? `→ 적용 물류비 ${won(logi)} (프로모션으로 0원 처리됨)`
-      : `→ 적용 물류비 ${won(logi)}`;
+      : `→ 적용 물류비 ${won(logi)}` + ((draft.channel !== 'market' && ROCKET_IDX[draft.rocketSize] !== undefined) ? ` (입출고비 ${won(rktInoutFee(ROCKET_IDX[draft.rocketSize], draft.sell || 0))} + 배송비 ${won(RKT_SHIP_FEE[ROCKET_IDX[draft.rocketSize]])})` : '');
     updatePromoHints();
   }
   function refreshAutoFields(){
