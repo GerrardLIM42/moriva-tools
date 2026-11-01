@@ -781,7 +781,9 @@
     <span class="tmb-label">🎯 타겟 마진율</span>
     <input type="number" id="target-margin-input" step="0.1" min="0" max="99" placeholder="예: 30" />
     <span class="tmb-unit">%</span>
-    <span class="tmb-hint">입력하면 각 상품(옵션 포함)에 이 마진율을 맞추기 위한 적정 판매가가 같이 표시돼요.</span>
+    <span class="tmb-hint">입력하면 적정 판매가가 표시돼요. '판매가 일괄 적용'은 선택 항목(없으면 현재 목록 전체)의 판매가를 이 마진율로 바꿔요.</span>
+    <button type="button" class="btn amber" id="target-margin-apply-btn" title="선택한 항목(없으면 현재 목록 전체)의 판매가를 타겟 마진율에 맞게 일괄 변경">판매가 일괄 적용</button>
+    <button type="button" class="btn ghost" id="target-margin-undo-btn" hidden>↩ 되돌리기</button>
     <button type="button" class="btn ghost tmb-clear" id="target-margin-clear-btn">지우기</button>
   </section>
 
@@ -4310,6 +4312,66 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     targetMarginPct = null;
     renderGrid();
     if(!comparePanel.hidden) renderCompareBody();
+  });
+  let marginUndoSnap = null;
+  $('#target-margin-apply-btn').addEventListener('click', () => {
+    if(targetMarginPct === null || targetMarginPct < 0 || targetMarginPct >= 100){
+      showToast('타겟 마진율(0~99%)을 먼저 입력해주세요.');
+      return;
+    }
+    const sel = items.filter(it => selectedIds.has(it.id));
+    const scope = sel.length ? sel : getFiltered();
+    const scopeLabel = sel.length ? '선택한 ' + sel.length + '개' : '현재 목록의 ' + scope.length + '개';
+    if(!scope.length){ showToast('적용할 항목이 없어요.'); return; }
+    if(!confirm(scopeLabel + ' 항목의 판매가(모든 옵션 포함)를 마진율 ' + targetMarginPct + '%에 맞게 일괄 변경할까요?\n(달성 불가한 항목은 건너뛰고, 직후 되돌리기 가능)')) return;
+    const snap = [];
+    let changed = 0, skipped = 0;
+    scope.forEach(it => {
+      const before = { id: it.id, sell: it.sell, opts: (it.options || []).map(o => ({ id: o.id, sell: o.sell, inputMode: o.inputMode, savedMarginPct: o.savedMarginPct })) };
+      let touched = false;
+      const solve = cny => {
+        const t = calcTargetSell({ ...it, cny }, targetMarginPct);
+        return t.achievable ? Math.round(t.targetSell / 100) * 100 : 0;
+      };
+      if(it.options && it.options.length){
+        it.options.forEach(o => {
+          const s = solve(o.cny);
+          if(s > 0){ o.sell = s; o.inputMode = 'margin'; o.savedMarginPct = targetMarginPct; touched = true; }
+        });
+        if(touched && it.options.length === 1) it.sell = it.options[0].sell;
+        else if(touched){ const r = repOption(it); if(r && r.sell) it.sell = r.sell; }
+      } else {
+        const s = solve(it.cny);
+        if(s > 0){ it.sell = s; touched = true; }
+      }
+      if(touched){ snap.push(before); changed++; } else skipped++;
+    });
+    if(!changed){ showToast('모든 항목이 달성 불가라 변경된 게 없어요.'); return; }
+    marginUndoSnap = snap;
+    $('#target-margin-undo-btn').hidden = false;
+    saveItems();
+    renderAll();
+    if(!comparePanel.hidden) renderCompareBody();
+    showToast(changed + '개 항목 판매가를 ' + targetMarginPct + '%로 적용' + (skipped ? ' (달성 불가 ' + skipped + '개 제외)' : ''));
+  });
+  $('#target-margin-undo-btn').addEventListener('click', () => {
+    if(!marginUndoSnap) return;
+    marginUndoSnap.forEach(b => {
+      const it = items.find(x => x.id === b.id);
+      if(!it) return;
+      it.sell = b.sell;
+      b.opts.forEach(bo => {
+        const o = (it.options || []).find(x => x.id === bo.id);
+        if(o){ o.sell = bo.sell; o.inputMode = bo.inputMode; o.savedMarginPct = bo.savedMarginPct; }
+      });
+    });
+    const n = marginUndoSnap.length;
+    marginUndoSnap = null;
+    $('#target-margin-undo-btn').hidden = true;
+    saveItems();
+    renderAll();
+    if(!comparePanel.hidden) renderCompareBody();
+    showToast(n + '개 항목을 이전 판매가로 되돌렸어요.');
   });
   function targetPriceRowHtml(merged, currentSell){
     if(targetMarginPct === null) return '';
