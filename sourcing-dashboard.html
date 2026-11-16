@@ -680,7 +680,24 @@ function rktInoutFee(sizeIdx, price){
   var t = RKT_INOUT_TIERS.find(function(t){ return price < t.max; }) || RKT_INOUT_TIERS[RKT_INOUT_TIERS.length - 1];
   return t.fees[sizeIdx] || 0;
 }
-function growthFeeFor(tier, sell){ return rktInoutFee(tier.idx, n(sell)) + RKT_SHIP_FEE[tier.idx]; }
+/* 입출고비+배송비: 가이드 화면의 요금표(feeTable, 쿠팡 윙 캡처 기준·직접 수정 가능)를 우선 쓰고, 표가 없으면 내장 요율표로 계산한다 */
+function feeBandIndex(ft, price){
+  for(var i = 0; i < ft.rows.length; i++){
+    var m = /([\d,]+)\s*원\s*미만/.exec(ft.rows[i].band || '');
+    var hi = m ? parseInt(m[1].replace(/,/g, ''), 10) : null;
+    if(hi !== null && price < hi) return i;
+  }
+  return ft.rows.length - 1;
+}
+function growthFeeFor(tier, sell){
+  var ft = (typeof feeTable !== 'undefined' && feeTable && feeTable.rows && feeTable.rows.length) ? feeTable : null;
+  if(ft){
+    var r = ft.rows[feeBandIndex(ft, n(sell))];
+    var v = r && r.prices && parseFloat(r.prices[tier.idx]);
+    if(typeof v === 'number' && isFinite(v)) return v;
+  }
+  return rktInoutFee(tier.idx, n(sell)) + RKT_SHIP_FEE[tier.idx];
+}
 /* 쿠팡 카테고리별 판매수수료율(%) — 고르지 않으면 기존 기본값 11.55% */
 var COUPANG_FEE_CATS = {
   '생활/주방':11, '뷰티/코스메틱':11.5, '패션/의류':14, '패션잡화':12, '스포츠/레저':11,
@@ -1259,10 +1276,7 @@ function setPath(obj, path, value){
 }
 
 // ---------------- category shipping/handling fee reference table (editable, from 쿠팡윙 screenshots) ----------------
-var DEFAULT_FEE_TABLE = {
-  category: '홈 > 공구/셀프인테리어용품 (예시 · 쿠팡윙 캡처 기준)',
-  sizes: ['극소형','소형','중형','대형1','대형2','특대형'],
-  rows: [
+var OLD_DEFAULT_FEE_ROWS = [
     {band:'~5,000원 미만',              prices:[2500,3250,4150,4800,6450,7950]},
     {band:'5,000원 이상~10,000원 미만',   prices:[2550,3525,4150,4950,6600,8100]},
     {band:'10,000원 이상~15,000원 미만',  prices:[2575,3625,4150,4950,6600,8100]},
@@ -1271,17 +1285,37 @@ var DEFAULT_FEE_TABLE = {
     {band:'30,000원 이상~40,000원 미만',  prices:[3850,4150,4825,5825,6600,8100]},
     {band:'40,000원 이상~50,000원 미만',  prices:[3850,4150,4825,5825,6600,8100]},
     {band:'50,000원 이상~60,000원 미만',  prices:[3850,4150,4825,6200,6975,8475]}
+];
+/* 쿠팡 윙 "입출고/배송 비용 전체 보기" 화면(홈 > 욕실용품, 저가 상품 전용 할인가 · 2027.01.31까지) 기준.
+   50,000원 이상 구간은 캡처에 없어서 기존 값을 그대로 둔다. 카테고리마다 표가 다르니 가이드 화면에서 직접 고칠 수 있다. */
+var DEFAULT_FEE_TABLE = {
+  category: '홈 > 욕실용품 (쿠팡윙 캡처 기준 · 저가 상품 전용 할인가, ~2027.01.31)',
+  sizes: ['극소형','소형','중형','대형1','대형2','특대형'],
+  rows: [
+    {band:'~5,000원 미만',              prices:[2050,3250,4050,4350,6325,7825]},
+    {band:'5,000원 이상~10,000원 미만',   prices:[2150,3275,4050,4500,6600,8100]},
+    {band:'10,000원 이상~15,000원 미만',  prices:[2800,3275,4050,4500,6600,8100]},
+    {band:'15,000원 이상~20,000원 미만',  prices:[2925,3325,4050,4500,6600,8100]},
+    {band:'20,000원 이상~30,000원 미만',  prices:[3075,3325,4050,4500,6600,8100]},
+    {band:'30,000원 이상~40,000원 미만',  prices:[3600,3625,4425,5300,6600,8100]},
+    {band:'40,000원 이상~50,000원 미만',  prices:[3850,4150,4825,5600,6600,8100]},
+    {band:'50,000원 이상~60,000원 미만',  prices:[3850,4150,4825,6200,6975,8475]}
   ]
 };
 var FEE_KEY = 'moriva_fee_table_v1';
 function loadFeeTable(){
   try{
     var saved = JSON.parse(localStorage.getItem(FEE_KEY));
-    if(saved && saved.rows && saved.sizes) return saved;
+    if(saved && saved.rows && saved.sizes){
+      // 예전 기본 예시표를 그대로 쓰고 있던 경우 새 기본표로 바꿔 준다 (직접 고친 표는 그대로 둔다)
+      if(JSON.stringify(saved.rows) === JSON.stringify(OLD_DEFAULT_FEE_ROWS)) return JSON.parse(JSON.stringify(DEFAULT_FEE_TABLE));
+      return saved;
+    }
   }catch(e){}
   return JSON.parse(JSON.stringify(DEFAULT_FEE_TABLE));
 }
 var feeTable = loadFeeTable();
+products.forEach(function(p){ recomputeAll(p); });   // 요금표가 준비된 뒤 그로스비용을 다시 계산
 var feeSaveTimer = null;
 function persistFeeTable(){
   clearTimeout(feeSaveTimer);
