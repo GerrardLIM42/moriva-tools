@@ -593,7 +593,8 @@
     font-family:'Pretendard Variable',sans-serif; font-weight:800;
   }
   .cmp-table td{ padding:8px 10px; border-bottom:1px solid var(--line); white-space:nowrap; font-family:'JetBrains Mono',monospace; }
-  .cmp-table td.name-cell{ font-family:'Pretendard Variable',sans-serif; font-weight:600; white-space:normal; max-width:220px; }
+  .cmp-table td.name-cell{ font-family:'Pretendard Variable',sans-serif; font-weight:600; white-space:normal; min-width:170px; max-width:240px; word-break:keep-all; overflow-wrap:break-word; line-height:1.35; }
+  .cmp-table td.folder-cell{ font-family:'Pretendard Variable',sans-serif; font-weight:600; white-space:nowrap; min-width:90px; max-width:140px; overflow:hidden; text-overflow:ellipsis; }
   .cmp-table tr:last-child td{ border-bottom:none; }
   .cmp-table tr.winner-row td{ background:rgba(79,120,100,0.07); }
   .cmp-table tr.selected-row td{ background:rgba(217,142,61,0.10); }
@@ -3696,7 +3697,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
           <td><input type="checkbox" data-select="${it.id}" ${isSelected ? 'checked' : ''} /></td>
           <td><img class="thumb" data-fallback src="${resolveImageSrc(rep.image || it.image) || FALLBACK_IMG}" alt="" /></td>
           <td class="name-cell">${isBest ? '🏆 ' : ''}${nameLabel}${it.isBundle ? ` <span class="stamp-mini">×${it.bundleQty}</span>` : ''}${promoTag}</td>
-          ${showFolderCol ? `<td class="name-cell">${escapeHtml(it.folder || '미분류')}</td>` : ''}
+          ${showFolderCol ? `<td class="folder-cell" title="${escapeHtml(it.folder || '미분류')}">${escapeHtml(it.folder || '미분류')}</td>` : ''}
           <td><span class="stamp-mini">${it.status}</span></td>
           <td>${hasMultiOptions ? `<span class="opt-pill" title="${escapeHtml(optTitle)}">🎨 ${it.options.length}</span>` : '<span style="color:var(--mist)">-</span>'}</td>
           <td>¥${(rep.cny||0).toFixed(2)}</td>
