@@ -1020,7 +1020,6 @@
           <div class="field" id="rocket-size-field">
             <label>로켓그로스 상품 사이즈 (물류비 자동)</label>
             <select id="f-rocketsize"></select>
-            <select id="f-wingfee" style="margin-top:6px" title="쿠팡 윙 입출고/배송 요금표의 카테고리를 고르면 사이즈·판매가에 맞는 물류비가 자동 적용돼요 (VAT 별도)"></select>
             <span class="readout" id="logistic-readout"></span>
           </div>
           <div class="field" id="rocket-fee-manual-field" style="display:none;">
@@ -1038,8 +1037,8 @@
       </div>
 
       <div class="fsec">
-        <div class="fsec-head"><span class="ico">🎯</span><span class="ttl">운영 비용</span></div>
-        <div class="form-grid">
+        <div class="fsec-head" style="display:none"><span class="ico">🎯</span><span class="ttl">운영 비용</span></div>
+        <div class="form-grid" style="display:none">
           <div class="field" style="display:none">
             <label>광고비율 (%)</label>
             <input type="number" id="f-ad" step="0.1" min="0" value="7" />
@@ -1539,7 +1538,14 @@
     return !!(k.keyword || k.searchVolumeTotal || k.competitionCount || k.competitionScore || k.avgPrice || k.memo);
   }
 
+  // 쿠팡 카테고리 선택값이 'W|…'이면 윙 세부 카테고리 — 수수료율과 입출고/배송비 요금표가 함께 자동 적용된다
+  const WING_ROOT_TO_FEE = {'패션의류잡화':'패션/의류','뷰티':'뷰티/코스메틱','출산/유아동':'유아동','식품':'식품/건강','주방용품':'생활/주방','생활용품':'생활/주방','가구/홈데코':'생활/주방','가전/디지털':'가전/디지털','스포츠/레져':'스포츠/레저','문구/오피스':'생활/주방','완구/취미':'완구/취미','반려/애완용품':'반려동물','자동차용품':'생활/주방'};
+  function wingIdOf(o){ const c = o && o.coupangCat; if(typeof c === 'string' && c.indexOf('W|') === 0) return c.slice(2); return (o && o.wingFee) || ''; }
+  function wingFeeRateOf(id){ const e = wingFeeEntry(id); if(!e) return null; const v = COUPANG_CATS[WING_ROOT_TO_FEE[e.root]]; return typeof v === 'number' ? v : null; }
+  function wingEntryText(e){ return e.path.split(' > ').slice(1).join(' > ') + ' — ' + e.lab + (e.note ? ' · ' + e.note : ''); }
+  function coupangCatLabel(c){ if(typeof c === 'string' && c.indexOf('W|') === 0){ const e = wingFeeEntry(c.slice(2)); return e ? e.root + ' > ' + wingEntryText(e) : c; } return c; }
   function resolveFee(it){
+    if(typeof it.coupangCat === 'string' && it.coupangCat.indexOf('W|') === 0){ const wr = wingFeeRateOf(it.coupangCat.slice(2)); if(wr !== null) return wr; }
     const v = COUPANG_CATS[it.coupangCat];
     return (v !== null && v !== undefined) ? v : (it.feeManual || 0);
   }
@@ -1548,7 +1554,7 @@
     const idx = ROCKET_IDX[it.rocketSize];
     if(idx === undefined) return it.rocketFeeManual || 0;   // 직접입력
     // 묶음은 중국에서 묶음 상태로 입고 → 입출고비·배송비 모두 1회만 부과 (qty 곱하지 않음)
-    const wv = wingFeeValue(it.wingFee, idx, sell || 0);
+    const wv = wingFeeValue(wingIdOf(it), idx, sell || 0);
     if(wv !== null) return wv;   // 윙 카테고리 요금표(입출고+배송 합산, 묶음도 1회)
     return rktInoutFee(idx, sell || 0) + RKT_SHIP_FEE[idx];
   }
@@ -2075,9 +2081,17 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     $('#f-status').innerHTML = STATUSES.map(s => `<option value="${s}">${s}</option>`).join('');
   }
   function fillCoupangCatOptions(targetId){
-    $(targetId || '#f-coupangcat').innerHTML = Object.entries(COUPANG_CATS).map(([label, fee]) =>
+    const legacy = Object.entries(COUPANG_CATS).map(([label, fee]) =>
       `<option value="${label}">${label}${fee !== null ? ' — ' + fee + '%' : ' — 직접입력'}</option>`
     ).join('');
+    let wing = '', cur = null;
+    WING_FEES.forEach(e => {
+      if(e.root !== cur){ if(cur !== null) wing += '</optgroup>'; wing += `<optgroup label="윙 세부 카테고리 · ${e.root} (수수료+입출고/배송 자동)">`; cur = e.root; }
+      const r = COUPANG_CATS[WING_ROOT_TO_FEE[e.root]];
+      wing += `<option value="W|${e.id.replace(/"/g, '&quot;')}">${wingEntryText(e)} — 수수료 ${r}%</option>`;
+    });
+    if(cur !== null) wing += '</optgroup>';
+    $(targetId || '#f-coupangcat').innerHTML = '<optgroup label="대분류 (수수료만 적용)">' + legacy + '</optgroup>' + wing;
   }
   function fillRocketSizeOptions(targetId){
     $(targetId || '#f-rocketsize').innerHTML = Object.entries(ROCKET_SIZES).map(([label, fee]) =>
@@ -2332,7 +2346,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     $('#fee-readout').textContent = `→ 적용 수수료 ${fee.toFixed(1)}%`;
     $('#logistic-readout').textContent = c.promo === '90'
       ? `→ 적용 물류비 ${won(logi)} (프로모션으로 0원 처리됨)`
-      : `→ 적용 물류비 ${won(logi)}` + ((draft.channel !== 'market' && ROCKET_IDX[draft.rocketSize] !== undefined && wingFeeEntry(draft.wingFee)) ? ` (윙 요금표: ${wingFeeEntry(draft.wingFee).lab})` : (draft.channel !== 'market' && ROCKET_IDX[draft.rocketSize] !== undefined) ? ` (입출고비 ${won(rktInoutFee(ROCKET_IDX[draft.rocketSize], draft.sell || 0))} + 배송비 ${won(RKT_SHIP_FEE[ROCKET_IDX[draft.rocketSize]])})` : '');
+      : `→ 적용 물류비 ${won(logi)}` + ((draft.channel !== 'market' && ROCKET_IDX[draft.rocketSize] !== undefined && wingFeeEntry(wingIdOf(draft))) ? ` (윙 요금표: ${wingFeeEntry(wingIdOf(draft)).lab})` : (draft.channel !== 'market' && ROCKET_IDX[draft.rocketSize] !== undefined) ? ` (입출고비 ${won(rktInoutFee(ROCKET_IDX[draft.rocketSize], draft.sell || 0))} + 배송비 ${won(RKT_SHIP_FEE[ROCKET_IDX[draft.rocketSize]])})` : '');
     updatePromoHints();
   }
   function refreshAutoFields(){
@@ -2352,7 +2366,6 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
   });
   $('#f-coupangcat').addEventListener('change', refreshAutoFields);
   $('#f-rocketsize').addEventListener('change', refreshAutoFields);
-  $('#f-wingfee').addEventListener('change', refreshAutoFields);
 
   /* ---------------- selection / compare ---------------- */
 
@@ -3604,7 +3617,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
           <div class="row"><span>통관비</span><span>${won(c.clearance)}</span></div>
           `}
           <div class="grp">🛒 판매·운영비${c.promoActive ? ` · 🎁 ${c.promo === '90' ? '첫 90일' : '+270일'} 혜택 적용 중` : ''}</div>
-          <div class="row"><span>카테고리 수수료 (${it.coupangCat}, ${c.feePct.toFixed(1)}%)</span><span>${won(c.commission)}</span></div>
+          <div class="row"><span>카테고리 수수료 (${coupangCatLabel(it.coupangCat)}, ${c.feePct.toFixed(1)}%)</span><span>${won(c.commission)}</span></div>
           <div class="row"><span>${it.channel === 'rocket' ? '로켓그로스 물류비' : '마켓플레이스 배송비'}${c.promo === '90' ? ' (혜택 0원)' : ''}</span><span>${won(c.logistic)}</span></div>
           ${taxType === 'general' ? `
           <div class="grp">🧾 부가세 (일반과세)</div>
@@ -3805,7 +3818,6 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
       setSeg($('#seg-channel'), it.channel);
       setSeg($('#seg-promo'), it.channel === 'rocket' ? (it.promo || 'none') : 'none');
       $('#f-rocketsize').value = it.rocketSize;
-      $('#f-wingfee').value = it.wingFee || '';
       $('#f-rocket-fee-manual').value = it.rocketFeeManual;
       $('#f-marketship').value = it.marketShip;
       $('#f-ad').value = it.ad;
@@ -3862,7 +3874,6 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
       setSeg($('#seg-channel'), 'rocket');
       setSeg($('#seg-promo'), 'none');
       $('#f-rocketsize').value = '소형 (2kg 이하)';
-      $('#f-wingfee').value = '';
       $('#f-rocket-fee-manual').value = 2500;
       $('#f-marketship').value = 0;
       $('#f-ad').value = 7;
@@ -4011,7 +4022,6 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
       channel: getSeg($('#seg-channel')),
       promo: getSeg($('#seg-promo')) || 'none',
       rocketSize: $('#f-rocketsize').value,
-      wingFee: $('#f-wingfee').value,
       rocketFeeManual: parseFloat($('#f-rocket-fee-manual').value) || 0,
       marketShip: parseFloat($('#f-marketship').value) || 0,
       sell: primary.sell,
@@ -4158,7 +4168,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
       }).join(' | ');
       const promoLabel = c.promo === '90' ? '첫90일' : c.promo === '270' ? '+270일' : '미적용';
       return [
-        it.name, it.folder, (CATEGORIES[it.category]||{}).label || it.category, it.coupangCat, it.status,
+        it.name, it.folder, (CATEGORIES[it.category]||{}).label || it.category, coupangCatLabel(it.coupangCat), it.status,
         it.isBundle ? '묶음' : '단품', it.isBundle ? it.bundleQty : 1,
         it.link, rep.image || it.image, rep.cny, it.rate,
         it.importMode === 'simple' ? '간편비율(환율포함)' : '실제비용',
@@ -4516,7 +4526,6 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     fillRocketSizeOptions();
     fillCoupangCatOptions('#bulk-coupangcat');
     fillRocketSizeOptions('#bulk-rocketsize');
-    $('#f-wingfee').innerHTML = wingOptions('');
     renderStatusFilterOptions();
     var yearlySalesInput = $('#f-yearly-sales');
     if(yearlySalesInput){
