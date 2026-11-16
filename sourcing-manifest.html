@@ -995,7 +995,8 @@
         <div class="form-grid">
           <div class="field half">
             <label>쿠팡 카테고리 (수수료 자동 적용)</label>
-            <select id="f-coupangcat"></select>
+            <div style="display:flex;gap:8px;flex-wrap:wrap"><select id="cat-root" style="flex:1;min-width:150px"></select><select id="cat-sub" style="flex:2;min-width:220px;display:none"></select></div>
+            <select id="f-coupangcat" style="display:none"></select>
             <span class="readout" id="fee-readout"></span>
           </div>
           <div class="field" id="coupang-fee-manual-field" style="display:none;">
@@ -2082,17 +2083,55 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     $('#f-status').innerHTML = STATUSES.map(s => `<option value="${s}">${s}</option>`).join('');
   }
   function fillCoupangCatOptions(targetId){
-    const legacy = Object.entries(COUPANG_CATS).map(([label, fee]) =>
+    const isBulk = targetId === '#bulk-coupangcat';
+    const legacy = Object.entries(COUPANG_CATS).filter(([label, fee]) => !isBulk || fee === null).map(([label, fee]) =>
       `<option value="${label}">${label}${fee !== null ? ' — ' + fee + '%' : ' — 직접입력'}</option>`
     ).join('');
     let wing = '', cur = null;
     WING_FEES.forEach(e => {
-      if(e.root !== cur){ if(cur !== null) wing += '</optgroup>'; wing += `<optgroup label="윙 세부 카테고리 · ${e.root} (수수료+입출고/배송 자동)">`; cur = e.root; }
+      if(e.root !== cur){ if(cur !== null) wing += '</optgroup>'; wing += `<optgroup label="${e.root}">`; cur = e.root; }
       const r = COUPANG_CATS[WING_ROOT_TO_FEE[e.root]];
       wing += `<option value="W|${e.id.replace(/"/g, '&quot;')}">${wingEntryText(e)} — 수수료 ${r}%</option>`;
     });
     if(cur !== null) wing += '</optgroup>';
-    $(targetId || '#f-coupangcat').innerHTML = '<optgroup label="대분류 (수수료만 적용)">' + legacy + '</optgroup>' + wing;
+    $(targetId || '#f-coupangcat').innerHTML = '<optgroup label="기본">' + legacy + '</optgroup>' + wing;
+  }
+  /* 카테고리 선택: 큰 분류를 고르면 그 아래 세부 카테고리가 나타난다 (#f-coupangcat은 값만 보관하는 숨김 칸) */
+  let catRootPick = '';
+  function catRoots(){ const r = []; WING_FEES.forEach(e => { if(r.indexOf(e.root) < 0) r.push(e.root); }); return r; }
+  function subOptionsHtml(root, selId){
+    let h = '<option value="">세부 카테고리 선택</option>';
+    WING_FEES.forEach(e => { if(e.root === root) h += `<option value="${e.id.replace(/"/g, '&quot;')}"${selId === e.id ? ' selected' : ''}>${wingEntryText(e)}</option>`; });
+    return h;
+  }
+  function fillCatCascade(){
+    $('#cat-root').innerHTML = '<option value="">카테고리 선택</option>' + catRoots().map(r => `<option value="${r}">${r}</option>`).join('') + '<option value="직접입력">직접입력 (수수료 직접 입력)</option>';
+  }
+  function syncCatUi(){
+    const holder = $('#f-coupangcat'), rs = $('#cat-root'), ss = $('#cat-sub');
+    if(!holder || !rs || !ss) return;
+    const v = holder.value; let root = '', sub = '';
+    if(v.indexOf('W|') === 0){ const e = wingFeeEntry(v.slice(2)); if(e){ root = e.root; sub = e.id; catRootPick = ''; } }
+    else if(v === '직접입력'){ root = '직접입력'; }
+    else if(catRootPick && WING_ROOT_TO_FEE[catRootPick] === v){ root = catRootPick; }
+    else { root = Object.keys(WING_ROOT_TO_FEE).find(k => WING_ROOT_TO_FEE[k] === v) || ''; }
+    if(rs.value !== root) rs.value = root;
+    if(root && root !== '직접입력'){ ss.style.display = ''; ss.innerHTML = subOptionsHtml(root, sub); ss.value = sub; }
+    else { ss.style.display = 'none'; ss.innerHTML = ''; }
+  }
+  function wireCatCascade(){
+    $('#cat-root').addEventListener('change', e => {
+      const r = e.target.value; if(!r) return;
+      catRootPick = r;
+      const holder = $('#f-coupangcat');
+      holder.value = (r === '직접입력') ? '직접입력' : (WING_ROOT_TO_FEE[r] || '생활/주방');
+      holder.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    $('#cat-sub').addEventListener('change', e => {
+      const id = e.target.value, holder = $('#f-coupangcat');
+      holder.value = id ? 'W|' + id : (WING_ROOT_TO_FEE[catRootPick || $('#cat-root').value] || '생활/주방');
+      holder.dispatchEvent(new Event('change', { bubbles: true }));
+    });
   }
   function fillRocketSizeOptions(targetId){
     $(targetId || '#f-rocketsize').innerHTML = Object.entries(ROCKET_SIZES).map(([label, fee]) =>
@@ -2351,6 +2390,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     updatePromoHints();
   }
   function refreshAutoFields(){
+    syncCatUi();
     toggleBundleQtyVisibility();
     toggleImportModeFields();
     toggleChannelFields();
@@ -4526,6 +4566,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     fillCoupangCatOptions();
     fillRocketSizeOptions();
     fillCoupangCatOptions('#bulk-coupangcat');
+    fillCatCascade(); wireCatCascade(); syncCatUi();
     fillRocketSizeOptions('#bulk-rocketsize');
     renderStatusFilterOptions();
     var yearlySalesInput = $('#f-yearly-sales');
