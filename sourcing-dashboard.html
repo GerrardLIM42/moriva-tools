@@ -2762,17 +2762,39 @@ var dsLast = {};
 function dsJson(key, fallback){
   try{ var v = JSON.parse(localStorage.getItem(key)); return (v === null || v === undefined) ? fallback : v; }catch(e){ return fallback; }
 }
+var dsImgCollect = null, dsRemoteImages = null;
+var DS_IMG_MAX = 250000;   // 이보다 큰 이미지는 올리지 않고 이 기기에만 둔다
+function dsImgHash(s){
+  var h1 = 0x811c9dc5, h2 = 5381;
+  for(var i = 0; i < s.length; i++){ var c = s.charCodeAt(i); h1 ^= c; h1 = Math.imul(h1, 16777619) >>> 0; h2 = ((h2 << 5) + h2 + c) >>> 0; }
+  return h1.toString(36) + h2.toString(36) + s.length.toString(36);
+}
 function dsStrip(v){
-  if(typeof v === 'string') return v.indexOf('data:') === 0 ? '' : v;
+  if(typeof v === 'string'){
+    if(v.indexOf('data:') !== 0) return v;
+    if(v.length > DS_IMG_MAX) return '';
+    var ih = dsImgHash(v);
+    if(dsImgCollect) dsImgCollect[ih] = v;
+    return 'dsimg:' + ih;
+  }
   if(Array.isArray(v)) return v.map(dsStrip);
   if(v && typeof v === 'object'){ var o = {}; Object.keys(v).forEach(function(k){ o[k] = dsStrip(v[k]); }); return o; }
   return v;
 }
 function dsHash(v){ return JSON.stringify(dsStrip(v)); }
+/* 이미지 자리만 지운 비교용 문자열 / 이미지 개수 */
+function dsNoImg(v){ return JSON.stringify(dsStrip(v)).replace(/"dsimg:[0-9a-z]+"/g, '""'); }
+function dsImgCount(v){ var m = JSON.stringify(dsStrip(v)).match(/"dsimg:/g); return m ? m.length : 0; }
 /* 서버 값에서 비어 있는(이미지라 올리지 않은) 자리는 이 기기에 있던 data: 값으로 채운다 */
 function dsRestore(remote, local){
   if(typeof remote === 'string'){
-    return (remote === '' && typeof local === 'string' && local.indexOf('data:') === 0) ? local : remote;
+    var localData = (typeof local === 'string' && local.indexOf('data:') === 0) ? local : null;
+    if(remote.indexOf('dsimg:') === 0){
+      var rh = remote.slice(6);
+      if(localData && localData.length <= DS_IMG_MAX && dsImgHash(localData) === rh) return localData;
+      return (dsRemoteImages && dsRemoteImages[rh]) || localData || '';
+    }
+    return (remote === '' && localData) ? localData : remote;
   }
   if(Array.isArray(remote)){
     return remote.map(function(x, i){ return dsRestore(x, Array.isArray(local) ? local[i] : undefined); });
@@ -2835,9 +2857,11 @@ function dsInitLast(){
   var local = dsLocalEntities();
   Object.keys(local).forEach(function(k){ dsLast[k] = dsHash(local[k]); });
 }
-function dsMerge(R){
-  var local = dsLocalEntities(), now = Date.now(), M = {}, applied = 0, push = false, backup = {};
+function dsMerge(R, RI){
+  RI = RI || {};
+  var local = dsLocalEntities(), now = Date.now(), M = {}, applied = 0, push = false, backup = {}, writeFail = false;
   Object.keys(R).forEach(function(k){ M[k] = R[k]; });
+  dsImgCollect = {}; dsRemoteImages = RI;
   dsApplying = true;
   try{
     Object.keys(R).forEach(function(k){
@@ -2847,10 +2871,18 @@ function dsMerge(R){
       var rh = (r.v === null || r.v === undefined) ? null : dsHash(r.v);
       var ls = dsStamps[k];
       if(lh === rh){ dsStamps[k] = r.t; return; }
+      if(has && rh !== null && dsNoImg(local[k]) === dsNoImg(r.v)){
+        /* 이미지 말고는 같은데 한쪽에만 이미지가 더 있는 경우 — 시각과 상관없이 이미지가 많은 쪽을 따른다 */
+        var lc = dsImgCount(local[k]), rc = dsImgCount(r.v);
+        if(lc > rc){ var nt = Math.max(now, r.t + 1); dsStamps[k] = nt; M[k] = { t: nt, v: dsStrip(local[k]) }; push = true; return; }
+        if(lc < rc){
+          try{ dsWriteLocal(k, r.v); dsStamps[k] = r.t; applied++; }catch(e){ writeFail = true; }
+          return;
+        }
+      }
       if(ls === undefined || r.t > ls){
         if(has && ls === undefined) backup[k] = local[k];
-        dsWriteLocal(k, rh === null ? null : r.v);
-        dsStamps[k] = r.t; applied++;
+        try{ dsWriteLocal(k, rh === null ? null : r.v); dsStamps[k] = r.t; applied++; }catch(e){ writeFail = true; }
       } else {
         M[k] = { t: ls, v: has ? dsStrip(local[k]) : null }; push = true;
       }
@@ -2866,9 +2898,19 @@ function dsMerge(R){
     Object.keys(backup).forEach(function(k){ old[k] = { savedAt: now, v: dsStrip(backup[k]) }; });
     try{ localStorage.setItem(DS_BACKUP_KEY, JSON.stringify(old)); }catch(e){}
   }
+  /* 서버에 올라갈 항목들이 가리키는 이미지만 남긴다 (안 쓰는 이미지는 정리) */
+  var refs = {}, ms = JSON.stringify(M), mm, re = /dsimg:([0-9a-z]+)/g;
+  while((mm = re.exec(ms))) refs[mm[1]] = 1;
+  var imgs = {};
+  Object.keys(refs).forEach(function(h){ var s = dsImgCollect[h] || RI[h]; if(s) imgs[h] = s; });
+  if(!push){
+    var same = Object.keys(imgs).length === Object.keys(RI).length && Object.keys(imgs).every(function(h){ return !!RI[h]; });
+    if(!same) push = true;
+  }
+  dsImgCollect = null; dsRemoteImages = null;
   dsSaveStamps();
   dsLast = {}; dsInitLast();
-  return { entries: M, applied: applied, push: push };
+  return { entries: M, images: imgs, applied: applied, push: push, writeFail: writeFail };
 }
 function dsParse(text){
   var raw = JSON.parse(text || '{}');
@@ -2929,10 +2971,12 @@ function dsSync(){
       if(!raw || !dsSha) return;           // 저장소 파일이 없으면 만들지 않는다
       dsScan();
       var R = (raw.dashboard && raw.dashboard.entries && typeof raw.dashboard.entries === 'object') ? raw.dashboard.entries : {};
-      var res = dsMerge(R);
+      var RI = (raw.dashboard && raw.dashboard.images && typeof raw.dashboard.images === 'object') ? raw.dashboard.images : {};
+      var res = dsMerge(R, RI);
+      if(res.writeFail) mfSay('이 브라우저의 저장 공간이 부족해 일부 내용을 가져오지 못했습니다', true);
       appliedTotal += res.applied;
       if(!res.push) return;
-      var out = Object.assign({}, raw, { dashboard: { v: 1, entries: res.entries } });
+      var out = Object.assign({}, raw, { dashboard: { v: 1, entries: res.entries, images: res.images } });
       return dsPut(out).then(function(r){
         if(r === 'conflict' && n < 3) return attempt(n + 1);
         if(r === 'conflict') throw new Error('다른 기기와 동시에 저장되어 충돌했습니다');
