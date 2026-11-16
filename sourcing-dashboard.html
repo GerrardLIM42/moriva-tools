@@ -223,6 +223,10 @@ tbody tr{cursor:pointer;}
   white-space:nowrap;
 }
 .icon-toggle-btn:hover{background:rgba(255,255,255,0.18);}
+#starBtn{min-width:112px; text-align:center;}
+.p-header .titles{flex:1 1 320px; min-width:0;}
+.p-header .titles .ef-title{width:calc(100% + 10px); max-width:calc(100% + 10px); box-sizing:border-box;}
+.p-header .status-control{flex:0 0 auto;}
 .icon-toggle-btn.active-star{background:rgba(199,151,63,0.35); border-color:var(--gold-soft); color:var(--gold-soft);}
 
 .card{
@@ -389,6 +393,9 @@ input.ef[type=number]{-moz-appearance:textfield;}
 .cc-unit{font-size:11px; color:var(--sub);}
 .cc-views-row{font-size:11px; color:var(--sub); margin-top:4px; display:flex; align-items:center; gap:4px;}
 .ef-cc-views{width:60px; padding:2px 4px; font-size:11px; display:inline-block;}
+.cc-est{margin-top:8px; padding:6px 8px; border-radius:8px; background:var(--cream-2,#f3ecd9); border:1px dashed var(--gold-soft,#c7973f);}
+.cc-est-row{font-size:11px; color:var(--sub); display:flex; justify-content:space-between; gap:6px; line-height:1.6;}
+.cc-est-row b{color:var(--navy); font-weight:800; font-variant-numeric:tabular-nums;}
 .sc-tier-select{width:100%; padding:5px 6px; border-radius:6px; border:1px solid var(--line); background:var(--cream-1); color:var(--navy); font-size:11.5px; margin-bottom:5px; cursor:pointer;}
 
 .sc-field{margin-top:6px; border-top:1px dashed var(--line); padding-top:6px;}
@@ -1376,6 +1383,14 @@ function formatMoneyCaret(el){
 }
 
 // editable field builder: <input> with data-path for delegated live-editing
+function estSalesInner(c){
+  var v = parseFloat(String((c && c.views_28d) == null ? '' : c.views_28d).replace(/,/g,''));
+  var b = parseFloat(String((c && c.buyers_28d) == null ? '' : c.buyers_28d).replace(/,/g,''));
+  var ev = (isFinite(v) && v > 0) ? Math.round(v * 0.07).toLocaleString('ko-KR') + '개' : '-';
+  var eb = (isFinite(b) && b > 0) ? Math.round(b * 1.2).toLocaleString('ko-KR') + '개' : '-';
+  return '<div class="cc-est-row"><span>예상 판매 (조회수×7%)</span><b>' + ev + '</b></div>' +
+         '<div class="cc-est-row"><span>예상 판매 (월 구매수×1.2)</span><b>' + eb + '</b></div>';
+}
 function ef(path, value, opts){
   opts = opts || {};
   var type = opts.type || 'number';
@@ -1988,6 +2003,7 @@ function renderProduct(p){
           '<div class="cc-views-row">28일 조회수 '+ef('competitors.'+idx+'.views_28d', c.views_28d, {cls:'ef-cc-views'})+'</div>'+
           '<div class="cc-views-row">월 구매수(이상) '+ef('competitors.'+idx+'.buyers_28d', c.buyers_28d, {cls:'ef-cc-views'})+'<span class="cc-unit">명</span></div>'+
           '<div class="cc-views-row">리뷰수 '+ef('competitors.'+idx+'.reviews', c.reviews, {cls:'ef-cc-views'})+'<span class="cc-unit">개</span></div>'+
+          '<div class="cc-est" data-est="'+idx+'">'+estSalesInner(c)+'</div>'+
         '</div></div>';
     }).join('') +
   '</div>'+
@@ -2361,6 +2377,10 @@ function patchAfterEdit(p, path){
 
   if(path.indexOf('competitors.') === 0){
     recomputeCompetitorStats(p);
+    (p.competitors || []).forEach(function(cc, ci){
+      var estEl = root.querySelector('[data-est="' + ci + '"]');
+      if(estEl) estEl.innerHTML = estSalesInner(cc);
+    });
     var lp = root.querySelector('#lowestPriceVal'); if(lp) lp.textContent = fmtWon(p.lowest_price);
     var ap = root.querySelector('#avgPriceVal'); if(ap) ap.textContent = fmtWon(p.avg_price);
     Array.prototype.forEach.call(root.querySelectorAll('.comp-card'), function(el){
