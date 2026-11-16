@@ -38,7 +38,7 @@
     }
     .mc-title-row { flex-wrap: wrap; justify-content: space-between; row-gap: 8px; }
   </style>
-<script src="./wing-fees.js?v=20261117a"></script>
+<script src="./wing-fees.js?v=20261117d"></script>
 </head>
 <body>
   <div id="root"></div>
@@ -1647,7 +1647,7 @@
                       </select>
                       <select value={wc} onChange={e => setWc(e.target.value)} style={{ ...SELECT_STYLE, marginTop: 6 }} title="쿠팡 윙 입출고/배송 요금표 카테고리 (VAT 별도) — 고르면 사이즈·판매가에 맞는 물류비가 자동 적용돼요">
                         <option value="">윙 카테고리: 선택 안 함 (기본 요금표)</option>
-                        {WING_FEES.map(e => <option key={e.id} value={e.id}>{e.path} — {e.lab}</option>)}
+                        {WING_FEES.map(e => <option key={e.id} value={e.id}>{e.path} — {e.lab}{e.note ? ' · ' + e.note : ''}</option>)}
                       </select>
                       {RKTS[ri].fee === null ? (
                         <NumIn label="로켓그로스 물류비" unit="KRW" value={crf} onChange={setCrf} />

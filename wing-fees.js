@@ -36,16 +36,18 @@ var WING_FEE_RAW = `의류 > 여성의류|패션의류잡화>여성패션|2s2s3c
 주방 > 밀폐저장용기|주방용품>보관/밀폐용기|2q2s2t2v3e4a4a4a4a4a4a3m3r3v3x3x4m4m4m4m4m4m4d4i4i4i4r5757575757575a5g5g5g5g6h6h6w6w6w6w717c7c7c7c7c7c7r7r7r8g8v9090909090909f9f9f9o
 주방 > 일회용품|주방용품>(미확인)|2a2e34393f404a4a4a4a4a3m3n3p3t3w484m4m4m4m4m4i4i4i4i4n515d5d5d5d5d5050505050696h6w6w6w6w7c7c7c7c7c7c7j7y7y8g8g909090909090979m9m9o9o
 주방 > 주방잡화|주방용품>(미확인)|2a2e34393g404a4a4a4a4a3m3n3n3p3p454m4m4m4m4m4f4i4i4i4i4w585858585d4u505050505w6h6w6w6w6w7c7c7c7c7c7c7c7r7r7r7r909090909090909f9f9f9f
-홈 > 가구/수납/정리|생활용품>수납/정리|2m2m34393g404a4a4a4a4a3m3q3q3v3z4g4m4m4m4m4m4i4i4i4i4j4z5d5d5d5d5d52585858585w6h6w6w6w6w717c7c7c7c7c7n8d8g8g8g8p9090909090999o9o9o9o
-하우스홀드 > 화장지|생활용품>화장지/물티슈|2d2d383b3e3q404a4a4a4a3m3n3n3p3p3y4f4m4m4m4m3q3q3q3q4a4j4z4z4z5d5d4q4q4q4q4q5i5i6w6w6w6w7c7c7c7c7c7c7c7r7s7x7x909090909090909f9g9l9l
+홈 > 가구/수납/정리|생활용품>수납/정리|2m2m34393g404a4a4a4a4a3m3q3q3v3z4g4m4m4m4m4m4i4i4i4i4j4z5d5d5d5d5d52585858585w6h6w6w6w6w717c7c7c7c7c7n8d8g8g8g8p9090909090999o9o9o9o|생활잡화 일부 포함
+하우스홀드 > 화장지|생활용품>화장지/물티슈|2d2d383b3e3q404a4a4a4a3m3n3n3p3p3y4f4m4m4m4m3q3q3q3q4a4j4z4z4z5d5d4q4q4q4q4q5i5i6w6w6w6w7c7c7c7c7c7c7c7r7s7x7x909090909090909f9g9l9l|일반롤화장지(2겹) 기준
+하우스홀드 > 화장지 (티슈 등 일반)|생활용품>화장지/물티슈|2c2d383b3e3u404a4a4a4a3m3n3n3p3p444f4m4m4m4m4a4a4a4a4a4y5151515d5d4q4q4q4q4q5z6c6w6w6w6w7c7c7c7c7c7c7c7r7s7x7x909090909090909f9g9l9l|화장지/티슈류 기본
+퍼스널케어 > 구강용품|생활용품>구강/면도|363g3q3q3s4a4a4a4a4a4a3b3w3w484a4m4m4m4m4m4m4w4w4w4w5a5h5h5h5h5h5h55555s5s5s6j6j6j6j6j747c7c7z7z7z7z7z7z7z7z7z90909n9n9n9n9n9n9n9n9n
 퍼스널케어 > 위생용품|생활용품>생리대/성인기저귀|2w3q3q3q3s4a4a4a4a4a4a3x3x4648484m4m4m4m4m4m4i4i4i4i4i5151515151515t5w5w5w5w60606f6f6f6f7h7h7h7h7h7h7h7r7r7r7r959595959595959f9f9f9f
-하우스홀드 > 세제|생활용품>세제|373a3c3g3m4a4a4a4a4a4a3m3y3z414a4m4m4m4m4m4m4g4o4o4o4y5252525252525w5w5w5w6163636w6w6w6w7c7c7c7c7c7c7c7r7r7r7r909090909090909f9f9f9f
-홈 > 공구/셀프인테리어용품|생활용품>방충용품|2s2u2v2x3e4a4a4a4a4a4a3m3x4143464m4m4m4m4m4m4m4m4m4v4v5d5d5d5d5d5d5c5i5i5i5i6h6h6w6w6w6w767c7c7c7c7c7c7r7r7u8g8u9090909090909f9f9i9o
-퍼스널케어 > 건강/의료용품|생활용품>건강용품|373a3c3g3m4a4a4a4a4a4a3m3x3x434a4m4m4m4m4m4m4i4i4k4p5959595959595d5w5w5w5w5w5w6b6q6q6w6w7c7c7c7c7c7c7h7x7x8f8f909090909090959l9l9o9o
-퍼스널케어 > 성인용품|생활용품>성인용품(19)|2y363o3q3s4a4a4a4a4a4a3t3t3v3w3w4m4m4m4m4m4m4k4k4k4m4m565k5k5k5k5k535353535k6p6p72727272858585858m8m8m8q8q8q8q999999999q9q9q9u9u9u9u
-홈 > 욕실용품|생활용품>청소용품|2a2e34393f404a4a4a4a4a3m3n3n3p3p414m4m4m4m4m4i4i4i4i4i4x5d5d5d5d5d4u505050505w686n6n6w6w717c7c7c7c7c7c7r7u7u7u8p9090909090909f9i9i9i
+하우스홀드 > 세제|생활용품>세제|373a3c3g3m4a4a4a4a4a4a3m3y3z414a4m4m4m4m4m4m4g4o4o4o4y5252525252525w5w5w5w6163636w6w6w6w7c7c7c7c7c7c7c7r7r7r7r909090909090909f9f9f9f|방향/탈취/제습/살충 포함
+홈 > 공구/셀프인테리어용품|생활용품>방충용품|2s2u2v2x3e4a4a4a4a4a4a3m3x4143464m4m4m4m4m4m4m4m4m4v4v5d5d5d5d5d5d5c5i5i5i5i6h6h6w6w6w6w767c7c7c7c7c7c7r7r7u8g8u9090909090909f9f9i9o|조명/전기, 철물, 공구, 접착, 보수, 배관/건축자재, 안전, 도장, 생활잡화
+퍼스널케어 > 건강/의료용품|생활용품>건강용품|373a3c3g3m4a4a4a4a4a4a3m3x3x434a4m4m4m4m4m4m4i4i4k4p5959595959595d5w5w5w5w5w5w6b6q6q6w6w7c7c7c7c7c7c7h7x7x8f8f909090909090959l9l9o9o|의료/간호용품 포함
+퍼스널케어 > 성인용품|생활용품>성인용품(19)|2y363o3q3s4a4a4a4a4a4a3t3t3v3w3w4m4m4m4m4m4m4k4k4k4m4m565k5k5k5k5k535353535k6p6p72727272858585858m8m8m8q8q8q8q999999999q9q9q9u9u9u9u|생활잡화 일부 포함
+홈 > 욕실용품|생활용품>청소용품|2a2e34393f404a4a4a4a4a3m3n3n3p3p414m4m4m4m4m4i4i4i4i4i4x5d5d5d5d5d4u505050505w686n6n6w6w717c7c7c7c7c7c7r7u7u7u8p9090909090909f9i9i9i|세탁용품, 욕실용품, 생활소품, 구강/면도 일부
 홈 > 침구/커튼/블라인드|가구/홈데코>침구|2e2i34393g424a4a4a4a4a3m3n3p3t3x4e4m4m4m4m4m4i4i4i4i4i505d5d5d5d5d4y545454545w6h6w6w6w6w717c7c7c7c7c7r868e8g8g8p9090909090999o9o9o9o
-홈 > 홈데코|가구/홈데코>인테리어용품|2a2e34393f404a4a4a4a4a3m3n3n3p3r464m4m4m4m4m4i4i4i4i4i4x5d5d5d5d5d4v515151515w6h6w6w6w6w717c7c7c7c7c7h82878g8g8p9090909090959o9o9o9o
+홈 > 홈데코|가구/홈데코>인테리어용품|2a2e34393f404a4a4a4a4a3m3n3n3p3r464m4m4m4m4m4i4i4i4i4i4x5d5d5d5d5d4v515151515w6h6w6w6w6w717c7c7c7c7c7h82878g8g8p9090909090959o9o9o9o|조명/전기용품, 보수용품(생활용품) 포함
 컴퓨터/디지털 > 휴대폰/액세서리|가전/디지털>휴대폰/태블릿PC/액세서리|2f2w3c3g3m4a4a4a4a4a4a343r3r3v3y4m4m4m4m4m4m4h4i4i4i4m5353535a5j5k545a5a5a5a6j6j6j747474767c7c7c7c7z7z7z7z7z8s8u909090909n9n9n9n9n9w
 컴퓨터/디지털 > 디지털|가전/디지털>음향기기/이어폰/스피커|2t2y3i3k3s4a4a4a4a4a4a3m3r3r3w4a4m4m4m4m4m4m4h4i4i4k595f5f5f5f5f5f5q5w5w696g6j6j6w6w6w6w7l7l7l7l7l7n7n8080808099999999999b9b9o9o9o9o
 컴퓨터/디지털 > 노트북/데스크탑|가전/디지털>컴퓨터/게임/SW|30383o3q3s4a4a4a4a4a4a3m3t3t404a4m4m4m4m4m4m4k4k4k525d5d5d5d5d5d5k5w5w5w5w69696f6u6u6u6w7c7c7c7c7h7l7l80808080909090909599999o9o9o9o
@@ -83,7 +85,7 @@ var WING_FEES = WING_FEE_RAW.split('\n').filter(Boolean).map(function(line){
     }
     sizes.push(row);
   }
-  return {id: p[1] + '|' + p[0], root: p[1].split('>')[0], path: p[1].replace(/>/g, ' > '), lab: p[0], sizes: sizes};
+  return {id: p[1] + '|' + p[0], root: p[1].split('>')[0], path: p[1].replace(/>/g, ' > '), lab: p[0], note: p[3] || '', sizes: sizes};
 });
 function wingFeeEntry(id){
   if(!id) return null;
@@ -101,7 +103,7 @@ function wingOptions(sel){
   var html = '<option value=""' + (!sel ? ' selected' : '') + '>윙 카테고리: 선택 안 함 (기본 요금표)</option>', cur = null;
   WING_FEES.forEach(function(e){
     if(e.root !== cur){ if(cur !== null) html += '</optgroup>'; html += '<optgroup label="' + e.root + '">'; cur = e.root; }
-    html += '<option value="' + e.id.replace(/"/g, '&quot;') + '"' + (sel === e.id ? ' selected' : '') + '>' + e.path.split(' > ').slice(1).join(' > ') + ' — ' + e.lab + '</option>';
+    html += '<option value="' + e.id.replace(/"/g, '&quot;') + '"' + (sel === e.id ? ' selected' : '') + '>' + e.path.split(' > ').slice(1).join(' > ') + ' — ' + e.lab + (e.note ? ' · ' + e.note : '') + '</option>';
   });
   return html + (cur !== null ? '</optgroup>' : '');
 }
