@@ -224,6 +224,8 @@ tbody tr{cursor:pointer;}
 }
 .icon-toggle-btn:hover{background:rgba(255,255,255,0.18);}
 #starBtn{min-width:112px; text-align:center;}
+.icon-toggle-btn.danger{border-color:rgba(255,140,130,0.6); color:#ffb4ac;}
+.icon-toggle-btn.danger:hover{background:rgba(214,69,59,0.45); color:#fff;}
 .p-header .titles{flex:1 1 320px; min-width:0;}
 .p-header .titles .ef-title{width:calc(100% + 10px); max-width:calc(100% + 10px); box-sizing:border-box;}
 .p-header .status-control{flex:0 0 auto;}
@@ -1272,6 +1274,29 @@ function saveNotes(obj){
   }
 }
 var notes = loadNotes(); // { productName: {status, memo} }
+// 삭제한 상품(notes.deleted)은 목록에서 완전히 뺀다 — 기본 상품도, 다른 기기에서 삭제한 것도 여기서 걸러진다
+(function(){
+  for(var di = products.length - 1; di >= 0; di--){
+    var dn = notes[products[di].sheet];
+    if(dn && dn.deleted) products.splice(di, 1);
+  }
+  products.forEach(function(q, qi){ q._id = qi; });
+})();
+function deleteProduct(p){
+  setNote(p, {deleted:true, hidden:true, memo:'', imgUrls:{}, compImgUrls:{}});
+  if(p._isCustom){
+    var ci = customProducts.findIndex(function(cp){ return cp.sheet === p.sheet; });
+    if(ci >= 0) customProducts.splice(ci, 1);
+    saveCustomProducts();
+  }
+  var pi = products.indexOf(p);
+  if(pi >= 0) products.splice(pi, 1);
+  products.forEach(function(q, qi){ q._id = qi; });
+  state.view = 'dashboard';
+  state.selected = null;
+  currentProductRef = null;
+  render();
+}
 
 function getNote(p){
   var key = p.sheet;
@@ -1981,6 +2006,7 @@ function renderProduct(p){
       '</select></div>'+
       '<button type="button" id="starBtn" class="icon-toggle-btn'+(note.starred?' active-star':'')+'" title="즐겨찾기">'+(note.starred?'★ 즐겨찾기됨':'☆ 즐겨찾기')+'</button>'+
       '<button type="button" id="hideBtn" class="icon-toggle-btn" title="숨기기">'+(note.hidden?'숨김 해제':'상품 숨기기')+'</button>'+
+      '<button type="button" id="delProductBtn" class="icon-toggle-btn danger" title="이 상품을 대시보드에서 삭제">🗑 삭제</button>'+
     '</div>'+
   '</div>';
 
@@ -2224,6 +2250,11 @@ function renderProduct(p){
     setNote(p, {starred: !note.starred});
     renderProduct(p);
     renderSidebar();
+  });
+
+  document.getElementById('delProductBtn').addEventListener('click', function(){
+    if(!confirm('"' + (p.name || '이 상품') + '" 을(를) 대시보드에서 삭제할까요?\n\n메모·이미지·편집한 값이 함께 지워지고 다른 기기에서도 사라집니다.\n(소싱 후보에 등록된 항목은 그대로 남아요)')) return;
+    deleteProduct(p);
   });
 
   document.getElementById('hideBtn').addEventListener('click', function(){
