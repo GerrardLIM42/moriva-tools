@@ -708,6 +708,7 @@
 }
 
 </style>
+<script src="./wing-fees.js?v=20261117a"></script>
 </head>
 <body>
 <div class="wrap">
@@ -1010,6 +1011,7 @@
           <div class="field" id="rocket-size-field">
             <label>로켓그로스 상품 사이즈 (물류비 자동)</label>
             <select id="f-rocketsize"></select>
+            <select id="f-wingfee" style="margin-top:6px" title="쿠팡 윙 입출고/배송 요금표의 카테고리를 고르면 사이즈·판매가에 맞는 물류비가 자동 적용돼요 (VAT 별도)"></select>
             <span class="readout" id="logistic-readout"></span>
           </div>
           <div class="field" id="rocket-fee-manual-field" style="display:none;">
@@ -1475,6 +1477,7 @@
       channel: it.channel || 'rocket',
       promo: it.promo || 'none',
       rocketSize: it.rocketSize || '소형 (2kg 이하)',
+      wingFee: it.wingFee || '',
       rocketFeeManual: it.rocketFeeManual || 2500,
       marketShip: it.marketShip || 0,
       sell: primary.sell,
@@ -1536,6 +1539,8 @@
     const idx = ROCKET_IDX[it.rocketSize];
     if(idx === undefined) return it.rocketFeeManual || 0;   // 직접입력
     // 묶음은 중국에서 묶음 상태로 입고 → 입출고비·배송비 모두 1회만 부과 (qty 곱하지 않음)
+    const wv = wingFeeValue(it.wingFee, idx, sell || 0);
+    if(wv !== null) return wv;   // 윙 카테고리 요금표(입출고+배송 합산, 묶음도 1회)
     return rktInoutFee(idx, sell || 0) + RKT_SHIP_FEE[idx];
   }
 
@@ -2320,7 +2325,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     $('#fee-readout').textContent = `→ 적용 수수료 ${fee.toFixed(1)}%`;
     $('#logistic-readout').textContent = c.promo === '90'
       ? `→ 적용 물류비 ${won(logi)} (프로모션으로 0원 처리됨)`
-      : `→ 적용 물류비 ${won(logi)}` + ((draft.channel !== 'market' && ROCKET_IDX[draft.rocketSize] !== undefined) ? ` (입출고비 ${won(rktInoutFee(ROCKET_IDX[draft.rocketSize], draft.sell || 0))} + 배송비 ${won(RKT_SHIP_FEE[ROCKET_IDX[draft.rocketSize]])})` : '');
+      : `→ 적용 물류비 ${won(logi)}` + ((draft.channel !== 'market' && ROCKET_IDX[draft.rocketSize] !== undefined && wingFeeEntry(draft.wingFee)) ? ` (윙 요금표: ${wingFeeEntry(draft.wingFee).lab})` : (draft.channel !== 'market' && ROCKET_IDX[draft.rocketSize] !== undefined) ? ` (입출고비 ${won(rktInoutFee(ROCKET_IDX[draft.rocketSize], draft.sell || 0))} + 배송비 ${won(RKT_SHIP_FEE[ROCKET_IDX[draft.rocketSize]])})` : '');
     updatePromoHints();
   }
   function refreshAutoFields(){
@@ -2340,6 +2345,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
   });
   $('#f-coupangcat').addEventListener('change', refreshAutoFields);
   $('#f-rocketsize').addEventListener('change', refreshAutoFields);
+  $('#f-wingfee').addEventListener('change', refreshAutoFields);
 
   /* ---------------- selection / compare ---------------- */
 
@@ -3800,6 +3806,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
       setSeg($('#seg-channel'), it.channel);
       setSeg($('#seg-promo'), it.channel === 'rocket' ? (it.promo || 'none') : 'none');
       $('#f-rocketsize').value = it.rocketSize;
+      $('#f-wingfee').value = it.wingFee || '';
       $('#f-rocket-fee-manual').value = it.rocketFeeManual;
       $('#f-marketship').value = it.marketShip;
       $('#f-ad').value = it.ad;
@@ -3856,6 +3863,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
       setSeg($('#seg-channel'), 'rocket');
       setSeg($('#seg-promo'), 'none');
       $('#f-rocketsize').value = '소형 (2kg 이하)';
+      $('#f-wingfee').value = '';
       $('#f-rocket-fee-manual').value = 2500;
       $('#f-marketship').value = 0;
       $('#f-ad').value = 7;
@@ -4004,6 +4012,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
       channel: getSeg($('#seg-channel')),
       promo: getSeg($('#seg-promo')) || 'none',
       rocketSize: $('#f-rocketsize').value,
+      wingFee: $('#f-wingfee').value,
       rocketFeeManual: parseFloat($('#f-rocket-fee-manual').value) || 0,
       marketShip: parseFloat($('#f-marketship').value) || 0,
       sell: primary.sell,
@@ -4406,6 +4415,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     fillRocketSizeOptions();
     fillCoupangCatOptions('#bulk-coupangcat');
     fillRocketSizeOptions('#bulk-rocketsize');
+    $('#f-wingfee').innerHTML = wingOptions('');
     renderStatusFilterOptions();
     var yearlySalesInput = $('#f-yearly-sales');
     if(yearlySalesInput){

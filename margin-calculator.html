@@ -38,6 +38,7 @@
     }
     .mc-title-row { flex-wrap: wrap; justify-content: space-between; row-gap: 8px; }
   </style>
+<script src="./wing-fees.js?v=20261117a"></script>
 </head>
 <body>
   <div id="root"></div>
@@ -923,6 +924,7 @@
       const [fw,    setFw   ] = useState("2000");
       const [cl,    setCl   ] = useState("1000");
       const [ri,    setRi   ] = useState(1);
+      const [wc,    setWc   ] = useState("");
       const [crf,   setCrf  ] = useState("2500");
       const [promo, setPromo] = useState("none"); // "none" | "90" | "270" (로켓그로스 비용 제로 프로모션)
       const [ms,    setMs   ] = useState("3000");
@@ -1013,7 +1015,7 @@
         let log = 0, fixC = imp;
         for (let iter = 0; iter < 4; iter++) {
           log = (ch === "rocket" && promo === "90") ? 0
-            : isTieredRocket ? (rktInoutFee(ri, SP) * bundleQty + RKT_SHIP_FEE[ri])
+            : isTieredRocket ? (wingFeeValue(wc, ri, SP) !== null ? wingFeeValue(wc, ri, SP) : (rktInoutFee(ri, SP) * bundleQty + RKT_SHIP_FEE[ri]))
             : ch === "rocket" ? nv(crf) : nv(ms);
           fixC = imp + log;
           if (opt.inputMode === "price") { SP = nv(opt.sp); break; }
@@ -1035,7 +1037,7 @@
         sp, ch, ci: String(ci), ccf, cur, bp,
         xrMode, simRate, xrCny, xrUsd,
         cr, vat: vat ? "1" : "0", fw, cl,
-        ri: String(ri), crf, promo, ms, ar, rr, tm, taxType
+        ri: String(ri), wc, crf, promo, ms, ar, rr, tm, taxType
       });
       const restoreState = (s) => {
         if (s.pName   !== undefined) setPName(s.pName);
@@ -1072,6 +1074,7 @@
         if (s.fw      !== undefined) setFw(s.fw);
         if (s.cl      !== undefined) setCl(s.cl);
         if (s.ri      !== undefined) setRi(Number(s.ri));
+        if (s.wc      !== undefined) setWc(s.wc);
         if (s.crf     !== undefined) setCrf(s.crf);
         if (s.promo   !== undefined) setPromo(s.promo);
         if (s.ms      !== undefined) setMs(s.ms);
@@ -1276,8 +1279,9 @@
           if (ch === "rocket" && promo === "90") {
             inoutFee = 0; shipFee = 0;
           } else if (isTieredRocket) {
-            inoutFee = rktInoutFee(ri, SP) * bundleQty;
-            shipFee  = RKT_SHIP_FEE[ri];
+            if (wingFeeValue(wc, ri, SP) !== null) { inoutFee = wingFeeValue(wc, ri, SP); shipFee = 0; }
+            else { inoutFee = rktInoutFee(ri, SP) * bundleQty;
+            shipFee  = RKT_SHIP_FEE[ri]; }
           } else if (ch === "rocket") {
             inoutFee = nv(crf); shipFee = 0;
           } else {
@@ -1330,7 +1334,7 @@
           totalCost, margin, marginRate, bepPrice, minPrice, effRate,
           promoActive, fixedC, varRate,
         };
-      }, [options, activeOpt, sp, bp, ch, ci, ccf, cur, xrMode, simRate, xrCny, xrUsd, simpleMode, cr, vat, fw, cl, ri, crf, promo, ms, ar, rr, tm, taxType]);
+      }, [options, activeOpt, sp, bp, ch, ci, ccf, cur, xrMode, simRate, xrCny, xrUsd, simpleMode, cr, vat, fw, cl, ri, wc, crf, promo, ms, ar, rr, tm, taxType]);
 
       const BARS = [
         { label: "수입원가", color: "#3B82F6", val: C.impTotal    },
@@ -1640,6 +1644,10 @@
                             {r.label}{r.fee === null ? " — 직접입력" : ""}
                           </option>
                         ))}
+                      </select>
+                      <select value={wc} onChange={e => setWc(e.target.value)} style={{ ...SELECT_STYLE, marginTop: 6 }} title="쿠팡 윙 입출고/배송 요금표 카테고리 (VAT 별도) — 고르면 사이즈·판매가에 맞는 물류비가 자동 적용돼요">
+                        <option value="">윙 카테고리: 선택 안 함 (기본 요금표)</option>
+                        {WING_FEES.map(e => <option key={e.id} value={e.id}>{e.path} — {e.lab}</option>)}
                       </select>
                       {RKTS[ri].fee === null ? (
                         <NumIn label="로켓그로스 물류비" unit="KRW" value={crf} onChange={setCrf} />
