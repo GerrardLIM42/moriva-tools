@@ -788,6 +788,15 @@
     <button type="button" class="btn ghost tmb-clear" id="target-margin-clear-btn">지우기</button>
   </section>
 
+  <section class="target-margin-bar" id="bulk-preview-bar">
+    <span class="tmb-label">📊 예상 마진 확인 (일괄)</span>
+    <select id="bp-mode" style="border:1px solid var(--line);border-radius:7px;padding:6px 8px;font-size:12.5px;background:#fff;"><option value="pct">마진율(%)로 맞추면</option><option value="sell">판매가(₩)로 정하면</option></select>
+    <input type="number" id="bp-input" step="0.1" min="0" placeholder="예: 30" style="width:110px;border:1px solid var(--line);border-radius:7px;padding:6px 8px;font-size:13px;" />
+    <span class="tmb-unit" id="bp-unit">%</span>
+    <button type="button" class="btn amber" id="bp-open-btn" title="선택한 항목(없으면 현재 폴더·필터 목록 전체)을 한꺼번에 계산해 보여줘요. 확인만 하고 적용은 따로 해요.">일괄 확인</button>
+    <span class="tmb-hint">마진율을 넣으면 필요한 판매가, 판매가를 넣으면 예상 마진을 목록 전체에 대해 한 번에 보여줘요 (값은 바뀌지 않아요).</span>
+  </section>
+
   <section class="target-margin-bar" id="simple-rate-bar">
     <span class="tmb-label">💴 간편 비율 환율 (₩/¥)</span>
     <input type="number" id="simple-rate-input" step="0.1" min="0" placeholder="300" />
@@ -4385,6 +4394,108 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     if(!comparePanel.hidden) renderCompareBody();
     showToast(n + '개 항목을 이전 판매가로 되돌렸어요.');
   });
+
+  /* ---------------- 예상 마진 일괄 확인 (마진율→필요 판매가 / 판매가→예상 마진) ---------------- */
+  (function(){
+    const modeSel = $('#bp-mode'), inp = $('#bp-input'), unit = $('#bp-unit');
+    modeSel.addEventListener('change', () => {
+      const pctMode = modeSel.value === 'pct';
+      unit.textContent = pctMode ? '%' : '원';
+      inp.placeholder = pctMode ? '예: 30' : '예: 15000';
+      inp.step = pctMode ? '0.1' : '100';
+    });
+    function bpRows(mode, val){
+      const sel = items.filter(it => selectedIds.has(it.id));
+      const scope = sel.length ? sel : getFiltered();
+      const rows = [];
+      scope.forEach(it => {
+        const opts = (it.options && it.options.length) ? it.options.map(o => ({ o, label: o.name || '' })) : [{ o: null, label: '' }];
+        opts.forEach(x => {
+          const cny = x.o ? x.o.cny : it.cny;
+          const curSell = x.o ? x.o.sell : it.sell;
+          const cur = calc({ ...it, cny, sell: curSell });
+          let newSell = 0, achievable = true;
+          if(mode === 'pct'){
+            const t = calcTargetSell({ ...it, cny }, val);
+            achievable = t.achievable;
+            newSell = t.achievable ? Math.round(t.targetSell / 100) * 100 : 0;
+          } else newSell = val;
+          const nw = achievable && newSell > 0 ? calc({ ...it, cny, sell: newSell }) : null;
+          rows.push({ it, o: x.o, name: (it.name || '') + (x.label ? ' · ' + x.label : ''), cny, curSell, cur, newSell, achievable, nw });
+        });
+      });
+      return { scope, rows, scopeLabel: sel.length ? '선택한 ' + sel.length + '개' : '현재 목록 ' + scope.length + '개' };
+    }
+    function closeBp(){ const m = $('#bp-modal'); if(m) m.remove(); }
+    function openBp(){
+      const mode = modeSel.value, val = parseFloat(inp.value);
+      if(isNaN(val) || val < 0 || (mode === 'pct' && val >= 100)){
+        showToast(mode === 'pct' ? '마진율(0~99%)을 입력해주세요.' : '판매가(원)를 입력해주세요.');
+        return;
+      }
+      const d = bpRows(mode, val);
+      if(!d.rows.length){ showToast('확인할 항목이 없어요.'); return; }
+      closeBp();
+      const ok = d.rows.filter(r => r.nw);
+      const avg = ok.length ? ok.reduce((a, r) => a + r.nw.marginPct, 0) / ok.length : 0;
+      const head = mode === 'pct'
+        ? '<th>필요 판매가</th><th>예상 마진액</th><th>예상 마진율</th>'
+        : '<th>지정 판매가</th><th>예상 마진액</th><th>예상 마진율</th>';
+      const tr = d.rows.map(r => {
+        const nwTxt = r.nw
+          ? '<td style="text-align:right">' + won(r.newSell) + '</td><td style="text-align:right;color:' + marginColor(r.nw.marginPct) + '">' + won(r.nw.margin) + '</td><td style="text-align:right;font-weight:700;color:' + marginColor(r.nw.marginPct) + '">' + pct(r.nw.marginPct) + '</td>'
+          : '<td colspan="3" style="text-align:center;color:#B8453A">달성 불가</td>';
+        return '<tr><td style="max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escapeHtml(r.name) + '">' + escapeHtml(r.name) + '</td>'
+          + '<td style="text-align:right">¥' + (r.cny || 0) + '</td>'
+          + '<td style="text-align:right">' + (r.curSell ? won(r.curSell) : '-') + '</td>'
+          + '<td style="text-align:right;color:' + marginColor(r.cur.marginPct) + '">' + (r.curSell ? pct(r.cur.marginPct) : '-') + '</td>' + nwTxt + '</tr>';
+      }).join('');
+      const wrap = document.createElement('div');
+      wrap.id = 'bp-modal';
+      wrap.style.cssText = 'position:fixed;inset:0;background:rgba(20,24,30,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+      wrap.innerHTML = '<div style="background:#fff;border-radius:12px;max-width:980px;width:100%;max-height:86vh;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,.3);">'
+        + '<div style="padding:16px 20px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:12px;flex-wrap:wrap">'
+        + '<b style="font-size:15px">📊 ' + (mode === 'pct' ? '마진율 ' + val + '%로 맞추면' : '판매가 ' + won(val) + '로 정하면') + '</b>'
+        + '<span style="font-size:12.5px;color:#666">' + d.scopeLabel + ' · 옵션 포함 ' + d.rows.length + '행 · 평균 예상 마진율 <b style="color:' + marginColor(avg) + '">' + pct(avg) + '</b>' + (ok.length < d.rows.length ? ' · 달성 불가 ' + (d.rows.length - ok.length) + '행' : '') + '</span>'
+        + '<span style="flex:1"></span><button type="button" class="btn ghost" id="bp-close">닫기</button></div>'
+        + '<div style="overflow:auto;padding:0 20px 8px"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="text-align:right;position:sticky;top:0;background:#fff"><th style="text-align:left;padding:8px 4px">상품</th><th>원가(¥)</th><th>현재 판매가</th><th>현재 마진율</th>' + head + '</tr></thead><tbody class="bp-body">' + tr + '</tbody></table></div>'
+        + '<div style="padding:12px 20px;border-top:1px solid #eee;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="font-size:12px;color:#888;flex:1">확인만 해도 데이터는 바뀌지 않아요. 아래 버튼을 눌러야 이 판매가가 일괄 적용돼요 (직후 ‘되돌리기’ 가능).</span>'
+        + '<button type="button" class="btn amber" id="bp-apply">이 판매가로 일괄 적용</button></div></div>';
+      document.body.appendChild(wrap);
+      wrap.querySelectorAll('.bp-body td').forEach(td => { td.style.padding = '6px 4px'; td.style.borderBottom = '1px solid #f0f0f0'; });
+      wrap.addEventListener('click', e => { if(e.target === wrap) closeBp(); });
+      $('#bp-close').addEventListener('click', closeBp);
+      $('#bp-apply').addEventListener('click', () => {
+        if(!confirm(d.scopeLabel + ' 항목의 판매가(모든 옵션 포함)를 ' + (mode === 'pct' ? '마진율 ' + val + '%에 맞는 값' : won(val)) + '으로 일괄 변경할까요?\n(직후 되돌리기 가능)')) return;
+        const snap = [];
+        let changed = 0, skipped = 0;
+        d.scope.forEach(it => {
+          const before = { id: it.id, sell: it.sell, opts: (it.options || []).map(o => ({ id: o.id, sell: o.sell, inputMode: o.inputMode, savedMarginPct: o.savedMarginPct })) };
+          let touched = false;
+          d.rows.filter(r => r.it === it).forEach(r => {
+            if(!r.nw || !(r.newSell > 0)) return;
+            if(r.o){ r.o.sell = r.newSell; r.o.inputMode = mode === 'pct' ? 'margin' : 'sell'; if(mode === 'pct') r.o.savedMarginPct = val; touched = true; }
+            else { it.sell = r.newSell; touched = true; }
+          });
+          if(touched){
+            if(it.options && it.options.length === 1) it.sell = it.options[0].sell;
+            else if(it.options && it.options.length){ const rp = repOption(it); if(rp && rp.sell) it.sell = rp.sell; }
+            snap.push(before); changed++;
+          } else skipped++;
+        });
+        if(!changed){ showToast('적용된 항목이 없어요.'); return; }
+        marginUndoSnap = snap;
+        $('#target-margin-undo-btn').hidden = false;
+        saveItems();
+        renderAll();
+        if(!comparePanel.hidden) renderCompareBody();
+        closeBp();
+        showToast(changed + '개 항목 판매가를 일괄 적용' + (skipped ? ' (달성 불가 ' + skipped + '개 제외)' : ''));
+      });
+    }
+    $('#bp-open-btn').addEventListener('click', openBp);
+    inp.addEventListener('keydown', e => { if(e.key === 'Enter') openBp(); });
+  })();
   function targetPriceRowHtml(merged, currentSell){
     if(targetMarginPct === null) return '';
     const t = calcTargetSell(merged, targetMarginPct);
