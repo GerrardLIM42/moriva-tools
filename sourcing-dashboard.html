@@ -775,6 +775,7 @@ function manifestMatchesFor(productName){
    소싱 후보가 쓰는 것과 동일한 Cloudflare Worker 프록시를 사용한다. */
 var MANIFEST_WORKER_URL = 'https://moriva-github-proxy.moriva-hyeoncl.workers.dev';
 var manifestSha = null;
+var manifestDashboardRaw = null;   // 같은 파일에 기록되는 대시보드 데이터 — 소싱처를 저장할 때 그대로 보존한다
 var manifestSaveTimer = null;
 
 function mfUid(){
@@ -879,6 +880,7 @@ function runManifestSync(){
 /* 서버(소싱 후보와 같은 저장소)의 최신 내용을 받아온다 */
 function parseManifestText(text){
   var raw = JSON.parse(text || '{}');
+  manifestDashboardRaw = (raw && !Array.isArray(raw) && raw.dashboard) ? raw.dashboard : null;
   if(Array.isArray(raw)) return { items: raw, folderKeywords: {}, hiddenFolders: [] };
   return {
     items: Array.isArray(raw.items) ? raw.items : [],
@@ -920,7 +922,7 @@ function doPushManifest(payload, retried){
   }
   var body = {
     message: 'update sourcing data from dashboard (' + new Date().toISOString() + ')',
-    content: mfB64Encode(JSON.stringify(payload, null, 2))
+    content: mfB64Encode(JSON.stringify(manifestDashboardRaw ? Object.assign({}, payload, { dashboard: manifestDashboardRaw }) : payload, null, 2))
   };
   if(manifestSha) body.sha = manifestSha;
   return fetch(MANIFEST_WORKER_URL, {
@@ -2710,6 +2712,237 @@ refreshManifestFromServer();
     });
   });
 })();
+/* ══════════ 대시보드 데이터 기기 간 동기화 ══════════
+   메모·상태·즐겨찾기·편집값·추가 상품·수수료표는 원래 이 브라우저(localStorage)에만 있었고,
+   다른 기기로는 셸의 "GitHub 연동"(기기마다 토큰 설정 + 시작할 때 한 번만 통째로 덮어쓰기)으로만 갈 수 있었다.
+   그래서 기기마다 내용이 달라졌다. 소싱 후보와 같은 Cloudflare Worker 저장소(토큰 불필요)에
+   항목 단위로 기록해 두고, 항목마다 수정 시각을 비교해 더 최근 것을 반영한다.
+   - 이미지(data: 주소)는 용량 때문에 올리지 않고 각 기기에 남긴다.
+   - 이 기기의 같은 항목이 한 번도 동기화된 적 없는데 서버 내용이 다르면 서버 쪽을 따르되, 이 기기 값은 백업해 둔다. */
+var DS_STAMP_KEY = 'moriva_dash_stamps_v1';
+var DS_BACKUP_KEY = 'moriva_dash_sync_backup_v1';
+var DS_WATCH = {};
+DS_WATCH[STORE_KEY] = 1; DS_WATCH[EDITS_KEY] = 1; DS_WATCH[CUSTOM_KEY] = 1; DS_WATCH[FEE_KEY] = 1;
+var dsSha = null, dsBusy = false, dsQueued = false, dsTimer = null, dsApplying = false, dsLastRun = 0, dsPendingReload = false;
+var dsStamps = {};
+try{ var dsRawStamps = JSON.parse(localStorage.getItem(DS_STAMP_KEY)); if(dsRawStamps && typeof dsRawStamps === 'object') dsStamps = dsRawStamps; }catch(e){}
+var dsLast = {};
+
+function dsJson(key, fallback){
+  try{ var v = JSON.parse(localStorage.getItem(key)); return (v === null || v === undefined) ? fallback : v; }catch(e){ return fallback; }
+}
+function dsStrip(v){
+  if(typeof v === 'string') return v.indexOf('data:') === 0 ? '' : v;
+  if(Array.isArray(v)) return v.map(dsStrip);
+  if(v && typeof v === 'object'){ var o = {}; Object.keys(v).forEach(function(k){ o[k] = dsStrip(v[k]); }); return o; }
+  return v;
+}
+function dsHash(v){ return JSON.stringify(dsStrip(v)); }
+/* 서버 값에서 비어 있는(이미지라 올리지 않은) 자리는 이 기기에 있던 data: 값으로 채운다 */
+function dsRestore(remote, local){
+  if(typeof remote === 'string'){
+    return (remote === '' && typeof local === 'string' && local.indexOf('data:') === 0) ? local : remote;
+  }
+  if(Array.isArray(remote)){
+    return remote.map(function(x, i){ return dsRestore(x, Array.isArray(local) ? local[i] : undefined); });
+  }
+  if(remote && typeof remote === 'object'){
+    var o = {};
+    Object.keys(remote).forEach(function(k){ o[k] = dsRestore(remote[k], (local && typeof local === 'object') ? local[k] : undefined); });
+    if(local && typeof local === 'object' && !Array.isArray(local)){
+      Object.keys(local).forEach(function(k){
+        if(!(k in o) && typeof local[k] === 'string' && local[k].indexOf('data:') === 0) o[k] = local[k];
+      });
+    }
+    return o;
+  }
+  return remote;
+}
+function dsLocalEntities(){
+  var out = {};
+  var n = dsJson(STORE_KEY, {}); Object.keys(n).forEach(function(k){ out['notes:' + k] = n[k]; });
+  var e = dsJson(EDITS_KEY, {}); Object.keys(e).forEach(function(k){ out['edits:' + k] = e[k]; });
+  var c = dsJson(CUSTOM_KEY, []);
+  if(Array.isArray(c)) c.forEach(function(cp){ if(cp && cp.sheet) out['custom:' + cp.sheet] = cp; });
+  var f = dsJson(FEE_KEY, null); if(f) out['fee'] = f;
+  return out;
+}
+function dsWriteLocal(key, v){
+  var i = key.indexOf(':');
+  var kind = i < 0 ? key : key.slice(0, i), id = i < 0 ? '' : key.slice(i + 1);
+  if(kind === 'notes' || kind === 'edits'){
+    var store = kind === 'notes' ? STORE_KEY : EDITS_KEY;
+    var obj = dsJson(store, {});
+    if(v === null) delete obj[id]; else obj[id] = dsRestore(v, obj[id]);
+    localStorage.setItem(store, JSON.stringify(obj));
+  } else if(kind === 'custom'){
+    var arr = dsJson(CUSTOM_KEY, []); if(!Array.isArray(arr)) arr = [];
+    var idx = arr.findIndex(function(cp){ return cp && cp.sheet === id; });
+    if(v === null){ if(idx >= 0) arr.splice(idx, 1); }
+    else { var nv = dsRestore(v, idx >= 0 ? arr[idx] : undefined); if(idx >= 0) arr[idx] = nv; else arr.push(nv); }
+    localStorage.setItem(CUSTOM_KEY, JSON.stringify(arr));
+  } else if(kind === 'fee'){
+    if(v === null) localStorage.removeItem(FEE_KEY);
+    else localStorage.setItem(FEE_KEY, JSON.stringify(dsRestore(v, dsJson(FEE_KEY, null))));
+  }
+}
+function dsSaveStamps(){
+  try{ localStorage.setItem(DS_STAMP_KEY, JSON.stringify(dsStamps)); }catch(e){}
+}
+/* 이 기기에서 바뀐 항목에 수정 시각을 찍는다 */
+function dsScan(){
+  var local = dsLocalEntities(), now = Date.now(), seen = {};
+  Object.keys(local).forEach(function(k){
+    var h = dsHash(local[k]); seen[k] = 1;
+    if(dsLast[k] !== h){ dsStamps[k] = now; dsLast[k] = h; }
+  });
+  Object.keys(dsLast).forEach(function(k){
+    if(!seen[k]){ dsStamps[k] = now; delete dsLast[k]; }
+  });
+}
+function dsInitLast(){
+  var local = dsLocalEntities();
+  Object.keys(local).forEach(function(k){ dsLast[k] = dsHash(local[k]); });
+}
+function dsMerge(R){
+  var local = dsLocalEntities(), now = Date.now(), M = {}, applied = 0, push = false, backup = {};
+  Object.keys(R).forEach(function(k){ M[k] = R[k]; });
+  dsApplying = true;
+  try{
+    Object.keys(R).forEach(function(k){
+      var r = R[k]; if(!r || typeof r.t !== 'number') return;
+      var has = (k in local);
+      var lh = has ? dsHash(local[k]) : null;
+      var rh = (r.v === null || r.v === undefined) ? null : dsHash(r.v);
+      var ls = dsStamps[k];
+      if(lh === rh){ dsStamps[k] = r.t; return; }
+      if(ls === undefined || r.t > ls){
+        if(has && ls === undefined) backup[k] = local[k];
+        dsWriteLocal(k, rh === null ? null : r.v);
+        dsStamps[k] = r.t; applied++;
+      } else {
+        M[k] = { t: ls, v: has ? dsStrip(local[k]) : null }; push = true;
+      }
+    });
+  } finally { dsApplying = false; }
+  Object.keys(local).forEach(function(k){
+    if(R[k]) return;
+    if(dsStamps[k] === undefined) dsStamps[k] = now;
+    M[k] = { t: dsStamps[k], v: dsStrip(local[k]) }; push = true;
+  });
+  if(Object.keys(backup).length){
+    var old = dsJson(DS_BACKUP_KEY, {});
+    Object.keys(backup).forEach(function(k){ old[k] = { savedAt: now, v: dsStrip(backup[k]) }; });
+    try{ localStorage.setItem(DS_BACKUP_KEY, JSON.stringify(old)); }catch(e){}
+  }
+  dsSaveStamps();
+  dsLast = {}; dsInitLast();
+  return { entries: M, applied: applied, push: push };
+}
+function dsParse(text){
+  var raw = JSON.parse(text || '{}');
+  if(Array.isArray(raw)) raw = { items: raw };
+  return (raw && typeof raw === 'object') ? raw : {};
+}
+function dsFetch(){
+  return fetch(MANIFEST_WORKER_URL, { headers: { 'Accept': 'application/vnd.github+json' }, cache: 'no-store' }).then(function(res){
+    if(res.status === 404){ dsSha = null; return null; }
+    if(!res.ok) throw new Error('읽기 실패 ' + res.status);
+    return res.json().then(function(d){
+      dsSha = d.sha || null;
+      if(!d.content && d.size > 0 && d.download_url){
+        return fetch(d.download_url + (d.download_url.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now(), { cache: 'no-store' }).then(function(rr){
+          if(!rr.ok) throw new Error('원본 데이터를 불러오지 못했습니다 (HTTP ' + rr.status + ')');
+          return rr.text();
+        }).then(dsParse);
+      }
+      return dsParse(decodeURIComponent(escape(atob(String(d.content || '').replace(/\n/g, '')))));
+    });
+  });
+}
+function dsPut(out){
+  var body = {
+    message: 'update dashboard data (' + new Date().toISOString() + ')',
+    content: mfB64Encode(JSON.stringify(out, null, 2)),
+    sha: dsSha
+  };
+  return fetch(MANIFEST_WORKER_URL, {
+    method: 'PUT',
+    headers: { 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  }).then(function(res){
+    if(res.ok){
+      return res.json().then(function(d){ if(d && d.content && d.content.sha) dsSha = d.content.sha; return 'ok'; });
+    }
+    if(res.status === 409 || res.status === 422) return 'conflict';
+    throw new Error('저장 실패 ' + res.status);
+  });
+}
+function dsAfterApply(){
+  var a = document.activeElement;
+  if(a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT')){ dsPendingReload = true; return; }
+  var n = 0, t = 0;
+  try{ n = parseInt(sessionStorage.getItem('moriva_dash_reload_n') || '0', 10) || 0; t = parseInt(sessionStorage.getItem('moriva_dash_reload_t') || '0', 10) || 0; }catch(e){}
+  if(Date.now() - t > 30000) n = 0;
+  if(n >= 2) return;
+  try{ sessionStorage.setItem('moriva_dash_reload_n', String(n + 1)); sessionStorage.setItem('moriva_dash_reload_t', String(Date.now())); }catch(e){}
+  mfSay('다른 기기에서 바뀐 내용을 불러왔습니다');
+  location.reload();
+}
+function dsSync(){
+  if(dsBusy){ dsQueued = true; return Promise.resolve(); }
+  dsBusy = true; dsLastRun = Date.now();
+  var appliedTotal = 0;
+  function attempt(n){
+    return dsFetch().then(function(raw){
+      if(!raw || !dsSha) return;           // 저장소 파일이 없으면 만들지 않는다
+      dsScan();
+      var R = (raw.dashboard && raw.dashboard.entries && typeof raw.dashboard.entries === 'object') ? raw.dashboard.entries : {};
+      var res = dsMerge(R);
+      appliedTotal += res.applied;
+      if(!res.push) return;
+      var out = Object.assign({}, raw, { dashboard: { v: 1, entries: res.entries } });
+      return dsPut(out).then(function(r){
+        if(r === 'conflict' && n < 3) return attempt(n + 1);
+        if(r === 'conflict') throw new Error('다른 기기와 동시에 저장되어 충돌했습니다');
+      });
+    });
+  }
+  return attempt(0).catch(function(err){
+    mfSay('대시보드 데이터를 다른 기기와 맞추지 못했습니다 (이 기기에는 저장됨): ' + err.message, true);
+  }).then(function(){
+    dsBusy = false;
+    if(appliedTotal > 0) dsAfterApply();
+    if(dsQueued){ dsQueued = false; dsSync(); }
+  });
+}
+function dsOnChange(){
+  dsScan(); dsSaveStamps();
+  clearTimeout(dsTimer);
+  dsTimer = setTimeout(dsSync, 1500);
+}
+(function(){
+  var origSet = Storage.prototype.setItem, origRemove = Storage.prototype.removeItem;
+  Storage.prototype.setItem = function(k, v){
+    origSet.apply(this, arguments);
+    if(this === window.localStorage && !dsApplying && DS_WATCH[k]) dsOnChange();
+  };
+  Storage.prototype.removeItem = function(k){
+    origRemove.apply(this, arguments);
+    if(this === window.localStorage && !dsApplying && DS_WATCH[k]) dsOnChange();
+  };
+})();
+dsInitLast();
+setTimeout(dsSync, 600);
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState === 'visible' && Date.now() - dsLastRun > 15000) dsSync();
+});
+window.addEventListener('focus', function(){ if(Date.now() - dsLastRun > 15000) dsSync(); });
+setInterval(function(){ if(document.visibilityState === 'visible' && Date.now() - dsLastRun > 60000) dsSync(); }, 30000);
+document.addEventListener('focusout', function(){
+  if(dsPendingReload){ setTimeout(function(){ if(dsPendingReload){ dsPendingReload = false; dsAfterApply(); } }, 400); }
+});
+
 })();
 </script>
 <script src="./moriva-sync.js"></script>
