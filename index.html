@@ -274,6 +274,7 @@ try { syncCfg = JSON.parse(localStorage.getItem(CFG_KEY)); } catch (e) {}
 
 function setSyncUi(text, kind) {
   document.getElementById("syncMsg").textContent = text;
+  document.getElementById("syncBtn").title = text;   // 오류 내용을 버튼에 마우스를 올리면 바로 볼 수 있게
   document.getElementById("syncLabel").textContent =
     kind === "ok" ? "동기화 켜짐" : kind === "err" ? "동기화 오류" : kind === "busy" ? "동기화 중…" : "동기화 설정";
   var dot = document.getElementById("syncDot");
