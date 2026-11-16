@@ -224,6 +224,7 @@ tbody tr{cursor:pointer;}
 }
 .icon-toggle-btn:hover{background:rgba(255,255,255,0.18);}
 #starBtn{min-width:112px; text-align:center;}
+.sc-cat-select{width:100%; padding:5px 6px; border-radius:6px; border:1px solid var(--line); background:var(--cream-1); color:var(--navy); font-size:11.5px; margin-bottom:5px; cursor:pointer;}
 .icon-toggle-btn.danger{border-color:rgba(255,140,130,0.6); color:#ffb4ac;}
 .icon-toggle-btn.danger:hover{background:rgba(214,69,59,0.45); color:#fff;}
 .p-header .titles{flex:1 1 320px; min-width:0;}
@@ -654,15 +655,43 @@ var CATEGORIES = ['ACTIVE','CAMP','HOME','PET','BAG'];
 var CATEGORY_LABELS = {ACTIVE:'ACTIVE', CAMP:'CAMP', HOME:'HOME', PET:'PET', BAG:'BAG'};
 
 // 로켓그로스 물류비 규격 티어 (마진 계산기와 동일한 기준)
+/* 사이즈를 고르면 입출고비(판매가 구간별) + 배송비(사이즈별)가 자동 적용된다 (소싱 후보·마진 계산기와 같은 표) */
 var GROWTH_TIERS = [
-  {key:'xs', label:'극소형 (50g 이하)', fee:1800},
-  {key:'s', label:'소형 (2kg 이하)', fee:2500},
-  {key:'m', label:'중형 (5kg 이하)', fee:3500},
-  {key:'l', label:'대형 (10kg 이하)', fee:5000},
-  {key:'xl', label:'특대형 (10kg 초과)', fee:7500},
+  {key:'xs', label:'극소형 (50g 이하)', idx:0, fee:null},
+  {key:'s', label:'소형 (2kg 이하)', idx:1, fee:null},
+  {key:'m', label:'중형 (5kg 이하)', idx:2, fee:null},
+  {key:'l', label:'대형 (10kg 이하)', idx:3, fee:null},
+  {key:'l2', label:'대형2', idx:4, fee:null},
+  {key:'xl', label:'특대형 (10kg 초과)', idx:5, fee:null},
   {key:'custom', label:'직접입력', fee:null}
 ];
 function growthTierByKey(key){ return GROWTH_TIERS.find(function(t){ return t.key===key; }) || null; }
+var RKT_INOUT_TIERS = [
+  { max: 5000,     fees: [700,  1150, 1450, 1675, 1675, 1675] },
+  { max: 10000,    fees: [800,  1175, 1450, 1825, 1825, 1825] },
+  { max: 15000,    fees: [950,  1175, 1450, 1825, 1825, 1825] },
+  { max: 20000,    fees: [1000, 1175, 1450, 1825, 1825, 1825] },
+  { max: 30000,    fees: [1050, 1175, 1450, 1825, 1825, 1825] },
+  { max: 40000,    fees: [1475, 1475, 1825, 1825, 1825, 1825] },
+  { max: Infinity, fees: [1650, 1750, 2000, 2400, 2400, 2400] }
+];
+var RKT_SHIP_FEE = [1350, 1550, 2100, 2200, 4100, 5600];
+function rktInoutFee(sizeIdx, price){
+  var t = RKT_INOUT_TIERS.find(function(t){ return price < t.max; }) || RKT_INOUT_TIERS[RKT_INOUT_TIERS.length - 1];
+  return t.fees[sizeIdx] || 0;
+}
+function growthFeeFor(tier, sell){ return rktInoutFee(tier.idx, n(sell)) + RKT_SHIP_FEE[tier.idx]; }
+/* 쿠팡 카테고리별 판매수수료율(%) — 고르지 않으면 기존 기본값 11.55% */
+var COUPANG_FEE_CATS = {
+  '생활/주방':11, '뷰티/코스메틱':11.5, '패션/의류':14, '패션잡화':12, '스포츠/레저':11,
+  '가전/디지털':10.8, '식품/건강':10.8, '반려동물':11, '완구/취미':11, '유아동':11.5
+};
+function feeRateFor(cat){ var v = COUPANG_FEE_CATS[cat]; return (typeof v === 'number') ? v / 100 : 0.1155; }
+function feePctText(cat){ return String(Math.round(feeRateFor(cat) * 10000) / 100); }
+function feeCatOptions(sel){
+  return '<option value=""' + (!sel ? ' selected' : '') + '>카테고리: 기본 (11.55%)</option>' +
+    Object.keys(COUPANG_FEE_CATS).map(function(c){ return '<option value="' + c + '"' + (sel === c ? ' selected' : '') + '>' + c + ' — ' + COUPANG_FEE_CATS[c] + '%</option>'; }).join('');
+}
 
 // ---------------- custom (user-added) products ----------------
 var CUSTOM_KEY = 'moriva_custom_products_v1';
@@ -1102,7 +1131,7 @@ function fullSnapshotCustom(p){
     monthly_search: p.monthly_search,
     competitors: (p.competitors||[]).map(function(c){ return {name:c.name, sub:c.sub, price:c.price, views_28d:c.views_28d, buyers_28d:c.buyers_28d, reviews:c.reviews, image:c.image||null}; }),
     lowest_price: p.lowest_price, avg_price: p.avg_price,
-    pricing: (p.pricing||[]).map(function(s){ return {sell_price:s.sell_price, china_cost:s.china_cost, purchase_cost:s.purchase_cost, growth_cost:s.growth_cost, growth_tier:s.growth_tier, coupang_fee:s.coupang_fee, vat:s.vat, net_profit:s.net_profit, profit_rate:s.profit_rate, margin_rate:s.margin_rate, sell_auto:s.sell_auto!==false, fee_auto:s.fee_auto!==false}; }),
+    pricing: (p.pricing||[]).map(function(s){ return {sell_price:s.sell_price, china_cost:s.china_cost, purchase_cost:s.purchase_cost, growth_cost:s.growth_cost, growth_tier:s.growth_tier, fee_cat:s.fee_cat||'', coupang_fee:s.coupang_fee, vat:s.vat, net_profit:s.net_profit, profit_rate:s.profit_rate, margin_rate:s.margin_rate, sell_auto:s.sell_auto!==false, fee_auto:s.fee_auto!==false}; }),
     target_sourcing_price: p.target_sourcing_price,
     sourcing_1688: (p.sourcing_1688||[]).map(function(s){ return {unit_price:s.unit_price, yearly_sales:s.yearly_sales, url:s.url, options:s.options}; }),
     related_keywords: (p.related_keywords||[]).slice(),
@@ -1123,9 +1152,12 @@ function createNewProduct(){
 function n(v){ v = parseFloat(v); return isNaN(v) ? 0 : v; }
 
 function recomputePricingRow(s){
-  // 쿠팡수수료: 사용자가 직접 값을 고치지 않은 이상(fee_auto!==false), 판매가×11.55%로 항상 자동 계산한다.
+  // 그로스비용: 사이즈를 골랐다면(직접입력 제외) 판매가 구간에 맞춰 입출고비+배송비를 자동 계산한다.
+  var gt = growthTierByKey(s.growth_tier);
+  if(gt && gt.idx !== undefined && s.sell_price) s.growth_cost = growthFeeFor(gt, s.sell_price);
+  // 쿠팡수수료: 사용자가 직접 값을 고치지 않은 이상(fee_auto!==false), 판매가×카테고리 수수료율(기본 11.55%)로 자동 계산한다.
   if(s.fee_auto !== false){
-    s.coupang_fee = s.sell_price ? Math.round(n(s.sell_price) * 0.1155) : null;
+    s.coupang_fee = s.sell_price ? Math.round(n(s.sell_price) * feeRateFor(s.fee_cat)) : null;
   }
   var sell = n(s.sell_price), purchase = n(s.purchase_cost), growth = n(s.growth_cost), fee = n(s.coupang_fee);
   var vat = (sell - purchase - growth - fee) * 0.1;
@@ -1178,7 +1210,7 @@ function snapshotProduct(p){
     name: p.name,
     monthly_search: p.monthly_search,
     competitors: (p.competitors||[]).map(function(c){ return {name:c.name, sub:c.sub, price:c.price, views_28d:c.views_28d, buyers_28d:c.buyers_28d, reviews:c.reviews}; }),
-    pricing: (p.pricing||[]).map(function(s){ return {sell_price:s.sell_price, china_cost:s.china_cost, purchase_cost:s.purchase_cost, growth_cost:s.growth_cost, growth_tier:s.growth_tier, coupang_fee:s.coupang_fee, sell_auto:s.sell_auto!==false, fee_auto:s.fee_auto!==false}; }),
+    pricing: (p.pricing||[]).map(function(s){ return {sell_price:s.sell_price, china_cost:s.china_cost, purchase_cost:s.purchase_cost, growth_cost:s.growth_cost, growth_tier:s.growth_tier, fee_cat:s.fee_cat||'', coupang_fee:s.coupang_fee, sell_auto:s.sell_auto!==false, fee_auto:s.fee_auto!==false}; }),
     sourcing_1688: (p.sourcing_1688||[]).map(function(s){ return {unit_price:s.unit_price, yearly_sales:s.yearly_sales, url:s.url, options:s.options}; }),
     related_keywords: (p.related_keywords||[]).slice()
   };
@@ -2056,7 +2088,7 @@ function renderProduct(p){
     (p.pricing||[]).map(function(s, idx){
       var isBest = best && s===best;
       var sellAutoLabel = s.sell_auto===false ? '직접입력' : (idx===0 ? '자동: 최저가' : '자동: 평균가');
-      var feeAutoLabel = s.fee_auto===false ? '직접입력' : '자동: 판매가×11.55%';
+      var feeAutoLabel = s.fee_auto===false ? '직접입력' : ('자동: 판매가×' + feePctText(s.fee_cat) + '%');
       return '<div class="scenario'+(isBest?' best':'')+'" data-scenario-idx="'+idx+'">'+
         '<span class="tag'+(isBest?'':' tag-hidden')+'">추천</span>'+
         '<div class="sc-field sc-price"><label>판매가 <span class="sc-auto-tag'+(s.sell_auto===false?' custom':'')+'">'+sellAutoLabel+'</span></label><div class="sc-inputrow">'+ef('pricing.'+idx+'.sell_price', s.sell_price, {cls:'ef-price-lg'})+'<span class="cc-unit">원</span></div></div>'+
@@ -2071,11 +2103,13 @@ function renderProduct(p){
         '<div class="sc-field"><label>매입가(원)</label><div class="sc-inputrow">'+ef('pricing.'+idx+'.purchase_cost', s.purchase_cost, {cls:'ef-sc'})+'<span class="cc-unit">원</span></div></div>'+
         '<div class="sc-field"><label>그로스비용(원)</label>'+
           '<select class="sc-tier-select" data-tier-idx="'+idx+'" title="박스 규격을 고르면 그로스비용이 자동으로 입력돼요">'+
-            GROWTH_TIERS.map(function(t){ return '<option value="'+t.key+'"'+((s.growth_tier||'custom')===t.key?' selected':'')+'>'+t.label+(t.fee!==null?' · '+fmtNum(t.fee)+'원':'')+'</option>'; }).join('')+
+            GROWTH_TIERS.map(function(t){ return '<option value="'+t.key+'"'+((s.growth_tier||'custom')===t.key?' selected':'')+'>'+t.label+(t.idx!==undefined?' · '+fmtNum(growthFeeFor(t, s.sell_price))+'원':'')+'</option>'; }).join('')+
           '</select>'+
           '<div class="sc-inputrow">'+ef('pricing.'+idx+'.growth_cost', s.growth_cost, {cls:'ef-sc'})+'<span class="cc-unit">원</span></div></div>'+
-        '<div class="sc-field"><label>쿠팡수수료(원) <span class="sc-auto-tag'+(s.fee_auto===false?' custom':'')+'">'+feeAutoLabel+'</span></label><div class="sc-inputrow">'+ef('pricing.'+idx+'.coupang_fee', s.coupang_fee, {cls:'ef-sc'})+
-          '<button type="button" class="autofill-btn" data-action="autofill-fee" data-idx="'+idx+'" title="판매가 × 11.55%로 다시 자동 계산하도록 되돌립니다">11.55%로 재계산</button></div></div>'+
+        '<div class="sc-field"><label>쿠팡수수료(원) <span class="sc-auto-tag'+(s.fee_auto===false?' custom':'')+'">'+feeAutoLabel+'</span></label>'+
+          '<select class="sc-cat-select" data-cat-idx="'+idx+'" title="카테고리를 고르면 쿠팡 판매수수료율이 자동으로 적용돼요">'+feeCatOptions(s.fee_cat)+'</select>'+
+          '<div class="sc-inputrow">'+ef('pricing.'+idx+'.coupang_fee', s.coupang_fee, {cls:'ef-sc'})+
+          '<button type="button" class="autofill-btn" data-action="autofill-fee" data-idx="'+idx+'" title="판매가 × '+feePctText(s.fee_cat)+'%로 다시 자동 계산하도록 되돌립니다">'+feePctText(s.fee_cat)+'%로 재계산</button></div></div>'+
         '<div class="row"><span>부가세 (자동)</span><b class="val-vat">'+fmtWon(s.vat)+'</b></div>'+
       '</div>';
     }).join('') +
@@ -2357,6 +2391,8 @@ mainContentEl.addEventListener('input', function(e){
     value = t.value;
   }
   setPath(currentProductRef, path, value);
+  var gm = /^pricing\.(\d+)\.growth_cost$/.exec(path);   // 그로스비용을 직접 고치면 사이즈 자동 계산은 '직접입력'으로 전환
+  if(gm && currentProductRef.pricing && currentProductRef.pricing[gm[1]]) currentProductRef.pricing[gm[1]].growth_tier = 'custom';
   patchAfterEdit(currentProductRef, path);
   persistEdits(currentProductRef);
 });
@@ -2394,6 +2430,10 @@ function refreshScenarioCards(p){
     if(feeEl && document.activeElement !== feeEl){
       feeEl.value = (s.coupang_fee===null||s.coupang_fee===undefined) ? '' : formatWithCommas(String(s.coupang_fee));
     }
+    var growthEl = el.querySelector('[data-path$=".growth_cost"]');
+    if(growthEl && document.activeElement !== growthEl){
+      growthEl.value = (s.growth_cost===null||s.growth_cost===undefined) ? '' : formatWithCommas(String(s.growth_cost));
+    }
     var sellTagEl = el.querySelector('.sc-price .sc-auto-tag');
     if(sellTagEl){
       var sellAuto = s.sell_auto !== false;
@@ -2404,7 +2444,7 @@ function refreshScenarioCards(p){
     // 그로스비용/쿠팡수수료 두 sc-field 중 쿠팡수수료 쪽만 auto-tag를 갖고 있어 위 셀렉터로 충분하다
     if(feeTagEl){
       var feeAuto = s.fee_auto !== false;
-      feeTagEl.textContent = feeAuto ? '자동: 판매가×11.55%' : '직접입력';
+      feeTagEl.textContent = feeAuto ? ('자동: 판매가×' + feePctText(s.fee_cat) + '%') : '직접입력';
       feeTagEl.classList.toggle('custom', !feeAuto);
     }
   });
@@ -2519,7 +2559,7 @@ mainContentEl.addEventListener('click', function(e){
   } else if(action === 'autofill-fee'){
     var s2 = p.pricing[idx];
     s2.fee_auto = true;
-    s2.coupang_fee = Math.round(n(s2.sell_price) * 0.1155);
+    s2.coupang_fee = Math.round(n(s2.sell_price) * feeRateFor(s2.fee_cat));
   } else if(action === 'autofill-china-100'){
     // 판매가·그로스비용·쿠팡수수료 기준으로, 매입가 대비 수익률이 정확히 100%가 되도록
     // 매입가(및 중국원가)를 역산한다.
@@ -2586,7 +2626,22 @@ mainContentEl.addEventListener('change', function(e){
   if(!s) return;
   var tier = growthTierByKey(el.value);
   s.growth_tier = el.value;
-  if(tier && tier.fee !== null){ s.growth_cost = tier.fee; }
+  if(tier && tier.idx !== undefined){ s.growth_cost = growthFeeFor(tier, s.sell_price); }
+  recomputePricingRow(s);
+  persistEdits(p);
+  renderProduct(p);
+});
+
+/* 쿠팡 카테고리를 고르면 판매수수료율이 바뀌어 자동 재계산된다 */
+mainContentEl.addEventListener('change', function(e){
+  var el = e.target;
+  if(!el.classList || !el.classList.contains('sc-cat-select')) return;
+  if(!currentProductRef) return;
+  var p = currentProductRef;
+  var s = p.pricing && p.pricing[el.getAttribute('data-cat-idx')];
+  if(!s) return;
+  s.fee_cat = el.value;
+  s.fee_auto = true;
   recomputePricingRow(s);
   persistEdits(p);
   renderProduct(p);
