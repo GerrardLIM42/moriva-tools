@@ -1040,11 +1040,11 @@
       <div class="fsec">
         <div class="fsec-head"><span class="ico">🎯</span><span class="ttl">운영 비용</span></div>
         <div class="form-grid">
-          <div class="field">
+          <div class="field" style="display:none">
             <label>광고비율 (%)</label>
             <input type="number" id="f-ad" step="0.1" min="0" value="7" />
           </div>
-          <div class="field">
+          <div class="field" style="display:none">
             <label>예상 반품율 (%)</label>
             <input type="number" id="f-return" step="0.1" min="0" value="3" />
             <span class="hint" id="return-promo-hint"></span>
@@ -1115,11 +1115,11 @@
         <label class="bulk-check-label"><input type="checkbox" id="bulk-marketship-chk" /> 마켓 배송비 (₩)</label>
         <input type="number" id="bulk-marketship" step="1" min="0" value="0" disabled />
       </div>
-      <div class="field">
+      <div class="field" style="display:none">
         <label class="bulk-check-label"><input type="checkbox" id="bulk-ad-chk" /> 광고비율 (%)</label>
         <input type="number" id="bulk-ad" step="0.1" min="0" value="7" disabled />
       </div>
-      <div class="field">
+      <div class="field" style="display:none">
         <label class="bulk-check-label"><input type="checkbox" id="bulk-return-chk" /> 예상 반품율 (%)</label>
         <input type="number" id="bulk-return" step="0.1" min="0" value="3" disabled />
       </div>
@@ -1584,8 +1584,8 @@
     const commission = (it.sell || 0) * feePct / 100;
     const baseLogistic = resolveLogistic(it, it.sell || 0, qty);
     const logistic = (promo === '90') ? 0 : baseLogistic;
-    const adCost = (it.sell || 0) * (it.ad || 0) / 100;
-    const retCost = promoActive ? 0 : (it.sell || 0) * (it.ret || 0) / 100 * 0.3;
+    const adCost = 0;   // 광고비 항목 삭제
+    const retCost = 0;  // 반품비 항목 삭제
     const sellTotal = commission + logistic + adCost + retCost;
 
     const totalCost = impTotal + sellTotal + netSellVat;
@@ -1625,9 +1625,9 @@
     // 물류비(입출고비)가 판매가 구간에 따라 달라지므로 판매가를 추정→재계산하며 수렴시킨다 (마진 계산기와 동일한 방식)
     const feePct = resolveFee(it);
     const promoActive = it.channel === 'rocket' && it.promo && it.promo !== 'none';
-    const effectiveRetPct = promoActive ? 0 : (it.ret || 0) * 0.3;
+    const effectiveRetPct = 0;
     const taxPct = taxType === 'general' ? 100 / 11 : (taxType === 'simplified' ? 1.5 : 0);
-    const totalPctCost = feePct + (it.ad || 0) + effectiveRetPct + taxPct;
+    const totalPctCost = feePct + effectiveRetPct + taxPct;
     const availablePct = 100 - targetPct - totalPctCost;
     if(availablePct <= 0){
       return { achievable:false, totalPctCost };
@@ -1659,8 +1659,6 @@
       { label:'수입원가', value:c.impTotal, color:'#5B7C99' },
       { label:'수수료',   value:c.commission, color:'#D98E3D' },
       { label:'물류비',   value:c.logistic, color:'#C2703D' },
-      { label:'광고비',   value:c.adCost, color:'#86586B' },
-      { label:'반품비',   value:c.retCost, color:'#B8453A' },
       { label:'이익',     value:profit, color:'#4F7864' }
     ];
     return { defs, sp };
@@ -2560,7 +2558,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     flat.sort((a,b) => calc(b.merged).marginPct - calc(a.merged).marginPct);
     const legendDefs = [
       { label:'수입원가', color:'#5B7C99' }, { label:'수수료', color:'#D98E3D' }, { label:'물류비', color:'#C2703D' },
-      { label:'광고비', color:'#86586B' }, { label:'반품비', color:'#B8453A' }, { label:'이익', color:'#4F7864' }
+      { label:'이익', color:'#4F7864' }
     ];
     const legendHtml = `<div class="cost-bar-legend">${legendDefs.map(d =>
       `<span class="cbl-item"><i style="background:${d.color}"></i>${d.label}</span>`
@@ -3608,8 +3606,6 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
           <div class="grp">🛒 판매·운영비${c.promoActive ? ` · 🎁 ${c.promo === '90' ? '첫 90일' : '+270일'} 혜택 적용 중` : ''}</div>
           <div class="row"><span>카테고리 수수료 (${it.coupangCat}, ${c.feePct.toFixed(1)}%)</span><span>${won(c.commission)}</span></div>
           <div class="row"><span>${it.channel === 'rocket' ? '로켓그로스 물류비' : '마켓플레이스 배송비'}${c.promo === '90' ? ' (혜택 0원)' : ''}</span><span>${won(c.logistic)}</span></div>
-          <div class="row"><span>광고비 (${it.ad}%)</span><span>${won(c.adCost)}</span></div>
-          <div class="row"><span>반품비용 (${it.ret}% × 30%)${c.promoActive ? ' (혜택 0원)' : ''}</span><span>${won(c.retCost)}</span></div>
           ${taxType === 'general' ? `
           <div class="grp">🧾 부가세 (일반과세)</div>
           <div class="row"><span>판매 부가세 (10/110)</span><span>${won(c.sellVatAmt)}</span></div>
@@ -3655,8 +3651,6 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
         <th>수입원가</th>
         <th>수수료</th>
         <th>물류비</th>
-        <th>광고비</th>
-        <th>반품비</th>
         <th>판매가</th>
         <th>총비용</th>
         <th>마진</th>
@@ -3696,8 +3690,6 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
           <td>${won(c.impTotal)}</td>
           <td>${won(c.commission)} <span style="color:var(--mist)">(${c.feePct.toFixed(1)}%)</span></td>
           <td>${won(c.logistic)}</td>
-          <td>${won(c.adCost)}</td>
-          <td>${won(c.retCost)}</td>
           <td>${won(rep.sell)}</td>
           <td>${won(c.totalCost)}</td>
           <td style="color:${mColor};font-weight:700;">${won(c.margin)}</td>
@@ -3731,8 +3723,6 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
               <td>${won(oc.impTotal)}</td>
               <td>${won(oc.commission)} <span style="color:var(--mist)">(${oc.feePct.toFixed(1)}%)</span></td>
               <td>${won(oc.logistic)}</td>
-              <td>${won(oc.adCost)}</td>
-              <td>${won(oc.retCost)}</td>
               <td>${won(o.sell)}</td>
               <td>${won(oc.totalCost)}</td>
               <td style="color:${omColor};font-weight:700;">${won(oc.margin)}</td>
@@ -4158,7 +4148,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     if(items.length === 0){ showToast('내보낼 항목이 없습니다.'); return; }
     const header = ['상품명','폴더','브랜드카테고리','쿠팡카테고리','상태','묶음여부','묶음개수',
       '1688링크','이미지URL','위안단가','환율','수입계산방식','관세율%','부가세포함','포워딩비','통관비','수입원가합계',
-      '판매채널','프로모션','물류비','수수료%','광고비%','반품율%','쿠팡판매가','총비용','예상마진','마진율%','옵션수','옵션목록','메모'];
+      '판매채널','프로모션','물류비','수수료%','쿠팡판매가','총비용','예상마진','마진율%','옵션수','옵션목록','메모'];
     const rows = items.map(it => {
       const rep = repOption(it);
       const c = calc({ ...it, cny: rep.cny, sell: rep.sell });
@@ -4173,7 +4163,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
         it.link, rep.image || it.image, rep.cny, it.rate,
         it.importMode === 'simple' ? '간편비율(환율포함)' : '실제비용',
         it.duty, it.vatOn ? 'Y' : 'N', it.forwarding, it.clearance, Math.round(c.impTotal),
-        it.channel === 'rocket' ? '로켓그로스' : '마켓플레이스', promoLabel, Math.round(c.logistic), c.feePct.toFixed(1), it.ad, it.ret,
+        it.channel === 'rocket' ? '로켓그로스' : '마켓플레이스', promoLabel, Math.round(c.logistic), c.feePct.toFixed(1),
         rep.sell, Math.round(c.totalCost), Math.round(c.margin), c.marginPct.toFixed(1),
         (it.options||[]).length, optList, it.memo
       ].map(v => `"${String(v??'').replace(/"/g,'""')}"`).join(',');
@@ -4500,7 +4490,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     if(targetMarginPct === null) return '';
     const t = calcTargetSell(merged, targetMarginPct);
     if(!t.achievable){
-      return `<div class="row target-row"><span>🎯 타겟 ${targetMarginPct}% 적정가</span><span style="color:var(--seal)">달성 불가 (수수료+광고비+반품비+부가세 ${t.totalPctCost.toFixed(1)}%가 너무 높음)</span></div>`;
+      return `<div class="row target-row"><span>🎯 타겟 ${targetMarginPct}% 적정가</span><span style="color:var(--seal)">달성 불가 (수수료+부가세 ${t.totalPctCost.toFixed(1)}%가 너무 높음)</span></div>`;
     }
     const diff = (currentSell||0) - t.targetSell;
     const diffHtml = diff >= 0
@@ -4511,7 +4501,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
   function targetCellHtml(merged, currentSell){
     if(targetMarginPct === null) return '<span style="color:var(--mist)">-</span>';
     const t = calcTargetSell(merged, targetMarginPct);
-    if(!t.achievable) return `<span style="color:var(--seal)" title="수수료+광고비+반품비 ${t.totalPctCost.toFixed(1)}%가 타겟보다 높아 달성 불가">달성불가</span>`;
+    if(!t.achievable) return `<span style="color:var(--seal)" title="수수료+부가세 ${t.totalPctCost.toFixed(1)}%가 타겟보다 높아 달성 불가">달성불가</span>`;
     const diff = (currentSell||0) - t.targetSell;
     const badge = diff >= 0
       ? `<span style="color:var(--jade)" title="현재가가 타겟 마진을 충족합니다">✅</span>`
