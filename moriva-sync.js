@@ -164,8 +164,12 @@
       if (!isInternal(k) && !(k in remote)) toRemove.push(k);
     }
     toRemove.forEach(function (k) { origRemove.call(localStorage, k); });
-    Object.keys(remote).forEach(function (k) { origSet.call(localStorage, k, remote[k]); });
-    origSet.call(localStorage, STAMP_KEY, String(snap.savedAt));
+    var failed = 0;
+    Object.keys(remote).forEach(function (k) {
+      try { origSet.call(localStorage, k, remote[k]); } catch (e) { failed++; }
+    });
+    // 저장 공간 부족으로 일부를 못 써도 시각 도장은 남기지 않아 다음에 다시 시도한다
+    if (!failed) { try { origSet.call(localStorage, STAMP_KEY, String(snap.savedAt)); } catch (e) {} }
     return writeAllSaves(snap.saves || []);
   }
 
@@ -180,6 +184,18 @@
         }
         return res.json().then(function (d) {
           fileSha = d.sha;
+          // GitHub 컨텐츠 API는 약 1MB를 넘는 파일의 content를 비워서 돌려준다.
+          // 그러면 다른 기기가 백업을 읽지 못해 동기화가 안 되므로 raw 형식으로 다시 받는다.
+          if (!d.content && d.size > 0) {
+            return fetch(apiUrl() + "?ref=" + encodeURIComponent(cfg.branch || "main"), {
+              headers: { "Authorization": "token " + cfg.token, "Accept": "application/vnd.github.raw" }
+            }).then(function (rr) {
+              if (!rr.ok) throw new Error("큰 백업 파일 읽기 실패 " + rr.status);
+              return rr.text();
+            }).then(function (txt) {
+              try { return JSON.parse(txt); } catch (e) { return null; }
+            });
+          }
           try { return JSON.parse(b64dec(d.content.replace(/\n/g, ""))); } catch (e) { return null; }
         });
       });
@@ -226,7 +242,7 @@
           }
           return res.json().then(function (d) {
             fileSha = d.content.sha;
-            origSet.call(localStorage, STAMP_KEY, String(snap.savedAt));
+            try { origSet.call(localStorage, STAMP_KEY, String(snap.savedAt)); } catch (e) {}
             status("저장됨 " + new Date().toLocaleTimeString("ko-KR"), "ok");
           });
         });
