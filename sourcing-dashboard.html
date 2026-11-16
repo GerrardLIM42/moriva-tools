@@ -1414,9 +1414,17 @@ function estSalesInner(c){
   var v = parseFloat(String((c && c.views_28d) == null ? '' : c.views_28d).replace(/,/g,''));
   var b = parseFloat(String((c && c.buyers_28d) == null ? '' : c.buyers_28d).replace(/,/g,''));
   var ev = (isFinite(v) && v > 0) ? Math.round(v * 0.07).toLocaleString('ko-KR') + '개' : '-';
-  var eb = (isFinite(b) && b > 0) ? Math.round(b * 1.2).toLocaleString('ko-KR') + '개' : '-';
+  /* 월 구매수는 "N명 이상" 구간(자릿수 단위) 표기라 단순 ×1.2는 구간을 넘길 수 있다.
+     W = 구간 폭(10^자릿수), 예상 = N + W·(1 − e^(−0.2N/W)) → 앞자리가 작을 땐 ≈1.2배, 클수록 구간 상한에 수렴(넘지 않음) */
+  var eb = '-', ebTitle = '';
+  if(isFinite(b) && b > 0){
+    var W = Math.pow(10, Math.floor(Math.log10(b)));
+    var est = b + W * (1 - Math.exp(-0.2 * b / W));
+    eb = Math.round(est).toLocaleString('ko-KR') + '개';
+    ebTitle = ' title="표시값 ' + Math.round(b).toLocaleString('ko-KR') + ' 구간(' + Math.round(b).toLocaleString('ko-KR') + '~' + Math.round(b + W - 1).toLocaleString('ko-KR') + ') 안에서 보정"';
+  }
   return '<div class="cc-est-row"><span>예상 판매 (조회수×7%)</span><b>' + ev + '</b></div>' +
-         '<div class="cc-est-row"><span>예상 판매 (월 구매수×1.2)</span><b>' + eb + '</b></div>';
+         '<div class="cc-est-row"' + ebTitle + '><span>예상 판매 (월 구매수 구간 보정)</span><b>' + eb + '</b></div>';
 }
 function ef(path, value, opts){
   opts = opts || {};
