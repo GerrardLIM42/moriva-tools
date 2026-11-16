@@ -2984,10 +2984,15 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
           </div>
           <div class="field">
             <label>브랜드 카테고리 일괄 변경</label>
-            <select class="fs-cat-select">${catOptions}</select>
+            <select class="fs-cat-select" data-orig="${currentCat}">${catOptions}</select>
+          </div>
+          <div class="field">
+            <label>쿠팡 카테고리 일괄 변경 (수수료·입출고/배송 자동)</label>
+            <select class="fs-croot"><option value="">변경 안 함</option>${catRoots().map(r => `<option value="${r}">${r}</option>`).join('')}<option value="직접입력">직접입력 (수수료 직접 입력)</option></select>
+            <select class="fs-csub" style="display:none;margin-top:6px"></select>
           </div>
         </div>
-        <span class="hint">이 폴더의 모든 항목에 적용됩니다. 카테고리를 바꾸면 쿠팡 카테고리·수수료도 함께 자동 갱신됩니다.</span>
+        <span class="hint">이 폴더(하위 폴더 포함)의 모든 항목에 적용됩니다. 브랜드 카테고리를 바꾸면 쿠팡 카테고리가 기본값으로 바뀌고, 쿠팡 카테고리를 따로 고르면 그 값이 우선합니다. "변경 안 함"이면 기존 쿠팡 카테고리는 그대로 유지돼요.</span>
         <div class="form-actions">
           <button type="button" class="btn ghost fs-cancel">취소</button>
           <button type="button" class="btn amber fs-apply">전체 적용</button>
@@ -2996,8 +3001,9 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     `;
   }
 
-  function applyFolderSettings(oldKey, newName, newCategory){
-    const newCoupangCat = BRAND_TO_COUPANG[newCategory];
+  function applyFolderSettings(oldKey, newName, newCategory, opts){
+    opts = opts || {};
+    const newCoupangCat = opts.coupangCat || (opts.catChanged ? BRAND_TO_COUPANG[newCategory] : undefined);
     let changed = 0;
     items.forEach(it => {
       const f = (it.folder || '').trim();
@@ -3423,6 +3429,11 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
         const subName = fmPanel.querySelector('.fm-name-input').value;
         applyFolderMove(key, label, subName);
       }));
+    root.querySelectorAll('.fs-croot').forEach(sel => sel.addEventListener('change', () => {
+      const ss = sel.parentElement.querySelector('.fs-csub');
+      if(sel.value && sel.value !== '직접입력'){ ss.innerHTML = subOptionsHtml(sel.value, ''); ss.style.display = ''; }
+      else { ss.innerHTML = ''; ss.style.display = 'none'; }
+    }));
     root.querySelectorAll('.fs-cancel').forEach(btn =>
       btn.addEventListener('click', () => { editingFolderKey = null; renderGrid(); }));
     root.querySelectorAll('.fs-apply').forEach(btn =>
@@ -3430,8 +3441,14 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
         const fsPanel = btn.closest('.folder-settings');
         const key = fsPanel.dataset.folderKey;
         const newName = fsPanel.querySelector('.fs-name-input').value.trim();
-        const newCat = fsPanel.querySelector('.fs-cat-select').value;
-        applyFolderSettings(key, newName, newCat);
+        const catSel = fsPanel.querySelector('.fs-cat-select');
+        const newCat = catSel.value;
+        const cRoot = fsPanel.querySelector('.fs-croot').value, cSub = fsPanel.querySelector('.fs-csub').value;
+        let cc = '';
+        if(cRoot === '직접입력') cc = '직접입력';
+        else if(cRoot && cSub) cc = 'W|' + cSub;
+        else if(cRoot) cc = WING_ROOT_TO_FEE[cRoot] || '';
+        applyFolderSettings(key, newName, newCat, { catChanged: newCat !== catSel.dataset.orig, coupangCat: cc });
       }));
     root.querySelectorAll('[data-folder-keyword]').forEach(btn =>
       btn.addEventListener('click', () => {
