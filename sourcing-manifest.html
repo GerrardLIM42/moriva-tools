@@ -1219,6 +1219,7 @@
   function getGithubAPI(){ return WORKER_URL; }
 
   let githubSha = null;
+  let remoteDashboard = null;   // 소싱 대시보드가 같은 파일에 기록하는 데이터 — 저장할 때 그대로 보존한다
   let syncTimer = null;
 
   let items = [];
@@ -1862,6 +1863,7 @@
     }
     try{
       const parsed = JSON.parse(content || '[]');
+      remoteDashboard = (parsed && !Array.isArray(parsed) && parsed.dashboard) ? parsed.dashboard : null;
       return parseStoredPayload(parsed);
     }catch(e){
       throw new Error('data.json 내용이 올바른 JSON 형식이 아닙니다');
@@ -1870,7 +1872,7 @@
   async function githubPushFile(payload, retried){
     const body = {
       message: `update sourcing data (${new Date().toISOString()})`,
-      content: utf8ToB64(JSON.stringify(payload, null, 2))
+      content: utf8ToB64(JSON.stringify(remoteDashboard ? Object.assign({}, payload, { dashboard: remoteDashboard }) : payload, null, 2))
     };
     if(githubSha) body.sha = githubSha;
     let res;
