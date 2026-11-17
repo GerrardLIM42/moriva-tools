@@ -820,6 +820,8 @@ var COUPANG_FEE_CATS = {
   '생활/주방':11, '뷰티/코스메틱':11.5, '패션/의류':14, '패션잡화':12, '스포츠/레저':11,
   '가전/디지털':10.8, '식품/건강':10.8, '반려동물':11, '완구/취미':11, '유아동':11.5
 };
+var WING_ROOT_TO_FEE = {'패션의류잡화':'패션/의류','뷰티':'뷰티/코스메틱','출산/유아동':'유아동','식품':'식품/건강','주방용품':'생활/주방','생활용품':'생활/주방','가구/홈데코':'생활/주방','가전/디지털':'가전/디지털','스포츠/레져':'스포츠/레저','문구/오피스':'생활/주방','완구/취미':'완구/취미','반려/애완용품':'반려동물','자동차용품':'생활/주방'};
+function syncFeeCat(s){ if(s && s.wing_fee){ var e = wingFeeEntry(s.wing_fee); if(e && WING_ROOT_TO_FEE[e.root]) s.fee_cat = WING_ROOT_TO_FEE[e.root]; } }
 function feeRateFor(cat){ var v = COUPANG_FEE_CATS[cat]; return (typeof v === 'number') ? v / 100 : 0.1155; }
 function feePctText(cat){ return String(Math.round(feeRateFor(cat) * 10000) / 100); }
 function feeCatOptions(sel){
@@ -1289,6 +1291,8 @@ function recomputePricingRow(s){
   // 그로스비용: 사이즈를 골랐다면(직접입력 제외) 판매가 구간에 맞춰 입출고비+배송비를 자동 계산한다.
   var gt = growthTierByKey(s.growth_tier);
   if(gt && gt.idx !== undefined && s.sell_price) s.growth_cost = growthFeeFor(gt, s.sell_price, s.wing_fee);
+  // 윙 카테고리를 골랐다면 그 대분류의 수수료율을 그대로 쓴다(카테고리 한 곳에서 설정).
+  syncFeeCat(s);
   // 쿠팡수수료: 사용자가 직접 값을 고치지 않은 이상(fee_auto!==false), 판매가×카테고리 수수료율(기본 11.55%)로 자동 계산한다.
   if(s.fee_auto !== false){
     s.coupang_fee = s.sell_price ? Math.round(n(s.sell_price) * feeRateFor(s.fee_cat)) : null;
@@ -2247,6 +2251,7 @@ function renderProduct(p){
     (p.pricing||[]).map(function(s, idx){
       var isBest = best && s===best;
       var sellAutoLabel = s.sell_auto===false ? '직접입력' : (idx===0 ? '자동: 최저가' : '자동: 평균가');
+      syncFeeCat(s);
       var feeAutoLabel = s.fee_auto===false ? '직접입력' : ('자동: 판매가×' + feePctText(s.fee_cat) + '%');
       return '<div class="scenario'+(isBest?' best':'')+'" data-scenario-idx="'+idx+'">'+
         '<span class="tag'+(isBest?'':' tag-hidden')+'">추천</span>'+
@@ -2266,7 +2271,7 @@ function renderProduct(p){
           '</select>'+
           '<div class="sc-inputrow">'+ef('pricing.'+idx+'.growth_cost', s.growth_cost, {cls:'ef-sc'})+'<span class="cc-unit">원</span></div></div>'+
         '<div class="sc-field"><label>쿠팡수수료(원) <span class="sc-auto-tag'+(s.fee_auto===false?' custom':'')+'">'+feeAutoLabel+'</span></label>'+
-          '<select class="sc-cat-select" data-cat-idx="'+idx+'" title="카테고리를 고르면 쿠팡 판매수수료율이 자동으로 적용돼요">'+feeCatOptions(s.fee_cat)+'</select>'+
+          (s.wing_fee ? '<div class="sc-cat-fixed" style="font-size:11.5px;color:var(--navy);background:var(--cream-1);border:1px solid var(--line);border-radius:6px;padding:5px 8px;margin-bottom:5px;" title="위 윙 카테고리 기준으로 자동 적용돼요">카테고리: '+(s.fee_cat||'기본')+' ('+feePctText(s.fee_cat)+'%) · 윙 카테고리 기준</div>' : '<select class="sc-cat-select" data-cat-idx="'+idx+'" title="카테고리를 고르면 쿠팡 판매수수료율이 자동으로 적용돼요">'+feeCatOptions(s.fee_cat)+'</select>')+
           '<div class="sc-inputrow">'+ef('pricing.'+idx+'.coupang_fee', s.coupang_fee, {cls:'ef-sc'})+
           '<button type="button" class="autofill-btn" data-action="autofill-fee" data-idx="'+idx+'" title="판매가 × '+feePctText(s.fee_cat)+'%로 다시 자동 계산하도록 되돌립니다">'+feePctText(s.fee_cat)+'%로 재계산</button></div></div>'+
         '<div class="row"><span>부가세 (자동)</span><b class="val-vat">'+fmtWon(s.vat)+'</b></div>'+
@@ -2804,6 +2809,7 @@ mainContentEl.addEventListener('change', function(e){
   var s = p.pricing && p.pricing[el.getAttribute('data-wing-idx')];
   if(!s) return;
   s.wing_fee = el.value;
+  if(el.value) s.fee_auto = true;
   recomputePricingRow(s);
   persistEdits(p);
   renderProduct(p);
