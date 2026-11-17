@@ -224,6 +224,10 @@ tbody tr{cursor:pointer;}
 }
 .icon-toggle-btn:hover{background:rgba(255,255,255,0.18);}
 #starBtn{min-width:112px; text-align:center;}
+.cc-url-row{display:flex; align-items:center; gap:6px; margin-top:8px;}
+.ef-cc-url{flex:1; min-width:0; font-size:11.5px;}
+.cc-link{flex:0 0 auto; font-size:12px; font-weight:700; color:#fff; background:var(--navy); border-radius:6px; padding:5px 9px; text-decoration:none; white-space:nowrap;}
+.cc-link:hover{opacity:.85;}
 .sc-wing-select,.sc-cat-select{width:100%; padding:5px 6px; border-radius:6px; border:1px solid var(--line); background:var(--cream-1); color:var(--navy); font-size:11.5px; margin-bottom:5px; cursor:pointer;}
 .icon-toggle-btn.danger{border-color:rgba(255,140,130,0.6); color:#ffb4ac;}
 .icon-toggle-btn.danger:hover{background:rgba(214,69,59,0.45); color:#fff;}
@@ -1259,7 +1263,7 @@ function fullSnapshotCustom(p){
     sheet: p.sheet,
     name: p.name,
     monthly_search: p.monthly_search,
-    competitors: (p.competitors||[]).map(function(c){ return {name:c.name, sub:c.sub, price:c.price, views_28d:c.views_28d, buyers_28d:c.buyers_28d, reviews:c.reviews, image:c.image||null}; }),
+    competitors: (p.competitors||[]).map(function(c){ return {name:c.name, sub:c.sub, price:c.price, views_28d:c.views_28d, buyers_28d:c.buyers_28d, reviews:c.reviews, url:c.url||'', image:c.image||null}; }),
     lowest_price: p.lowest_price, avg_price: p.avg_price,
     pricing: (p.pricing||[]).map(function(s){ return {sell_price:s.sell_price, china_cost:s.china_cost, purchase_cost:s.purchase_cost, growth_cost:s.growth_cost, growth_tier:s.growth_tier, fee_cat:s.fee_cat||'', wing_fee:s.wing_fee||'', coupang_fee:s.coupang_fee, vat:s.vat, net_profit:s.net_profit, profit_rate:s.profit_rate, margin_rate:s.margin_rate, sell_auto:s.sell_auto!==false, fee_auto:s.fee_auto!==false}; }),
     target_sourcing_price: p.target_sourcing_price,
@@ -1339,7 +1343,7 @@ function snapshotProduct(p){
   return {
     name: p.name,
     monthly_search: p.monthly_search,
-    competitors: (p.competitors||[]).map(function(c){ return {name:c.name, sub:c.sub, price:c.price, views_28d:c.views_28d, buyers_28d:c.buyers_28d, reviews:c.reviews}; }),
+    competitors: (p.competitors||[]).map(function(c){ return {name:c.name, sub:c.sub, price:c.price, views_28d:c.views_28d, buyers_28d:c.buyers_28d, reviews:c.reviews, url:c.url||''}; }),
     pricing: (p.pricing||[]).map(function(s){ return {sell_price:s.sell_price, china_cost:s.china_cost, purchase_cost:s.purchase_cost, growth_cost:s.growth_cost, growth_tier:s.growth_tier, fee_cat:s.fee_cat||'', wing_fee:s.wing_fee||'', coupang_fee:s.coupang_fee, sell_auto:s.sell_auto!==false, fee_auto:s.fee_auto!==false}; }),
     sourcing_1688: (p.sourcing_1688||[]).map(function(s){ return {unit_price:s.unit_price, yearly_sales:s.yearly_sales, url:s.url, options:s.options}; }),
     related_keywords: (p.related_keywords||[]).slice()
@@ -1604,6 +1608,13 @@ function estSalesInner(c){
   }
   return '<div class="cc-est-row"><span>예상 판매 (조회수×7%)</span><b>' + ev + '</b></div>' +
          '<div class="cc-est-row"' + ebTitle + '><span>예상 판매 (월 구매수 구간 보정)</span><b>' + eb + '</b></div>';
+}
+/* 쿠팡 상품 링크: 주소만 붙여넣어도(https:// 없이) 열리도록 보정. http/https 외에는 막는다 */
+function normCompUrl(u){
+  u = String(u == null ? '' : u).trim();
+  if(!u) return '';
+  if(!/^https?:\/\//i.test(u)){ if(/^[a-z][a-z0-9+.-]*:/i.test(u)) return ''; u = 'https://' + u.replace(/^\/+/, ''); }
+  return /^https?:\/\/[^\s]+$/i.test(u) ? u : '';
 }
 function ef(path, value, opts){
   opts = opts || {};
@@ -2218,6 +2229,7 @@ function renderProduct(p){
           '<div class="cc-views-row">28일 조회수 '+ef('competitors.'+idx+'.views_28d', c.views_28d, {cls:'ef-cc-views'})+'</div>'+
           '<div class="cc-views-row">월 구매수(이상) '+ef('competitors.'+idx+'.buyers_28d', c.buyers_28d, {cls:'ef-cc-views'})+'<span class="cc-unit">명</span></div>'+
           '<div class="cc-views-row">리뷰수 '+ef('competitors.'+idx+'.reviews', c.reviews, {cls:'ef-cc-views'})+'<span class="cc-unit">개</span></div>'+
+          '<div class="cc-url-row">'+ef('competitors.'+idx+'.url', c.url, {type:'text', cls:'ef-cc-url', placeholder:'쿠팡 상품 링크 붙여넣기'})+'<a class="cc-link" href="'+esc(normCompUrl(c.url) || '#')+'" target="_blank" rel="noopener noreferrer" title="쿠팡 상품 페이지 열기" style="'+(normCompUrl(c.url) ? '' : 'display:none')+'">🔗 열기</a></div>'+
           '<div class="cc-est" data-est="'+idx+'">'+estSalesInner(c)+'</div>'+
         '</div></div>';
     }).join('') +
@@ -2538,6 +2550,10 @@ mainContentEl.addEventListener('input', function(e){
     value = t.value;
   }
   setPath(currentProductRef, path, value);
+  if(/^competitors\.\d+\.url$/.test(path)){   // 링크를 고치면 옆의 '열기' 버튼도 바로 갱신
+    var linkEl = t.parentElement && t.parentElement.querySelector('.cc-link');
+    if(linkEl){ var nu = normCompUrl(value); linkEl.href = nu || '#'; linkEl.style.display = nu ? '' : 'none'; }
+  }
   var gm = /^pricing\.(\d+)\.growth_cost$/.exec(path);   // 그로스비용을 직접 고치면 사이즈 자동 계산은 '직접입력'으로 전환
   if(gm && currentProductRef.pricing && currentProductRef.pricing[gm[1]]) currentProductRef.pricing[gm[1]].growth_tier = 'custom';
   patchAfterEdit(currentProductRef, path);
