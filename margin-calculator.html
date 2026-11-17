@@ -60,6 +60,8 @@
       { label: "유아동",       fee: 11.5 },
       { label: "직접입력",     fee: null },
     ];
+    const WING_ROOT_TO_FEE = {"패션의류잡화":"패션/의류","뷰티":"뷰티/코스메틱","출산/유아동":"유아동","식품":"식품/건강","주방용품":"생활/주방","생활용품":"생활/주방","가구/홈데코":"생활/주방","가전/디지털":"가전/디지털","스포츠/레져":"스포츠/레저","문구/오피스":"생활/주방","완구/취미":"완구/취미","반려/애완용품":"반려동물","자동차용품":"생활/주방"};
+    const CAT_ROOTS = Object.keys(WING_ROOT_TO_FEE).concat(["직접입력"]);
     const RKTS = [
       { label: "극소형",  fee: 1800 },
       { label: "소형",    fee: 2500 },
@@ -925,6 +927,7 @@
       const [cl,    setCl   ] = useState("1000");
       const [ri,    setRi   ] = useState(1);
       const [wc,    setWc   ] = useState("");
+      const [wroot, setWroot] = useState("생활용품");
       const [crf,   setCrf  ] = useState("2500");
       const [promo, setPromo] = useState("none"); // "none" | "90" | "270" (로켓그로스 비용 제로 프로모션)
       const [ms,    setMs   ] = useState("3000");
@@ -1037,7 +1040,7 @@
         sp, ch, ci: String(ci), ccf, cur, bp,
         xrMode, simRate, xrCny, xrUsd,
         cr, vat: vat ? "1" : "0", fw, cl,
-        ri: String(ri), wc, crf, promo, ms, ar, rr, tm, taxType
+        ri: String(ri), wc, wroot, crf, promo, ms, ar, rr, tm, taxType
       });
       const restoreState = (s) => {
         if (s.pName   !== undefined) setPName(s.pName);
@@ -1075,6 +1078,7 @@
         if (s.cl      !== undefined) setCl(s.cl);
         if (s.ri      !== undefined) setRi(Number(s.ri));
         if (s.wc      !== undefined) setWc(s.wc);
+        { const we = s.wc ? wingFeeEntry(s.wc) : null; const cl0 = CATS[Number(s.ci)]; const rr0 = s.wroot || (we ? we.root : (cl0 ? (cl0.fee === null ? "직접입력" : (Object.keys(WING_ROOT_TO_FEE).find(k => WING_ROOT_TO_FEE[k] === cl0.label) || "생활용품")) : "생활용품")); setWroot(rr0); }
         if (s.crf     !== undefined) setCrf(s.crf);
         if (s.promo   !== undefined) setPromo(s.promo);
         if (s.ms      !== undefined) setMs(s.ms);
@@ -1333,6 +1337,7 @@
           vatBurden, outputVAT, inputVATCredit,
           totalCost, margin, marginRate, bepPrice, minPrice, effRate,
           promoActive, fixedC, varRate,
+          wingOn: ch === "rocket" && promo !== "90" && isTieredRocket && wingFeeValue(wc, ri, SP) !== null,
         };
       }, [options, activeOpt, sp, bp, ch, ci, ccf, cur, xrMode, simRate, xrCny, xrUsd, simpleMode, cr, vat, fw, cl, ri, wc, crf, promo, ms, ar, rr, tm, taxType]);
 
@@ -1546,11 +1551,16 @@
                     current={ch} onChange={setCh}
                   />
                   <SL text="카테고리" />
-                  <select value={ci} onChange={e => setCi(Number(e.target.value))} style={SELECT_STYLE}>
-                    {CATS.map((c, i) => (
-                      <option key={i} value={i}>{c.label}{c.fee !== null ? ` — ${c.fee}%` : " — 직접입력"}</option>
-                    ))}
+                  <select value={wroot} onChange={e => { const r = e.target.value; setWroot(r); setWc(""); const k = r === "직접입력" ? CATS.length - 1 : CATS.findIndex(c => c.label === WING_ROOT_TO_FEE[r]); if (k >= 0) setCi(k); }} style={SELECT_STYLE}>
+                    {CAT_ROOTS.map(r => <option key={r} value={r}>{r}</option>)}
                   </select>
+                  {wroot !== "직접입력" && (
+                    <select value={wc} onChange={e => setWc(e.target.value)} style={{ ...SELECT_STYLE, marginTop: 6 }} title="세부 카테고리를 고르면 윙 입출고/배송 요금표(VAT 별도)가 사이즈·판매가에 맞게 자동 적용돼요">
+                      <option value="">세부 카테고리 선택 안 함 (기본 요금표)</option>
+                      {WING_FEES.filter(x => x.root === wroot).map(x => <option key={x.id} value={x.id}>{x.path.split(" > ").slice(1).join(" > ")} — {x.lab}{x.note ? " · " + x.note : ""}</option>)}
+                    </select>
+                  )}
+                  <div style={{ fontSize: 10, color: "#8B95A1", marginTop: 6 }}>수수료율 {CATS[ci].fee !== null ? CATS[ci].fee + "%" : "직접입력"}{wc ? " · 입출고/배송비는 윙 요금표(합산) 적용" : ""}</div>
                   {CATS[ci].fee === null && (
                     <NumIn label="카테고리 수수료율" unit="%" value={ccf} onChange={setCcf} />
                   )}
@@ -1645,16 +1655,12 @@
                           </option>
                         ))}
                       </select>
-                      <select value={wc} onChange={e => setWc(e.target.value)} style={{ ...SELECT_STYLE, marginTop: 6 }} title="쿠팡 윙 입출고/배송 요금표 카테고리 (VAT 별도) — 고르면 사이즈·판매가에 맞는 물류비가 자동 적용돼요">
-                        <option value="">윙 카테고리: 선택 안 함 (기본 요금표)</option>
-                        {WING_FEES.map(e => <option key={e.id} value={e.id}>{e.path} — {e.lab}{e.note ? ' · ' + e.note : ''}</option>)}
-                      </select>
                       {RKTS[ri].fee === null ? (
                         <NumIn label="로켓그로스 물류비" unit="KRW" value={crf} onChange={setCrf} />
                       ) : (
                         <React.Fragment>
                           <div style={{ fontSize: 10, color: "#8B95A1", marginTop: -8, marginBottom: 10 }}>
-                            입출고비는 판매가 구간별로 산정 · 배송비는 ₩{RKT_SHIP_FEE[ri].toLocaleString()} 고정 (프로모션 종료 후 정상 청구 기준)
+                            {wc ? "윙 요금표 적용 — 입출고+배송비 합산, 판매가 구간·사이즈별 (VAT 별도, 프로모션 적용가)" : "입출고비는 판매가 구간별로 산정 · 배송비는 ₩" + RKT_SHIP_FEE[ri].toLocaleString() + " 고정 (프로모션 종료 후 정상 청구 기준)"}
                           </div>
                           <NumIn label="번들(묶음) 수량 — 세트당 물리 개수" unit="개" value={options[0].bundleQty}
                             onChange={v => updateOpt(0, "bundleQty", v)} placeholder="1" />
@@ -1973,8 +1979,14 @@
                 <CostRow label={`  · 카테고리 수수료 (${fp(C.catFee)}%)`} value={C.commission} />
                 {ch === "rocket" && RKTS[ri].fee !== null ? (
                   <React.Fragment>
-                    <CostRow label={`  · 입출고비${promo === "90" ? " (혜택 0원)" : ""}`} value={C.inoutFee} />
-                    <CostRow label={`  · 배송비${promo === "90" ? " (혜택 0원)" : ""}`} value={C.shipFee} />
+                    {C.wingOn ? (
+                      <CostRow label="  · 입출고+배송비 (윙 요금표 합산, VAT 별도)" value={C.inoutFee} />
+                    ) : (
+                      <React.Fragment>
+                        <CostRow label={`  · 입출고비${promo === "90" ? " (혜택 0원)" : ""}`} value={C.inoutFee} />
+                        <CostRow label={`  · 배송비${promo === "90" ? " (혜택 0원)" : ""}`} value={C.shipFee} />
+                      </React.Fragment>
+                    )}
                   </React.Fragment>
                 ) : (
                   <CostRow label={`  · ${ch === "rocket" ? "로켓그로스 물류비" : "마켓플레이스 배송비"}${promo === "90" ? " (혜택 0원)" : ""}`} value={C.logistic} />
