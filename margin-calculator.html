@@ -933,7 +933,7 @@
       const [ms,    setMs   ] = useState("3000");
       const [ar,    setAr   ] = useState("0");
       const [rr,    setRr   ] = useState("0");
-      const [tm,    setTm   ] = useState("30");
+      const [tm,    setTm   ] = useState("25");
       const [taxType, setTaxType] = useState("simple_tax"); // "exempt" | "simple_tax" | "general"
 
       // ── 상품 정보 ──
@@ -1023,8 +1023,10 @@
           fixC = imp + log;
           if (opt.inputMode === "price") { SP = nv(opt.sp); break; }
           const tgt = nv(opt.targetMargin);
-          const denom = 1 - varR - tgt/100;
-          SP = denom > 0.001 ? fixC / denom : 0;
+          const txr = taxType === "general" ? 1/11 : taxType === "simple_tax" ? 0.015 : 0;
+          const denom = 1 - varR - txr - tgt/100;
+          SP = denom > 0.001 ? (fixC - (taxType === "general" ? vt : 0)) / denom : 0;
+          if (taxType === "general" && SP / 11 < vt) { const d2 = 1 - varR - tgt/100; SP = d2 > 0.001 ? fixC / d2 : 0; }
         }
         if (opt.inputMode === "price") {
           const mr = SP > 0 ? ((SP - fixC - SP*varR) / SP * 100) : 0;
@@ -1294,8 +1296,10 @@
           if (activeOption && activeOption.inputMode === "price") { SP = nv(activeOption.sp); break; }
           if (!activeOption) { SP = nv(sp); break; }
           const tgt = nv(activeOption.targetMargin);
-          const denom = 1 - varRate - tgt / 100;
-          SP = denom > 0.001 ? fixedC / denom : 0;
+          const txr = taxType === "general" ? 1/11 : taxType === "simple_tax" ? 0.015 : 0;
+          const denom = 1 - varRate - txr - tgt / 100;
+          SP = denom > 0.001 ? (fixedC - (taxType === "general" ? vatAmt : 0)) / denom : 0;
+          if (taxType === "general" && SP / 11 < vatAmt) { const d2 = 1 - varRate - tgt / 100; SP = d2 > 0.001 ? fixedC / d2 : 0; }
         }
 
         const commission = SP * (catFee / 100);
