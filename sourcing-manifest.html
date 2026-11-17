@@ -3938,6 +3938,29 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
       $('#f-return').value = 3;
       $('#f-memo').value = presetMemo;
       draftOptions = [{ id: uid(), name:'', cny:presetCny, sell:0, image:'', _mode:'margin', _targetMarginPct:'' }];
+      // 같은 폴더에 이미 등록된 상품이 있으면 그 상품의 세팅(판매가·카테고리·채널·사이즈 등)을 그대로 가져온다
+      const folderPeers = presetFolder.trim() ? items.filter(x => (x.folder || '').trim() === presetFolder.trim()) : [];
+      let tpl = null;
+      for(let k = folderPeers.length - 1; k >= 0; k--){ const r0 = repOption(folderPeers[k]); if(r0 && r0.sell > 0){ tpl = folderPeers[k]; break; } }
+      if(tpl){
+        const rp = repOption(tpl);
+        if(tpl.coupangCat) $('#f-coupangcat').value = tpl.coupangCat;
+        if(tpl.feeManual != null) $('#f-fee-manual').value = tpl.feeManual;
+        if(tpl.rate) $('#f-rate').value = tpl.rate;
+        setSeg($('#seg-importmode'), tpl.importMode || 'simple');
+        if(tpl.duty != null) $('#f-duty').value = tpl.duty;
+        $('#f-vat').checked = !!tpl.vatOn;
+        if(tpl.forwarding != null) $('#f-forwarding').value = tpl.forwarding;
+        if(tpl.clearance != null) $('#f-clearance').value = tpl.clearance;
+        setSeg($('#seg-channel'), tpl.channel || 'rocket');
+        setSeg($('#seg-promo'), tpl.channel === 'rocket' ? (tpl.promo || 'none') : 'none');
+        if(tpl.rocketSize) $('#f-rocketsize').value = tpl.rocketSize;
+        if(tpl.rocketFeeManual != null) $('#f-rocket-fee-manual').value = tpl.rocketFeeManual;
+        if(tpl.marketShip != null) $('#f-marketship').value = tpl.marketShip;
+        const useMargin = rp.inputMode === 'margin' && rp.savedMarginPct != null;
+        draftOptions = [{ id: uid(), name:'', cny:presetCny, sell: useMargin ? 0 : rp.sell, image:'', _mode: useMargin ? 'margin' : 'sell', _targetMarginPct: useMargin ? rp.savedMarginPct : '' }];
+        showToast('같은 폴더 상품(' + (tpl.name || '') + ')의 세팅을 가져왔어요.');
+      }
     }
     renderOptionsList();
     refreshAutoFields();
@@ -3967,7 +3990,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
       <div class="option-card" data-idx="${idx}">
         <div class="option-card-head">
           <span class="option-num">옵션 ${idx + 1}</span>
-          <input type="text" class="opt-name" placeholder="옵션명 (선택, 예: 블랙 / L)" value="${escapeHtml(o.name)}" />
+          <input type="text" lang="ko" inputmode="text" autocapitalize="off" style="ime-mode:active" class="opt-name" placeholder="옵션명 (선택, 예: 블랙 / L)" value="${escapeHtml(o.name)}" />
           <button type="button" class="icon-btn danger opt-remove-btn" ${draftOptions.length <= 1 ? 'disabled title="최소 1개의 옵션이 필요합니다"' : 'title="옵션 삭제"'}>삭제</button>
         </div>
         <div class="option-card-body">
