@@ -931,8 +931,8 @@
       const [crf,   setCrf  ] = useState("2500");
       const [promo, setPromo] = useState("none"); // "none" | "90" | "270" (로켓그로스 비용 제로 프로모션)
       const [ms,    setMs   ] = useState("3000");
-      const [ar,    setAr   ] = useState("7");
-      const [rr,    setRr   ] = useState("3");
+      const [ar,    setAr   ] = useState("0");
+      const [rr,    setRr   ] = useState("0");
       const [tm,    setTm   ] = useState("30");
       const [taxType, setTaxType] = useState("simple_tax"); // "exempt" | "simple_tax" | "general"
 
@@ -1082,8 +1082,6 @@
         if (s.crf     !== undefined) setCrf(s.crf);
         if (s.promo   !== undefined) setPromo(s.promo);
         if (s.ms      !== undefined) setMs(s.ms);
-        if (s.ar      !== undefined) setAr(s.ar);
-        if (s.rr      !== undefined) setRr(s.rr);
         if (s.tm      !== undefined) setTm(s.tm);
         if (s.taxType !== undefined) setTaxType(s.taxType);
       };
@@ -1345,8 +1343,6 @@
         { label: "수입원가", color: "#3B82F6", val: C.impTotal    },
         { label: "수수료",   color: "#C2703D", val: C.commission  },
         { label: "물류비",   color: "#F59E0B", val: C.logistic    },
-        { label: "광고비",   color: "#8B5CF6", val: C.adCost      },
-        { label: "반품비",   color: "#EC4899", val: C.retCost     },
         { label: "부가세",   color: "#0EA5E9", val: C.vatBurden   },
         { label: "이익",     color: mc(C.marginRate), val: Math.max(C.margin, 0) },
       ];
@@ -1678,14 +1674,7 @@
                   ) : (
                     <NumIn label="마켓플레이스 배송비" unit="KRW" value={ms} onChange={setMs} />
                   )}
-                  <NumIn label="광고비율" unit="%" value={ar} onChange={setAr} />
-                  <NumIn label="예상 반품율" unit="%" value={rr} onChange={setRr} />
-                  {C.promoActive && (
-                    <div style={{ fontSize: 10, color: "#1A7A4C", marginTop: -8, marginBottom: 12 }}>
-                      → 프로모션으로 반품비 0원 처리됨
-                    </div>
-                  )}
-                </Sec>
+                                                    </Sec>
               </Card>
 
               {/* 세금 설정 */}
@@ -1991,8 +1980,6 @@
                 ) : (
                   <CostRow label={`  · ${ch === "rocket" ? "로켓그로스 물류비" : "마켓플레이스 배송비"}${promo === "90" ? " (혜택 0원)" : ""}`} value={C.logistic} />
                 )}
-                <CostRow label={`  · 광고비 (${ar}%)`}         value={C.adCost} />
-                <CostRow label={`  · 반품비용 (${rr}% × 30%)${C.promoActive ? " (혜택 0원)" : ""}`} value={C.retCost} />
                 <CostRow label="판매/운영비 소계" value={C.sellTotal} accent="#C2703D" bold />
                 {taxType !== "exempt" && (
                   <React.Fragment>
