@@ -1973,8 +1973,22 @@ function renderSidebar(){
   var html = '';
   var anyGroup = false;
 
+  var favItems = sortItems(visible.filter(function(p){ return getNote(p).starred; }));
+  if(favItems.length){
+    anyGroup = true;
+    var fc = !!collapsedCats.__fav;
+    html += '<div class="cat-group fav-group">'+
+      '<button type="button" class="cat-header" data-cat-key="__fav">'+
+        '<span class="cat-caret'+(fc?' collapsed':'')+'">▾</span>'+
+        '<span class="cat-label">★ 즐겨찾기</span>'+
+        '<span class="cat-count">'+favItems.length+'</span>'+
+      '</button>'+
+      '<div class="cat-items'+(fc?' collapsed':'')+'">'+favItems.map(renderProductItem).join('')+'</div>'+
+    '</div>';
+  }
+
   groupOrder.forEach(function(cat){
-    var groupItems = sortItems(visible.filter(function(p){ return (getNote(p).category || null) === cat; }));
+    var groupItems = sortItems(visible.filter(function(p){ return !getNote(p).starred && (getNote(p).category || null) === cat; }));
     if(!groupItems.length) return;
     anyGroup = true;
     var label = cat ? CATEGORY_LABELS[cat] : '미분류';
@@ -2051,6 +2065,8 @@ function renderDashboard(){
     var note = getNote(p);
     return {p:p, best:best, c1688:c1688, badge:badge, note:note};
   });
+  rows.forEach(function(r, i){ r.i = i; });
+  rows.sort(function(a, b){ return ((b.note.starred ? 1 : 0) - (a.note.starred ? 1 : 0)) || (a.i - b.i); });
 
   var html = '';
   html += '<div class="topbar"><div><h1>전체 소싱 요약 대시보드</h1><div class="sub">'+visibleProducts.length+'개 상품의 시장조사 · 판매가 시뮬레이션 · 1688 소싱 현황을 한눈에 확인하세요.</div></div>'+
@@ -2078,7 +2094,7 @@ function renderDashboard(){
     '</tr></thead><tbody>'+
     rows.map(function(r){
       return '<tr data-id="'+r.p._id+'">'+
-        '<td class="name-cell">'+esc(r.p.name)+'<span>'+esc(r.p.sheet)+'</span></td>'+
+        '<td class="name-cell">'+(r.note.starred?'★ ':'')+esc(r.p.name)+'<span>'+esc(r.p.sheet)+'</span></td>'+
         '<td class="num">'+fmtNum(r.p.monthly_search)+'</td>'+
         '<td class="num">'+fmtWon(r.p.avg_price)+'</td>'+
         '<td class="num">'+(r.c1688 ? fmtYuan(r.c1688.unit_price) : '-')+'</td>'+
@@ -2123,6 +2139,8 @@ function renderDashboard(){
         margin: function(r){ return r.best?(r.best.margin_rate||0):0; }
       };
       rows.sort(function(a,b){
+        var sa = a.note.starred ? 1 : 0, sb = b.note.starred ? 1 : 0;
+        if(sa !== sb) return sb - sa;
         var va = getters[key](a), vb = getters[key](b);
         if(typeof va === 'string') return sortDir*va.localeCompare(vb,'ko');
         return sortDir*(va-vb);
@@ -2130,7 +2148,7 @@ function renderDashboard(){
       var tbody = document.querySelector('#dashTable tbody');
       tbody.innerHTML = rows.map(function(r){
         return '<tr data-id="'+r.p._id+'">'+
-          '<td class="name-cell">'+esc(r.p.name)+'<span>'+esc(r.p.sheet)+'</span></td>'+
+          '<td class="name-cell">'+(r.note.starred?'★ ':'')+esc(r.p.name)+'<span>'+esc(r.p.sheet)+'</span></td>'+
           '<td class="num">'+fmtNum(r.p.monthly_search)+'</td>'+
           '<td class="num">'+fmtWon(r.p.avg_price)+'</td>'+
           '<td class="num">'+(r.c1688 ? fmtYuan(r.c1688.unit_price) : '-')+'</td>'+
