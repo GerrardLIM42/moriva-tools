@@ -2991,6 +2991,10 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
             <select class="fs-croot"><option value="">변경 안 함</option>${catRoots().map(r => `<option value="${r}">${r}</option>`).join('')}<option value="직접입력">직접입력 (수수료 직접 입력)</option></select>
             <select class="fs-csub" style="display:none;margin-top:6px"></select>
           </div>
+          <div class="field">
+            <label>제품 사이즈 일괄 변경 (로켓그로스)</label>
+            <select class="fs-size"><option value="">변경 안 함</option>${Object.keys(ROCKET_SIZES).filter(k => k !== '직접입력').map(k => `<option value="${k}">${k}</option>`).join('')}</select>
+          </div>
         </div>
         <span class="hint">이 폴더(하위 폴더 포함)의 모든 항목에 적용됩니다. 브랜드 카테고리를 바꾸면 쿠팡 카테고리가 기본값으로 바뀌고, 쿠팡 카테고리를 따로 고르면 그 값이 우선합니다. "변경 안 함"이면 기존 쿠팡 카테고리는 그대로 유지돼요.</span>
         <div class="form-actions">
@@ -3012,12 +3016,14 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
         it.folder = newName;
         it.category = newCategory;
         if(newCoupangCat) it.coupangCat = newCoupangCat;
+        if(opts.rocketSize) it.rocketSize = opts.rocketSize;
         changed++;
       } else if(oldKey !== '__NONE__' && f.startsWith(oldKey + FOLDER_SEP)){
         // 상위 폴더 이름/카테고리 변경은 모든 하위폴더의 항목까지 함께 적용된다
         it.folder = newName + f.slice(oldKey.length);
         it.category = newCategory;
         if(newCoupangCat) it.coupangCat = newCoupangCat;
+        if(opts.rocketSize) it.rocketSize = opts.rocketSize;
         changed++;
       }
     });
@@ -3448,7 +3454,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
         if(cRoot === '직접입력') cc = '직접입력';
         else if(cRoot && cSub) cc = 'W|' + cSub;
         else if(cRoot) cc = WING_ROOT_TO_FEE[cRoot] || '';
-        applyFolderSettings(key, newName, newCat, { catChanged: newCat !== catSel.dataset.orig, coupangCat: cc });
+        applyFolderSettings(key, newName, newCat, { catChanged: newCat !== catSel.dataset.orig, coupangCat: cc, rocketSize: (fsPanel.querySelector('.fs-size') || {}).value || '' });
       }));
     root.querySelectorAll('[data-folder-keyword]').forEach(btn =>
       btn.addEventListener('click', () => {
