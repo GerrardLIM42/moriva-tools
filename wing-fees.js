@@ -249,7 +249,58 @@ function wingOptions(sel){
   });
   return html + (cur !== null ? '</optgroup>' : '');
 }
+function wingSplitPath(e){ return e.path.split(' > ').slice(1); }
+function wingRoots(){ var r = []; WING_FEES.forEach(function(e){ if(r.indexOf(e.root) < 0) r.push(e.root); }); return r; }
+function wingIsDeep(root){ return WING_FEES.some(function(e){ return e.root === root && wingSplitPath(e).length >= 2; }); }
+function wingMidList(root){ var m = []; WING_FEES.forEach(function(e){ if(e.root !== root) return; var k = wingSplitPath(e)[0]; if(m.indexOf(k) < 0) m.push(k); }); return m; }
+function wingEsc(s){ return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+function wingRootOpts(sel){
+  return '<option value=""' + (!sel ? ' selected' : '') + '>윙 카테고리: 선택 안 함 (기본 요금표)</option>' + wingRoots().map(function(r){ return '<option value="' + wingEsc(r) + '"' + (sel === r ? ' selected' : '') + '>' + wingEsc(r) + '</option>'; }).join('');
+}
+function wingMidOpts(root, sel){
+  return '<option value="">중분류 선택</option>' + wingMidList(root).map(function(k){ return '<option value="' + wingEsc(k) + '"' + (sel === k ? ' selected' : '') + '>' + wingEsc(k) + '</option>'; }).join('');
+}
+function wingLeafOpts(root, mid, selId){
+  var deep = wingIsDeep(root), html = '<option value="">세부 카테고리 선택</option>';
+  if(deep && !mid) return html;
+  WING_FEES.forEach(function(e){
+    if(e.root !== root) return;
+    var p = wingSplitPath(e);
+    if(deep && p[0] !== mid) return;
+    var nm = deep ? (p.slice(1).join(' > ') || p[0]) : p.join(' > ');
+    html += '<option value="' + wingEsc(e.id) + '"' + (selId === e.id ? ' selected' : '') + '>' + wingEsc(nm) + ' — ' + wingEsc(e.lab) + (e.note ? ' · ' + wingEsc(e.note) : '') + '</option>';
+  });
+  return html;
+}
 function wingSelectHtml(idx, sel){
-  return '<select class="sc-wing-select" data-wing-idx="' + idx + '" title="쿠팡 윙 입출고/배송 요금표의 카테고리를 고르면 사이즈·판매가에 맞는 그로스비용이 자동으로 들어가요 (VAT 별도)">' + wingOptions(sel) + '</select>';
+  var cur = sel ? wingFeeEntry(sel) : null, root = cur ? cur.root : '', deep = root ? wingIsDeep(root) : false, mid = cur && deep ? wingSplitPath(cur)[0] : '';
+  var a = ' data-wing-idx="' + idx + '"';
+  return '<select class="sc-wing-root"' + a + ' title="윙 카테고리 — 상위 카테고리를 먼저 고르세요">' + wingRootOpts(root) + '</select>'
+    + '<select class="sc-wing-mid"' + a + (deep ? '' : ' style="display:none"') + ' title="중분류">' + (deep ? wingMidOpts(root, mid) : '') + '</select>'
+    + '<select class="sc-wing-select"' + a + (root ? '' : ' style="display:none"') + ' title="쿠팡 윙 입출고/배송 요금표의 카테고리를 고르면 사이즈·판매가에 맞는 그로스비용이 자동으로 들어가요 (VAT 별도)">' + (root ? wingLeafOpts(root, mid, cur ? cur.id : '') : '<option value=""></option>') + '</select>';
+}
+if(typeof document !== 'undefined' && !window.__wingCascadeBound){
+  window.__wingCascadeBound = true;
+  document.addEventListener('change', function(ev){
+    var el = ev.target;
+    if(!el || !el.classList) return;
+    var isRoot = el.classList.contains('sc-wing-root'), isMid = el.classList.contains('sc-wing-mid');
+    if(!isRoot && !isMid) return;
+    var box = el.parentNode, idx = el.getAttribute('data-wing-idx');
+    var q = function(c){ return box.querySelector('select.' + c + '[data-wing-idx="' + idx + '"]'); };
+    var rootEl = q('sc-wing-root'), midEl = q('sc-wing-mid'), leafEl = q('sc-wing-select');
+    if(!rootEl || !leafEl) return;
+    var fire = function(v){ leafEl.value = v; leafEl.dispatchEvent(new Event('change', {bubbles: true})); };
+    var root = rootEl.value;
+    if(!root){ if(midEl) midEl.style.display = 'none'; leafEl.style.display = 'none'; leafEl.innerHTML = '<option value=""></option>'; fire(''); return; }
+    var deep = wingIsDeep(root), mid = '';
+    if(isRoot){
+      if(deep){ midEl.style.display = ''; midEl.innerHTML = wingMidOpts(root, ''); } else if(midEl){ midEl.style.display = 'none'; midEl.innerHTML = ''; }
+    } else { mid = midEl.value; }
+    leafEl.style.display = '';
+    leafEl.innerHTML = wingLeafOpts(root, deep ? mid : '', '');
+    var opts = leafEl.querySelectorAll('option[value]:not([value=""])');
+    if(opts.length === 1 && (!deep || mid)){ fire(opts[0].value); }
+  });
 }
 
