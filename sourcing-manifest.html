@@ -1537,6 +1537,7 @@
       competitionCount: k.competitionCount || '',
       competitionScore: k.competitionScore || '',
       competitionLevel: k.competitionLevel || '',
+      productIndexLevel: k.productIndexLevel || '',
       rocketRatio: k.rocketRatio || '',
       rocketRatioLevel: k.rocketRatioLevel || '',
       sellerRocketRatio: k.sellerRocketRatio || '',
@@ -3210,14 +3211,25 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
   }
 
   /* ---------------- folder keyword analysis (아이템스카우트 등 수동입력) ---------------- */
+  function fmtKwNum(v){
+    const s = String(v == null ? '' : v).trim();
+    if(/^\d+(\.\d+)?$/.test(s) || /^\d{1,3}(,\d{3})+(\.\d+)?$/.test(s)){
+      const n = parseFloat(s.replace(/,/g, ''));
+      if(!isNaN(n)){
+        const dec = s.indexOf('.') >= 0 ? s.split('.')[1].length : 0;
+        return n.toLocaleString('ko-KR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+      }
+    }
+    return s;
+  }
   function folderKeywordSummaryHtml(key, kw){
     if(!hasFolderKeywordData(kw)) return '';
     const chips = [];
-    if(kw.searchVolumeTotal) chips.push(`<span class="kw-chip">월검색량 <b>${escapeHtml(String(kw.searchVolumeTotal))}</b></span>`);
-    if(kw.competitionCount) chips.push(`<span class="kw-chip">경쟁상품 <b>${escapeHtml(String(kw.competitionCount))}</b>개</span>`);
+    if(kw.searchVolumeTotal) chips.push(`<span class="kw-chip">월검색량 <b>${escapeHtml(fmtKwNum(kw.searchVolumeTotal))}</b></span>`);
+    if(kw.competitionCount) chips.push(`<span class="kw-chip">경쟁상품 <b>${escapeHtml(fmtKwNum(kw.competitionCount))}</b>개</span>`);
     if(kw.competitionLevel) chips.push(`<span class="kw-chip">경쟁강도 <b>${escapeHtml(kw.competitionLevel)}</b></span>`);
-    if(kw.avgPrice) chips.push(`<span class="kw-chip">평균가 <b>₩${escapeHtml(String(kw.avgPrice))}</b></span>`);
-    if(kw.avgReviewCount) chips.push(`<span class="kw-chip">평균리뷰 <b>${escapeHtml(String(kw.avgReviewCount))}</b>개</span>`);
+    if(kw.avgPrice) chips.push(`<span class="kw-chip">평균가 <b>₩${escapeHtml(fmtKwNum(kw.avgPrice))}</b></span>`);
+    if(kw.avgReviewCount) chips.push(`<span class="kw-chip">평균리뷰 <b>${escapeHtml(fmtKwNum(kw.avgReviewCount))}</b>개</span>`);
     return `
       <div class="folder-keyword-summary">
         <span class="kw-keyword">🔍 ${escapeHtml(kw.keyword || '키워드 미입력')}</span>
@@ -3248,24 +3260,26 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
       `;
     }
     const lvColor = competitionLevelColor(kw.competitionLevel);
+    const gradeLevel = kw.productIndexLevel || kw.competitionLevel;
+    const gradeColor = competitionLevelColor(gradeLevel);
     const rocketColor = competitionLevelColor(kw.rocketRatioLevel);
     const sellerColor = competitionLevelColor(kw.sellerRocketRatioLevel);
     const subParts = [];
-    if(kw.competitionCount) subParts.push(`쿠팡 상품수 ${escapeHtml(String(kw.competitionCount))}개`);
-    if(kw.searchVolumeTotal) subParts.push(`÷ 월간 검색수(네이버)<br/>${escapeHtml(String(kw.searchVolumeTotal))}회`);
+    if(kw.competitionCount) subParts.push(`쿠팡 상품수 ${escapeHtml(fmtKwNum(kw.competitionCount))}개`);
+    if(kw.searchVolumeTotal) subParts.push(`÷ 월간 검색수(네이버)<br/>${escapeHtml(fmtKwNum(kw.searchVolumeTotal))}회`);
     return `
       <div class="kwd-card">
         <div class="kwd-keyword-line">🔍 대표 키워드 <b>${escapeHtml(kw.keyword || key)}</b></div>
         <div class="kwd-top">
-          <div class="kwd-grade-box" style="color:${lvColor}">
-            <div class="kwd-grade-word">${kw.competitionLevel ? escapeHtml(kw.competitionLevel) : '-'}</div>
+          <div class="kwd-grade-box" style="color:${gradeColor}">
+            <div class="kwd-grade-word">${gradeLevel ? escapeHtml(gradeLevel) : '-'}</div>
             <div class="kwd-grade-caption">쿠팡 상품지표</div>
           </div>
           <div class="kwd-stat-row">
             <div class="kwd-stat-item">
               <div class="kwd-stat-label">쿠팡 경쟁강도</div>
               <div class="kwd-stat-main">
-                <span class="kwd-stat-num">${kw.competitionScore ? escapeHtml(String(kw.competitionScore)) : '-'}</span>
+                <span class="kwd-stat-num">${kw.competitionScore ? escapeHtml(fmtKwNum(kw.competitionScore)) : '-'}</span>
                 ${kw.competitionLevel ? `<span class="kwd-badge" style="background:${lvColor}">${escapeHtml(kw.competitionLevel)}</span>` : ''}
               </div>
               ${subParts.length ? `<div class="kwd-stat-sub">${subParts.join(' ')}</div>` : ''}
@@ -3273,24 +3287,24 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
             <div class="kwd-stat-item">
               <div class="kwd-stat-label">로켓상품 비율</div>
               <div class="kwd-stat-main">
-                <span class="kwd-stat-num">${kw.rocketRatio ? escapeHtml(String(kw.rocketRatio)) : '-'}</span>
+                <span class="kwd-stat-num">${kw.rocketRatio ? escapeHtml(fmtKwNum(kw.rocketRatio)) : '-'}</span>
                 ${kw.rocketRatioLevel ? `<span class="kwd-badge" style="background:${rocketColor}">${escapeHtml(kw.rocketRatioLevel)}</span>` : ''}
               </div>
             </div>
             <div class="kwd-stat-item">
               <div class="kwd-stat-label">판매자로켓 비율</div>
               <div class="kwd-stat-main">
-                <span class="kwd-stat-num">${kw.sellerRocketRatio ? escapeHtml(String(kw.sellerRocketRatio)) : '-'}</span>
+                <span class="kwd-stat-num">${kw.sellerRocketRatio ? escapeHtml(fmtKwNum(kw.sellerRocketRatio)) : '-'}</span>
                 ${kw.sellerRocketRatioLevel ? `<span class="kwd-badge" style="background:${sellerColor}">${escapeHtml(kw.sellerRocketRatioLevel)}</span>` : ''}
               </div>
             </div>
             <div class="kwd-stat-item">
               <div class="kwd-stat-label">평균 판매가</div>
-              <div class="kwd-stat-main"><span class="kwd-stat-num">${kw.avgPrice ? `₩${escapeHtml(String(kw.avgPrice))}` : '-'}</span></div>
+              <div class="kwd-stat-main"><span class="kwd-stat-num">${kw.avgPrice ? `₩${escapeHtml(fmtKwNum(kw.avgPrice))}` : '-'}</span></div>
             </div>
             <div class="kwd-stat-item">
               <div class="kwd-stat-label">평균 리뷰</div>
-              <div class="kwd-stat-main"><span class="kwd-stat-num">${kw.avgReviewCount ? `${escapeHtml(String(kw.avgReviewCount))}개` : '-'}</span></div>
+              <div class="kwd-stat-main"><span class="kwd-stat-num">${kw.avgReviewCount ? `${escapeHtml(fmtKwNum(kw.avgReviewCount))}개` : '-'}</span></div>
             </div>
           </div>
           <button type="button" class="icon-btn kwd-edit-btn-top" data-kwd-edit="${escapeHtml(key)}">✏️ 수정</button>
@@ -3323,6 +3337,12 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
           <div class="field">
             <label>월간 검색량 합계 (PC+모바일, 네이버 기준)</label>
             <input type="text" class="kw-volume-input" value="${escapeHtml(String(v.searchVolumeTotal))}" placeholder="예: 12,400" />
+          </div>
+        </div>
+        <div class="fs-row">
+          <div class="field">
+            <label>쿠팡 상품지표 등급 (아이템스카우트 기준)</label>
+            <select class="kw-prodindex-input">${levelSelectOptionsHtml(v.productIndexLevel)}</select>
           </div>
         </div>
         <div class="fs-row">
@@ -3548,6 +3568,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
           competitionCount: kwPanel.querySelector('.kw-compcount-input').value.trim(),
           competitionScore: kwPanel.querySelector('.kw-compscore-input').value.trim(),
           competitionLevel: kwPanel.querySelector('.kw-complevel-input').value,
+          productIndexLevel: kwPanel.querySelector('.kw-prodindex-input').value,
           rocketRatio: kwPanel.querySelector('.kw-rocketratio-input').value.trim(),
           rocketRatioLevel: kwPanel.querySelector('.kw-rocketlevel-input').value,
           sellerRocketRatio: kwPanel.querySelector('.kw-sellerratio-input').value.trim(),
