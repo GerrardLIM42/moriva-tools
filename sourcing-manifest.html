@@ -220,6 +220,7 @@
     width:26px; height:26px; font-size:12px; line-height:1; cursor:pointer;
   }
   .folder-card-hide:hover{ background:var(--paper-dim); border-color:var(--steel); }
+  .folder-card-hide.fc-order{ font-size:10px; }
   .fc-thumb{
     width:100%; height:96px; border-radius:10px; background-color:var(--paper-dim);
     background-position:center; background-size:cover; background-repeat:no-repeat;
@@ -847,6 +848,7 @@
       <button class="tab" id="select-all-btn">☐ 전체 선택</button>
       <button class="tab" id="collapse-all-btn">▾ 전체 폴더 접기</button>
       <button class="tab" id="hidden-folders-btn">🙈 숨긴 폴더</button>
+      <button class="tab" id="folder-order-reset-btn" title="직접 정한 폴더 순서를 기본 정렬로 되돌립니다">↕ 폴더 순서 초기화</button>
     </div>
   </div>
   <div class="hidden-folders-panel" id="hidden-folders-panel" hidden></div>
@@ -1292,6 +1294,18 @@
       if(ts > max) max = ts;
     });
     return max;
+  }
+  let folderOrderList = [];   // 사용자가 정한 폴더 순서 (폴더 전체 경로 key 목록)
+  function applyFolderOrder(arr){ folderOrderList = Array.isArray(arr) ? arr.filter(k => typeof k === 'string' && k) : []; }
+  function orderKeys(labels, keyOf, cmp){
+    const pos = l => folderOrderList.indexOf(keyOf(l));
+    return labels.slice().sort((a, b) => {
+      const pa = pos(a), pb = pos(b);
+      if(pa >= 0 && pb >= 0) return pa - pb;
+      if(pa >= 0) return -1;
+      if(pb >= 0) return 1;
+      return cmp(a, b);
+    });
   }
   const hiddenFolderKeys = new Set();  // 숨긴 폴더 key 목록 (하위폴더 포함 함께 숨김)
   let hiddenFoldersPanelOpen = false;
@@ -1746,7 +1760,7 @@
     return `HTTP ${status}`;
   }
   function buildPayload(){
-    return { items, folderKeywords, hiddenFolders: Array.from(hiddenFolderKeys) };
+    return { items, folderKeywords, hiddenFolders: Array.from(hiddenFolderKeys), folderOrder: folderOrderList.slice() };
   }
 
     /* ── 원격(GitHub)·로컬 데이터 병합 ──
@@ -1768,7 +1782,8 @@
     return {
       items: Array.from(byId.values()),
       folderKeywords: Object.assign({}, remote.folderKeywords, local.folderKeywords),
-      hiddenFolders: Array.from(new Set([].concat(remote.hiddenFolders || [], local.hiddenFolders || [])))
+      hiddenFolders: Array.from(new Set([].concat(remote.hiddenFolders || [], local.hiddenFolders || []))),
+      folderOrder: (local.folderOrder && local.folderOrder.length) ? local.folderOrder : (remote.folderOrder || [])
     };
   }
 
@@ -1843,7 +1858,8 @@
       return {
         items: Array.isArray(raw.items) ? raw.items : [],
         folderKeywords: (raw.folderKeywords && typeof raw.folderKeywords === 'object') ? raw.folderKeywords : {},
-        hiddenFolders: Array.isArray(raw.hiddenFolders) ? raw.hiddenFolders : []
+        hiddenFolders: Array.isArray(raw.hiddenFolders) ? raw.hiddenFolders : [],
+        folderOrder: Array.isArray(raw.folderOrder) ? raw.folderOrder : []
       };
     }
     return { items: [], folderKeywords: {}, hiddenFolders: [] };
@@ -1933,7 +1949,7 @@
         if(res && res.value){
           const parsed = parseStoredPayload(JSON.parse(res.value));
           applyFolderKeywords(parsed.folderKeywords);
-          applyHiddenFolders(parsed.hiddenFolders);
+          applyHiddenFolders(parsed.hiddenFolders); applyFolderOrder(parsed.folderOrder);
           return parsed.items.map(normalizeItem);
         }
         return [];
@@ -1970,7 +1986,7 @@
           }
           localStorage.setItem(STORE_KEY, JSON.stringify(merged));
           applyFolderKeywords(merged.folderKeywords);
-          applyHiddenFolders(merged.hiddenFolders);
+          applyHiddenFolders(merged.hiddenFolders); applyFolderOrder(merged.folderOrder);
           return merged.items.map(normalizeItem);
         }
         if(payload.items.length === 0 && Object.keys(payload.folderKeywords).length === 0){
@@ -1993,13 +2009,13 @@
               showToast(`GitHub 업로드 실패: ${result.detail}`);
             }
             applyFolderKeywords(localPayload.folderKeywords);
-            applyHiddenFolders(localPayload.hiddenFolders);
+            applyHiddenFolders(localPayload.hiddenFolders); applyFolderOrder(localPayload.folderOrder);
             return localPayload.items.map(normalizeItem);
           }
         }
         localStorage.setItem(STORE_KEY, JSON.stringify(payload));
         applyFolderKeywords(payload.folderKeywords);
-        applyHiddenFolders(payload.hiddenFolders);
+        applyHiddenFolders(payload.hiddenFolders); applyFolderOrder(payload.folderOrder);
         setSyncStatus('synced');
         return payload.items.map(normalizeItem);
       }catch(e){
@@ -2010,7 +2026,7 @@
           if(raw){
             const parsed = parseStoredPayload(JSON.parse(raw));
             applyFolderKeywords(parsed.folderKeywords);
-            applyHiddenFolders(parsed.hiddenFolders);
+            applyHiddenFolders(parsed.hiddenFolders); applyFolderOrder(parsed.folderOrder);
             return parsed.items.map(normalizeItem);
           }
         }catch(e2){ console.error(e2); }
@@ -2023,7 +2039,7 @@
       if(raw){
         const parsed = parseStoredPayload(JSON.parse(raw));
         applyFolderKeywords(parsed.folderKeywords);
-        applyHiddenFolders(parsed.hiddenFolders);
+        applyHiddenFolders(parsed.hiddenFolders); applyFolderOrder(parsed.folderOrder);
         return parsed.items.map(normalizeItem);
       }
       return [];
@@ -2770,7 +2786,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
       const noneItems = sortList(filtered.filter(it => !((it.folder || '').trim())));
       const treeSourceItems = filtered.filter(it => (it.folder || '').trim());
       const tree = buildFolderTree(treeSourceItems);
-      const topKeys = Object.keys(tree).sort((a, b) => folderRecencyScore(tree[b]) - folderRecencyScore(tree[a]));
+      const topKeys = orderKeys(Object.keys(tree), k => tree[k].key, (a, b) => folderRecencyScore(tree[b]) - folderRecencyScore(tree[a]));
       ensureFolderCollapseDefaults(noneItems.length ? topKeys.concat(['__NONE__']) : topKeys);
       let html = topKeys.map(k => renderFolderNode(tree[k])).join('');
       if(noneItems.length){
@@ -2796,7 +2812,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
 
   function renderFolderCardsView(filtered){
     const { tree, noneItems } = getTopLevelFolderTree(filtered);
-    const topKeys = Object.keys(tree).sort((a, b) => a.localeCompare(b, 'ko'));
+    const topKeys = orderKeys(Object.keys(tree), k => tree[k].key, (a, b) => a.localeCompare(b, 'ko'));
     const cards = topKeys.map(k => folderCardHtml(tree[k]));
     if(noneItems.length){
       cards.push(folderCardHtml({ key: '__NONE__', label: '미분류', items: noneItems, children: {} }));
@@ -2835,6 +2851,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     return `
       <div class="folder-card-tile" data-folder-open="${escapeHtml(key)}" title="열어서 비교하기">
         <button type="button" class="folder-card-hide" data-folder-hide="${escapeHtml(key)}" title="이 폴더를 숨깁니다">🙈</button>
+        ${key !== '__NONE__' ? `<button type="button" class="folder-card-hide fc-order" style="right:74px" data-forder="up" data-forder-key="${escapeHtml(key)}" title="앞으로">◀</button><button type="button" class="folder-card-hide fc-order" style="right:42px" data-forder="down" data-forder-key="${escapeHtml(key)}" title="뒤로">▶</button>` : ''}
         <div class="fc-thumb" ${thumbSrc ? `style="background-image:url('${escapeHtml(thumbSrc)}')"` : ''}>${thumbSrc ? '' : '📁'}</div>
         <div class="fc-body">
           <div class="fc-name">${escapeHtml(label)}</div>
@@ -2847,6 +2864,37 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
       </div>
     `;
   }
+
+  function siblingFolderKeys(key){
+    const { tree } = getTopLevelFolderTree(getFiltered());
+    const segs = key.split(FOLDER_SEP);
+    let bucket = tree, parent = null;
+    for(let i = 0; i < segs.length - 1; i++){
+      const n = bucket[segs[i]];
+      if(!n) return [];
+      parent = n; bucket = n.children;
+    }
+    const byAlpha = (a, b) => a.localeCompare(b, 'ko');
+    const cmp = (!parent && viewMode !== 'folders') ? ((a, b) => folderRecencyScore(bucket[b]) - folderRecencyScore(bucket[a])) : byAlpha;
+    return orderKeys(Object.keys(bucket), k => bucket[k].key, cmp).map(k => bucket[k].key);
+  }
+  function moveFolderOrder(key, dir){
+    const sib = siblingFolderKeys(key);
+    const i = sib.indexOf(key), j = i + (dir === 'up' ? -1 : 1);
+    if(i < 0) return;
+    if(j < 0 || j >= sib.length){ showToast(dir === 'up' ? '이미 맨 앞 폴더예요.' : '이미 맨 뒤 폴더예요.'); return; }
+    const tmp = sib[i]; sib[i] = sib[j]; sib[j] = tmp;
+    folderOrderList = folderOrderList.filter(k => sib.indexOf(k) < 0).concat(sib);
+    saveItems();
+    renderAll();
+  }
+  document.addEventListener('click', (e) => {
+    if(!e.target.closest || !e.target.closest('#folder-order-reset-btn')) return;
+    folderOrderList = [];
+    saveItems();
+    renderAll();
+    showToast('폴더 순서를 기본(최근 수정순/가나다순)으로 되돌렸어요.');
+  });
 
   function getTopLevelFolderKeys(){
     const { tree, noneItems } = getTopLevelFolderTree(getFiltered());
@@ -2873,7 +2921,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
   function renderFolderNode(node){
     const key = node.key;
     const label = node.label;
-    const childKeys = Object.keys(node.children).sort((a, b) => a.localeCompare(b, 'ko'));
+    const childKeys = orderKeys(Object.keys(node.children), k => node.children[k].key, (a, b) => a.localeCompare(b, 'ko'));
     const directItems = sortList(node.items);
     const subtreeItems = collectSubtreeItems(node);
     let bestId = null;
@@ -2924,6 +2972,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
             <button type="button" class="icon-btn ${movingOpen ? 'active' : ''}" data-folder-move-open="${escapeHtml(key)}" title="선택한 항목을 이 폴더의 하위폴더로 이동합니다">📁 하위폴더로 이동${selectedCountInFolder > 0 ? ` (${selectedCountInFolder})` : ''}</button>
             <button type="button" class="icon-btn ${keywordExpanded ? 'active' : ''}" data-folder-keyword="${escapeHtml(key)}">🔍 키워드 분석</button>
             <button type="button" class="icon-btn" data-folder-settings="${escapeHtml(key)}">⚙️ 폴더 설정</button>
+            ${key !== '__NONE__' ? `<button type="button" class="icon-btn" data-forder="up" data-forder-key="${escapeHtml(key)}" title="폴더를 위로 올립니다">▲</button><button type="button" class="icon-btn" data-forder="down" data-forder-key="${escapeHtml(key)}" title="폴더를 아래로 내립니다">▼</button>` : ''}
             <button type="button" class="icon-btn" data-folder-hide="${escapeHtml(key)}" title="이 폴더를 숨깁니다">🙈 숨기기</button>
           </div>
         </div>
@@ -3464,6 +3513,11 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
         editingFolderKey = null;
         movingFolderKey = null;
         renderGrid();
+      }));
+    root.querySelectorAll('[data-forder]').forEach(btn =>
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        moveFolderOrder(btn.dataset.forderKey, btn.dataset.forder);
       }));
     root.querySelectorAll('[data-folder-hide]').forEach(btn =>
       btn.addEventListener('click', (e) => {
