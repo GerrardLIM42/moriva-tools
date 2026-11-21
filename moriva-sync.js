@@ -13,6 +13,25 @@
 (function () {
   "use strict";
 
+  /* ── 한글 입력 조합 중(마지막 글자 사라짐 방지) ──
+     조합 중에 input 핸들러가 화면을 다시 그리거나 값을 덮어쓰면 마지막 글자가 사라진다.
+     조합이 끝날 때까지 input 이벤트를 각 화면의 핸들러에 전달하지 않고,
+     끝나면 한 번만 전달한다. */
+  (function () {
+    var held = new WeakSet();
+    document.addEventListener("input", function (e) {
+      if (e.isComposing) { held.add(e.target); e.stopImmediatePropagation(); }
+    }, true);
+    document.addEventListener("compositionend", function (e) {
+      var t = e.target;
+      if (!held.has(t)) return;
+      held.delete(t);
+      setTimeout(function () {
+        try { t.dispatchEvent(new Event("input", { bubbles: true })); } catch (err) {}
+      }, 0);
+    }, true);
+  })();
+
   var CFG_KEY = "moriva_sync_config_v1";
   var STAMP_KEY = "moriva_sync_applied_stamp";
   var DATA_PATH = "data.json";
