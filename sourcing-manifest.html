@@ -3216,6 +3216,139 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
   }
 
   /* ---------------- folder keyword analysis (아이템스카우트 등 수동입력) ---------------- */
+  /* ── 아이템스카우트 캡처 → 글자 인식(OCR) 후 입력칸 자동 채우기 ── */
+  function kwOcrParse(raw){
+    const T = String(raw || '').replace(/[ \t ]+/g, ' ');
+    const LV = '아주좋음|아주나쁨|좋음|보통|나쁨';
+    const lvRe = new RegExp('(' + LV + ')');
+    const out = {};
+    const fixNum = s => String(s || '').replace(/[Oo]/g, '0').replace(/[lI|]/g, '1');
+    // 대표 키워드 (제목 줄: "옷걸이 쇼핑키워드")
+    let m = T.match(/^[^\n\d]*?([가-힣A-Za-z0-9 ]{1,30}?)\s*쇼핑\s*키워드/m);
+    if(m){ const k = m[1].replace(/^[\s☆★_\-\[\]()·•|:]+/, '').trim(); if(k) out.keyword = k; }
+    // 월 검색수
+    m = T.match(/(?:월간|한\s*달)\s*검색수[^\d\n]*([\d,]+)\s*회/);
+    if(m) out.searchVolumeTotal = m[1];
+    // 쿠팡 상품수
+    m = T.match(/쿠팡\s*상품수\s*([\d,]+)\s*개/);
+    if(m) out.competitionCount = m[1];
+    // 쿠팡 지표 영역
+    let ci = -1; const cre = /쿠팡\s*경쟁\s*강도/g; let cm;
+    while((cm = cre.exec(T))) ci = cm.index;
+    const S = ci >= 0 ? T.slice(ci) : T;
+    m = S.match(/(\d{1,3}\.\d{1,2})(?![\d.]|\s*%)\s*(아주좋음|아주나쁨|좋음|보통|나쁨)?/);
+    if(m){ out.competitionScore = m[1]; if(m[2]) out.competitionLevel = m[2]; }
+    const pcts = []; const pre = new RegExp('(\\d{1,3}(?:\\.\\d+)?)\\s*%\\s*(' + LV + ')?', 'g'); let pm;
+    while((pm = pre.exec(S))) pcts.push(pm);
+    if(pcts[0]){ out.rocketRatio = pcts[0][1] + '%'; if(pcts[0][2]) out.rocketRatioLevel = pcts[0][2]; }
+    if(pcts[1]){ out.sellerRocketRatio = pcts[1][1] + '%'; if(pcts[1][2]) out.sellerRocketRatioLevel = pcts[1][2]; }
+    m = S.match(/([\d,]{3,})\s*원/);
+    if(m){
+      out.avgPrice = m[1];
+      const after = S.slice(S.indexOf(m[0]) + m[0].length);
+      const r = after.match(/([\d,]+)\s*개/);
+      if(r) out.avgReviewCount = r[1];
+    }
+    // 쿠팡 상품지표 (큰 글씨 등급)
+    const pi = T.search(/쿠팡\s*상품\s*지표/);
+    if(pi >= 0){
+      const before = T.slice(Math.max(0, pi - 30), pi);
+      const bm = before.match(new RegExp('(' + LV + ')(?![\\s\\S]*(?:' + LV + '))'));
+      if(bm) out.productIndexLevel = bm[1];
+      else { const am = T.slice(pi, pi + 40).match(lvRe); if(am) out.productIndexLevel = am[1]; }
+    }
+    return out;
+  }
+  let kwTesseractPromise = null;
+  function loadTesseract(){
+    if(window.Tesseract) return Promise.resolve();
+    if(kwTesseractPromise) return kwTesseractPromise;
+    kwTesseractPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+      s.onload = () => resolve();
+      s.onerror = () => { kwTesseractPromise = null; reject(new Error('글자 인식 엔진을 불러오지 못했어요 (인터넷 연결 확인)')); };
+      document.head.appendChild(s);
+    });
+    return kwTesseractPromise;
+  }
+  const KW_OCR_FIELDS = {
+    keyword: '.kw-keyword-input', searchVolumeTotal: '.kw-volume-input', competitionCount: '.kw-compcount-input',
+    competitionScore: '.kw-compscore-input', competitionLevel: '.kw-complevel-input', productIndexLevel: '.kw-prodindex-input',
+    rocketRatio: '.kw-rocketratio-input', rocketRatioLevel: '.kw-rocketlevel-input',
+    sellerRocketRatio: '.kw-sellerratio-input', sellerRocketRatioLevel: '.kw-sellerlevel-input',
+    avgPrice: '.kw-avgprice-input', avgReviewCount: '.kw-avgreview-input'
+  };
+  const KW_OCR_LABELS = {
+    keyword: '키워드', searchVolumeTotal: '월검색량', competitionCount: '쿠팡 상품수', competitionScore: '쿠팡 경쟁강도',
+    competitionLevel: '경쟁강도 등급', productIndexLevel: '쿠팡 상품지표', rocketRatio: '로켓상품 비율', rocketRatioLevel: '로켓 등급',
+    sellerRocketRatio: '판매자로켓 비율', sellerRocketRatioLevel: '판매자로켓 등급', avgPrice: '평균 판매가', avgReviewCount: '평균 리뷰'
+  };
+  async function kwOcrRun(file, panel){
+    const st = panel.querySelector('.kw-ocr-status');
+    const say = msg => { if(st) st.textContent = msg; };
+    try{
+      say('글자 인식 엔진을 불러오는 중… (처음 한 번은 몇 초 걸려요)');
+      await loadTesseract();
+      const worker = await Tesseract.createWorker('kor+eng', 1, {
+        logger: m => { if(m && m.status === 'recognizing text') say('캡처를 읽는 중… ' + Math.round((m.progress || 0) * 100) + '%'); else if(m && m.status) say('준비 중… ' + m.status); }
+      });
+      const res = await worker.recognize(file);
+      await worker.terminate();
+      const parsed = kwOcrParse(res.data.text || '');
+      const filled = [];
+      Object.keys(parsed).forEach(k => {
+        const el = panel.querySelector(KW_OCR_FIELDS[k]);
+        if(!el) return;
+        if(el.tagName === 'SELECT' && !Array.from(el.options).some(o => o.value === parsed[k])) return;
+        el.value = parsed[k];
+        filled.push(KW_OCR_LABELS[k] + ' ' + parsed[k]);
+      });
+      if(filled.length){
+        say('✅ ' + filled.length + '개 항목을 채웠어요. 글자가 틀리게 읽혔을 수 있으니 값을 확인한 뒤 저장하세요 → ' + filled.join(' · '));
+      } else {
+        say('⚠️ 읽어온 값이 없어요. 화면 전체(상품지표 영역 포함)가 선명하게 나오도록 다시 캡처해 보세요.');
+      }
+      const det = panel.querySelector('.kw-ocr-raw');
+      if(det) det.textContent = res.data.text || '';
+    }catch(e){
+      console.error(e);
+      say('❌ ' + (e && e.message ? e.message : '캡처를 읽지 못했어요'));
+    }
+  }
+  if(!window.__kwOcrBound){
+    window.__kwOcrBound = true;
+    const imgFrom = list => { for(const it of (list || [])){ const f = it.getAsFile ? (it.kind === 'file' && /^image\//.test(it.type) ? it.getAsFile() : null) : (/^image\//.test(it.type) ? it : null); if(f) return f; } return null; };
+    document.addEventListener('paste', (e) => {
+      const panel = document.querySelector('.folder-keyword-edit');
+      if(!panel || !e.clipboardData) return;
+      const f = imgFrom(e.clipboardData.items);
+      if(!f) return;
+      e.preventDefault();
+      kwOcrRun(f, panel);
+    });
+    document.addEventListener('click', (e) => {
+      const z = e.target.closest && e.target.closest('.kw-ocr-zone');
+      if(z){ const inp = z.parentNode.querySelector('.kw-ocr-file'); if(inp) inp.click(); }
+    });
+    document.addEventListener('change', (e) => {
+      if(!e.target.classList || !e.target.classList.contains('kw-ocr-file')) return;
+      const f = e.target.files && e.target.files[0];
+      const panel = e.target.closest('.folder-keyword-edit');
+      if(f && panel) kwOcrRun(f, panel);
+      e.target.value = '';
+    });
+    document.addEventListener('dragover', (e) => { if(e.target.closest && e.target.closest('.kw-ocr-zone')) e.preventDefault(); });
+    document.addEventListener('drop', (e) => {
+      const z = e.target.closest && e.target.closest('.kw-ocr-zone');
+      if(!z) return;
+      e.preventDefault();
+      const f = imgFrom(e.dataTransfer && e.dataTransfer.files ? Array.from(e.dataTransfer.files) : []);
+      const panel = z.closest('.folder-keyword-edit');
+      if(f && panel) kwOcrRun(f, panel);
+    });
+  }
+  
   function fmtKwNum(v){
     const s = String(v == null ? '' : v).trim();
     if(/^\d+(\.\d+)?$/.test(s) || /^\d{1,3}(,\d{3})+(\.\d+)?$/.test(s)){
@@ -3356,7 +3489,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     const v = kwEditTarget(kw);
     return `
       <div class="folder-settings folder-keyword-edit" data-folder-key="${escapeHtml(key)}" data-kw-idx="${editingKwIdx === null ? '' : editingKwIdx}">
-        <div style="font-weight:800;margin-bottom:6px">${editingKwIdx === null ? '대표 키워드' : '추가 키워드'} 입력</div>
+        <div style="font-weight:800;margin-bottom:6px">${editingKwIdx === null ? '대표 키워드' : '추가 키워드'} 입력</div><div class="kw-ocr-zone" tabindex="0" style="border:2px dashed var(--line);border-radius:10px;padding:12px;margin-bottom:10px;text-align:center;cursor:pointer">📋 아이템스카우트 화면 캡처를 붙여넣으세요 (Ctrl+V) <small>또는 클릭/드래그해서 이미지 선택</small></div><input type="file" accept="image/*" class="kw-ocr-file" hidden><div class="kw-ocr-status hint"></div><details><summary>인식된 원문</summary><pre class="kw-ocr-raw" style="white-space:pre-wrap;font-size:11px"></pre></details>
         <span class="hint">아이템스카우트 등에서 직접 조사한 수치를 입력해두면, 이 폴더를 볼 때마다 마진 정보와 함께 표시됩니다. (자동 조회는 지원되지 않아요 — 로그인이 필요한 유료 서비스라서요)</span>
         <div class="fs-row" style="margin-top:10px;">
           <div class="field">
