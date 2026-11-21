@@ -1314,6 +1314,94 @@ function refreshManifestFromServer(){
   }).catch(function(){ /* 인터넷이 없으면 이 브라우저에 있는 내용으로 계속 쓴다 */ });
 }
 
+/* ── 숨기기 연동 ──
+   소싱 후보에서 폴더를 숨기면 같은 이름의 상품이 여기서도 숨겨지고,
+   여기서 상품을 숨기면 소싱 후보의 해당 폴더도 숨겨진다.
+   (소싱 후보와 매칭되는 폴더가 없는 상품은 예전처럼 이 화면에서만 숨김 처리) */
+var hideCache = { raw: null, set: null, keys: {} };
+function hideCacheCheck(){
+  var raw = '';
+  try{ raw = (localStorage.getItem(MANIFEST_ITEMS_KEY) || '') + '|' + (localStorage.getItem(MANIFEST_SUMMARY_KEY) || '').length; }catch(e){}
+  if(hideCache.raw !== raw) hideCache = { raw: raw, set: null, keys: {} };
+  return hideCache;
+}
+function hiddenFolderSet(){
+  var c = hideCacheCheck();
+  if(!c.set){
+    var arr = readManifestPayload().hiddenFolders || [];
+    c.set = {};
+    arr.forEach(function(k){ if(typeof k === 'string' && k.trim()) c.set[k] = true; });
+  }
+  return c.set;
+}
+function folderIsHidden(set, key){
+  var segs = String(key).split(' / '), path = '';
+  for(var i = 0; i < segs.length; i++){
+    path = path ? path + ' / ' + segs[i] : segs[i];
+    if(set[path]) return true;
+  }
+  return false;
+}
+function productFolderKeys(p){
+  var c = hideCacheCheck();
+  var ck = p.sheet;
+  if(c.keys[ck]) return c.keys[ck];
+  var seen = {}, out = [];
+  manifestMatchesFor(p.name).forEach(function(m){
+    var f = String(m.folder || '').trim();
+    if(f && !seen[f]){ seen[f] = true; out.push(f); }
+  });
+  c.keys[ck] = out;
+  return out;
+}
+function isProdHidden(p){
+  var keys = productFolderKeys(p);
+  if(keys.length){
+    var set = hiddenFolderSet();
+    return keys.every(function(k){ return folderIsHidden(set, k); });
+  }
+  return !!getNote(p).hidden;
+}
+function setProdHidden(p, hide){
+  setNote(p, {hidden: !!hide});
+  var keys = productFolderKeys(p);
+  if(!keys.length) return;
+  mutateManifest(function(payload){
+    var arr = Array.isArray(payload.hiddenFolders) ? payload.hiddenFolders.slice() : [];
+    if(hide){
+      keys.forEach(function(k){ if(arr.indexOf(k) === -1) arr.push(k); });
+    } else {
+      arr = arr.filter(function(h){
+        return !keys.some(function(k){ return k === h || k.indexOf(h + ' / ') === 0; });
+      });
+    }
+    payload.hiddenFolders = arr;
+    return true;
+  });
+}
+/* 예전에 이 화면에서만 숨겨 둔 상품을 한 번만 소싱 후보 폴더 숨김에도 반영한다 */
+function migrateHiddenToManifest(){
+  try{
+    if(localStorage.getItem('moriva_hide_link_v1')) return;
+    var add = [];
+    products.forEach(function(p){
+      if(!getNote(p).hidden) return;
+      var keys = productFolderKeys(p);
+      if(!keys.length) return;
+      var set = hiddenFolderSet();
+      keys.forEach(function(k){ if(!folderIsHidden(set, k) && add.indexOf(k) === -1) add.push(k); });
+    });
+    localStorage.setItem('moriva_hide_link_v1', '1');
+    if(!add.length) return;
+    mutateManifest(function(payload){
+      var arr = Array.isArray(payload.hiddenFolders) ? payload.hiddenFolders.slice() : [];
+      add.forEach(function(k){ if(arr.indexOf(k) === -1) arr.push(k); });
+      payload.hiddenFolders = arr;
+      return true;
+    });
+  }catch(e){}
+}
+
 function findManifestItem(payload, id){
   for(var i = 0; i < payload.items.length; i++){
     if(payload.items[i] && payload.items[i].id === id) return payload.items[i];
@@ -2124,8 +2212,8 @@ function renderSidebar(){
     return hay.toLowerCase().indexOf(q) !== -1;
   });
 
-  var visible = matched.filter(function(p){ return !getNote(p).hidden; });
-  var hidden = matched.filter(function(p){ return getNote(p).hidden; });
+  var visible = matched.filter(function(p){ return !isProdHidden(p); });
+  var hidden = matched.filter(function(p){ return isProdHidden(p); });
 
   document.getElementById('countTag').textContent = visible.length + '개 상품' + (hidden.length ? (' · 숨김 ' + hidden.length) : '');
 
@@ -2209,8 +2297,8 @@ function renderSidebar(){
 
 // ---------------- dashboard view ----------------
 function renderDashboard(){
-  var hiddenCount = products.filter(function(p){ return getNote(p).hidden; }).length;
-  var visibleProducts = state.showHidden ? products : products.filter(function(p){ return !getNote(p).hidden; });
+  var hiddenCount = products.filter(function(p){ return isProdHidden(p); }).length;
+  var visibleProducts = state.showHidden ? products : products.filter(function(p){ return !isProdHidden(p); });
 
   var totalSearch = visibleProducts.reduce(function(s,p){ return s + (p.monthly_search||0); }, 0);
   var margins = visibleProducts.map(bestScenario).filter(Boolean);
@@ -2415,7 +2503,7 @@ function renderProduct(p){
         ['관심','소싱중','보류','제외'].map(function(s){ return '<option value="'+s+'"'+(note.status===s?' selected':'')+'>'+s+'</option>'; }).join('')+
       '</select></div>'+
       '<button type="button" id="starBtn" class="icon-toggle-btn'+(note.starred?' active-star':'')+'" title="즐겨찾기">'+(note.starred?'★ 즐겨찾기됨':'☆ 즐겨찾기')+'</button>'+
-      '<button type="button" id="hideBtn" class="icon-toggle-btn" title="숨기기">'+(note.hidden?'숨김 해제':'상품 숨기기')+'</button>'+
+      '<button type="button" id="hideBtn" class="icon-toggle-btn" title="숨기기">'+(isProdHidden(p)?'숨김 해제':'상품 숨기기')+'</button>'+
       '<button type="button" id="delProductBtn" class="icon-toggle-btn danger" title="이 상품을 대시보드에서 삭제">🗑 삭제</button>'+
     '</div>'+
   '</div>';
@@ -2673,7 +2761,7 @@ function renderProduct(p){
   });
 
   document.getElementById('hideBtn').addEventListener('click', function(){
-    setNote(p, {hidden: !note.hidden});
+    setProdHidden(p, !isProdHidden(p));
     renderProduct(p);
     renderSidebar();
   });
@@ -3172,7 +3260,7 @@ window.addEventListener('message', function(e){
 render();
 
 /* 화면을 연 뒤 서버의 최신 소싱처 내용을 확인해 반영한다 */
-refreshManifestFromServer();
+refreshManifestFromServer().then(function(){ migrateHiddenToManifest(); try{ renderSidebar(); }catch(e){} });
 
 /* 예전에 압축 없이 저장된 원본 크기 이미지들을 한 번만 축소·재압축해서 저장공간을 확보한다.
    저장공간(localStorage)이 거의 다 차 있으면 새 이미지를 저장할 때 조용히 실패해서
