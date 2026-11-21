@@ -2554,7 +2554,7 @@ function renderProduct(p){
         '<div class="sc-field sc-price"><label>판매가 <span class="sc-auto-tag'+(s.sell_auto===false?' custom':'')+'">'+sellAutoLabel+'</span></label><div class="sc-inputrow">'+ef('pricing.'+idx+'.sell_price', s.sell_price, {cls:'ef-price-lg'})+'<span class="cc-unit">원</span></div></div>'+
         '<div class="row hl"><span>순수익</span><b class="val-net">'+fmtWon(s.net_profit)+'</b></div>'+
         '<div class="row"><span>매입가 대비 수익률</span><b class="val-profit-rate">'+fmtPct(s.profit_rate)+'</b></div>'+
-        '<div class="sc-100-row"><button type="button" class="autofill-btn sc-100-btn" data-action="autofill-china-t30" data-idx="'+idx+'" title="목표 원가 = 판매가 × 30% ÷ 규격별 배수(소형 280 · 중형 300 · 대형 350)">목표원가 30% → 중국원가 역산</button>'+
+        '<div class="sc-100-row"><button type="button" class="autofill-btn sc-100-btn" data-action="autofill-china-t30" data-idx="'+idx+'" title="목표 원가 = 판매가 × 30% ÷ 규격별 배수(소형 280 · 중형 300 · 대형 350)">목표원가 30%</button>'+
           '<button type="button" class="autofill-btn sc-100-btn" data-action="autofill-china-m25-2500" data-idx="'+idx+'" title="아래 목표 마진율과 목표 순수익을 모두 만족하도록 중국원가·매입가를 역산합니다(둘 중 더 큰 쪽 기준)">'+tgtBtnLabel()+'</button></div>'+
           '<div class="sc-100-row sc-tgt-row" style="align-items:center;gap:6px;font-size:12px;"><span>목표</span><input type="number" class="tgt-margin-input" step="0.1" value="'+getTgtMargin()+'" title="목표 마진율(%) — 모든 카드에 적용" style="width:64px;padding:4px 6px;border:1px solid #d8d2c4;border-radius:7px;font-weight:700;text-align:right;"><span>% 이상 ·</span><input type="number" class="tgt-net-input" step="100" value="'+getTgtNet()+'" title="목표 순수익(원) — 모든 카드에 적용" style="width:84px;padding:4px 6px;border:1px solid #d8d2c4;border-radius:7px;font-weight:700;text-align:right;"><span>원 이상</span></div>'+
         '<div class="row"><span>판매가 대비 마진율</span><span class="sc-margin-edit" title="원하는 마진율을 입력하면 중국원가·매입가를 역산해요"><input type="number" class="val-margin-rate margin-rate-input" data-idx="'+idx+'" step="0.1" value="'+marginInputVal(s.margin_rate)+'" style="width:76px;padding:4px 6px;border:1px solid #d8d2c4;border-radius:7px;font-weight:800;text-align:right;"><b>%</b></span></div>'+
@@ -3096,7 +3096,7 @@ function marginInputVal(r){
 /* 역산 버튼의 목표 마진율(%)·순수익(원) — 수정하면 이 브라우저에 저장되고 모든 카드에 적용 */
 function getTgtMargin(){ var v = NaN; try{ v = parseFloat(localStorage.getItem('moriva_tgt_margin_pct')); }catch(e){} return (isFinite(v) && v >= 0 && v < 100) ? v : 25; }
 function getTgtNet(){ var v = NaN; try{ v = parseFloat(localStorage.getItem('moriva_tgt_net_won')); }catch(e){} return (isFinite(v) && v >= 0) ? v : 2500; }
-function tgtBtnLabel(){ return '마진율 ' + getTgtMargin() + '%+순수익 ' + fmtNum(getTgtNet()) + '원↑ → 중국원가 역산'; }
+function tgtBtnLabel(){ return '마진율 ' + getTgtMargin() + '%+순수익 ' + fmtNum(getTgtNet()) + '원↑'; }
 function getPurchaseRate(){
   var v = NaN;
   try{ v = parseFloat(localStorage.getItem('moriva_purchase_rate')); }catch(e){}
