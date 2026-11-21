@@ -1295,6 +1295,7 @@
     });
     return max;
   }
+  let editingKwIdx = null;   // 키워드 편집 대상: null=대표, 'new'=새 추가 키워드, 숫자=추가 키워드 번호
   let folderOrderList = [];   // 사용자가 정한 폴더 순서 (폴더 전체 경로 key 목록)
   function applyFolderOrder(arr){ folderOrderList = Array.isArray(arr) ? arr.filter(k => typeof k === 'string' && k) : []; }
   function orderKeys(labels, keyOf, cmp){
@@ -1538,6 +1539,7 @@
       competitionScore: k.competitionScore || '',
       competitionLevel: k.competitionLevel || '',
       productIndexLevel: k.productIndexLevel || '',
+      extras: Array.isArray(k.extras) ? k.extras.map(e => { const n = normalizeFolderKeyword(Object.assign({}, e, { extras: [] })); delete n.extras; return n; }) : [],
       rocketRatio: k.rocketRatio || '',
       rocketRatioLevel: k.rocketRatioLevel || '',
       sellerRocketRatio: k.sellerRocketRatio || '',
@@ -1550,9 +1552,12 @@
       memo: k.memo || ''
     };
   }
-  function hasFolderKeywordData(k){
+  function hasKwCore(k){
     if(!k) return false;
     return !!(k.keyword || k.searchVolumeTotal || k.competitionCount || k.competitionScore || k.avgPrice || k.memo);
+  }
+  function hasFolderKeywordData(k){
+    return hasKwCore(k) || !!(k && k.extras && k.extras.length);
   }
 
   // 쿠팡 카테고리 선택값이 'W|…'이면 윙 세부 카테고리 — 수수료율과 입출고/배송비 요금표가 함께 자동 적용된다
@@ -3222,8 +3227,8 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     }
     return s;
   }
-  function folderKeywordSummaryHtml(key, kw){
-    if(!hasFolderKeywordData(kw)) return '';
+  function kwSummaryOne(kw){
+    if(!hasKwCore(kw)) return '';
     const chips = [];
     if(kw.searchVolumeTotal) chips.push(`<span class="kw-chip">월검색량 <b>${escapeHtml(fmtKwNum(kw.searchVolumeTotal))}</b></span>`);
     if(kw.competitionCount) chips.push(`<span class="kw-chip">경쟁상품 <b>${escapeHtml(fmtKwNum(kw.competitionCount))}</b>개</span>`);
@@ -3242,6 +3247,11 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     `;
   }
 
+  function folderKeywordSummaryHtml(key, kw){
+    if(!hasFolderKeywordData(kw)) return '';
+    return [kw].concat((kw && kw.extras) || []).map(kwSummaryOne).join('');
+  }
+
   function competitionLevelColor(level){
     if(level === '아주좋음' || level === '좋음') return 'var(--jade)';
     if(level === '보통') return 'var(--amber)';
@@ -3250,8 +3260,8 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     return 'var(--mist)';
   }
 
-  function folderKeywordDetailHtml(key, kw){
-    if(!hasFolderKeywordData(kw)){
+  function kwDetailCardHtml(key, kw, idx){
+    if(!hasKwCore(kw)){
       return `
         <div class="kwd-empty">
           <span>아직 입력된 키워드 분석 정보가 없습니다.</span>
@@ -3269,7 +3279,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     if(kw.searchVolumeTotal) subParts.push(`÷ 월간 검색수(네이버)<br/>${escapeHtml(fmtKwNum(kw.searchVolumeTotal))}회`);
     return `
       <div class="kwd-card">
-        <div class="kwd-keyword-line">🔍 대표 키워드 <b>${escapeHtml(kw.keyword || key)}</b></div>
+        <div class="kwd-keyword-line">🔍 ${idx === '' ? '대표 키워드' : '추가 키워드'} <b>${escapeHtml(kw.keyword || key)}</b></div>
         <div class="kwd-top">
           <div class="kwd-grade-box" style="color:${gradeColor}">
             <div class="kwd-grade-word">${gradeLevel ? escapeHtml(gradeLevel) : '-'}</div>
@@ -3307,7 +3317,10 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
               <div class="kwd-stat-main"><span class="kwd-stat-num">${kw.avgReviewCount ? `${escapeHtml(fmtKwNum(kw.avgReviewCount))}개` : '-'}</span></div>
             </div>
           </div>
-          <button type="button" class="icon-btn kwd-edit-btn-top" data-kwd-edit="${escapeHtml(key)}">✏️ 수정</button>
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:stretch">
+            <button type="button" class="icon-btn kwd-edit-btn-top" data-kwd-edit="${escapeHtml(key)}" data-kwd-idx="${idx}">✏️ 수정</button>
+            ${idx !== '' ? `<button type="button" class="icon-btn" data-kwd-del="${escapeHtml(key)}" data-kwd-idx="${idx}">🗑 삭제</button>` : ''}
+          </div>
         </div>
         ${kw.seasonNote ? `<div class="kwd-note"><span class="kwd-note-label">📅 시즌성/트렌드</span>${escapeHtml(kw.seasonNote)}</div>` : ''}
         ${kw.memo ? `<div class="kwd-memo">${escapeHtml(kw.memo)}</div>` : ''}
@@ -3319,15 +3332,31 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     `;
   }
 
+  function folderKeywordDetailHtml(key, kw){
+    const extras = (kw && kw.extras) || [];
+    let html = '';
+    if(hasKwCore(kw) || !extras.length) html += kwDetailCardHtml(key, kw, '');
+    extras.forEach((x, i) => { html += kwDetailCardHtml(key, x, String(i)); });
+    html += `<div style="margin:8px 0 14px"><button type="button" class="icon-btn" data-kwd-add="${escapeHtml(key)}">＋ 키워드 추가</button></div>`;
+    return html;
+  }
+  function kwEditTarget(kw){
+    const base = kw || normalizeFolderKeyword();
+    if(editingKwIdx === null) return base;
+    if(editingKwIdx === 'new') return normalizeFolderKeyword();
+    return (base.extras || [])[Number(editingKwIdx)] || normalizeFolderKeyword();
+  }
+
   function levelSelectOptionsHtml(current){
     const levels = ['아주좋음','좋음','보통','나쁨','아주나쁨'];
     return `<option value="" ${!current ? 'selected':''}>선택 안 함</option>` +
       levels.map(lv => `<option value="${lv}" ${current===lv?'selected':''}>${lv}</option>`).join('');
   }
   function folderKeywordEditHtml(key, kw){
-    const v = kw || normalizeFolderKeyword();
+    const v = kwEditTarget(kw);
     return `
-      <div class="folder-settings folder-keyword-edit" data-folder-key="${escapeHtml(key)}">
+      <div class="folder-settings folder-keyword-edit" data-folder-key="${escapeHtml(key)}" data-kw-idx="${editingKwIdx === null ? '' : editingKwIdx}">
+        <div style="font-weight:800;margin-bottom:6px">${editingKwIdx === null ? '대표 키워드' : '추가 키워드'} 입력</div>
         <span class="hint">아이템스카우트 등에서 직접 조사한 수치를 입력해두면, 이 폴더를 볼 때마다 마진 정보와 함께 표시됩니다. (자동 조회는 지원되지 않아요 — 로그인이 필요한 유료 서비스라서요)</span>
         <div class="fs-row" style="margin-top:10px;">
           <div class="field">
@@ -3411,8 +3440,14 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
     `;
   }
 
-  function saveFolderKeyword(key, data){
-    folderKeywords[key] = normalizeFolderKeyword({ ...data, updatedAt: new Date().toLocaleDateString('ko-KR') });
+  function saveFolderKeyword(key, data, idx){
+    const stamp = new Date().toLocaleDateString('ko-KR');
+    const entry = normalizeFolderKeyword({ ...data, updatedAt: stamp });
+    const cur = normalizeFolderKeyword(folderKeywords[key]);
+    if(!idx){ entry.extras = cur.extras; folderKeywords[key] = entry; }
+    else if(idx === 'new'){ delete entry.extras; cur.extras = cur.extras.concat([entry]); folderKeywords[key] = cur; }
+    else { delete entry.extras; cur.extras[Number(idx)] = entry; folderKeywords[key] = cur; }
+    editingKwIdx = null;
     editingKeywordFolderKey = null;
     expandedKeywordFolderKey = key;
     saveItems();
@@ -3553,11 +3588,29 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
       btn.addEventListener('click', () => {
         const key = btn.dataset.kwdEdit;
         editingKeywordFolderKey = key;
+        editingKwIdx = (btn.dataset.kwdIdx === undefined || btn.dataset.kwdIdx === '') ? null : btn.dataset.kwdIdx;
         expandedKeywordFolderKey = null;
         renderGrid();
       }));
+    root.querySelectorAll('[data-kwd-add]').forEach(btn =>
+      btn.addEventListener('click', () => {
+        editingKeywordFolderKey = btn.dataset.kwdAdd;
+        editingKwIdx = 'new';
+        expandedKeywordFolderKey = null;
+        renderGrid();
+      }));
+    root.querySelectorAll('[data-kwd-del]').forEach(btn =>
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.kwdDel, i = Number(btn.dataset.kwdIdx);
+        const cur = folderKeywords[key];
+        if(!cur || !cur.extras || !cur.extras[i]) return;
+        if(!confirm('이 추가 키워드를 삭제할까요?')) return;
+        cur.extras.splice(i, 1);
+        saveItems();
+        renderAll();
+      }));
     root.querySelectorAll('.kw-cancel').forEach(btn =>
-      btn.addEventListener('click', () => { editingKeywordFolderKey = null; renderGrid(); }));
+      btn.addEventListener('click', () => { editingKeywordFolderKey = null; editingKwIdx = null; renderGrid(); }));
     root.querySelectorAll('.kw-save').forEach(btn =>
       btn.addEventListener('click', () => {
         const kwPanel = btn.closest('.folder-keyword-edit');
@@ -3578,7 +3631,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
           seasonNote: kwPanel.querySelector('.kw-season-input').value.trim(),
           sourceUrl: kwPanel.querySelector('.kw-source-input').value.trim(),
           memo: kwPanel.querySelector('.kw-memo-input').value.trim()
-        });
+        }, kwPanel.dataset.kwIdx || '');
       }));
     root.querySelectorAll('[data-star]').forEach(btn =>
       btn.addEventListener('click', () => toggleStar(btn.dataset.star)));
