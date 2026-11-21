@@ -1071,6 +1071,7 @@ function loadManifestSummary(){
             sellerYears: it.sellerYears || '',
             sellerRating: it.sellerRating || '',
             sellerGrade: it.sellerGrade || '',
+            rocketSize: it.rocketSize || '',
             options: (it.options || []).map(function(o){
               return { name: o.name || '', cny: o.cny, image: o.image || '' };
             })
@@ -2473,7 +2474,25 @@ function renderGuide(){
     });
   }
 }
+/* 사이즈를 아직 고르지 않아 그로스비용이 비어 있으면, 소싱 후보에 적힌 로켓 사이즈(없으면 소형)로 자동 설정해 그로스비용을 채운다 */
+function ensureDefaultGrowth(p){
+  var changed = false, ms = null;
+  (p.pricing || []).forEach(function(s){
+    var gt = s.growth_tier;
+    if((gt && gt !== 'custom') || (s.growth_cost !== null && s.growth_cost !== undefined && s.growth_cost !== '') || !n(s.sell_price)) return;
+    if(ms === null){
+      ms = '';
+      try{ var m = manifestMatchesFor(p.name).filter(function(x){ return x.rocketSize; })[0]; if(m) ms = m.rocketSize; }catch(e){}
+    }
+    var key = 's';
+    GROWTH_TIERS.forEach(function(t){ if(t.label === ms) key = t.key; });
+    s.growth_tier = key;
+    changed = true;
+  });
+  if(changed){ recomputeAll(p); persistEdits(p); }
+}
 function renderProduct(p){
+  try{ ensureDefaultGrowth(p); }catch(e){}
   // 입력/버튼 조작 후 다시 그릴 때 페이지가 맨 위로 튀지 않도록 스크롤 위치를 기억했다가 복원한다.
   var __prevScrollY = window.scrollY;
   currentProductRef = p;
