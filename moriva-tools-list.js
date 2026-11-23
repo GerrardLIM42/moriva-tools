@@ -17,6 +17,7 @@ window.MORIVA_TOOLS = [
       { id: "opportunity-finder",     icon: "🎯", name: "기회 발굴",          desc: "아이템스카우트 아이템발굴+3년 추세+1688 원가+쿠팡 수요/가격으로 저경쟁 고마진 상품을 자동으로 찾습니다.", badge: "NEW" },
       { id: "sourcing-price-compare",icon: "💱", name: "소싱 가격비교",   desc: "판매자별 옵션 가격을 비교해 최저가를 자동으로 찾아줍니다." },
       { id: "margin-calculator",     icon: "🧮", name: "마진 계산기",     desc: "수입원가·관부가세·판매비를 반영해 마진율을 계산합니다." },
+      { id: "pallet-calculator",     icon: "📦", name: "팔레트 적재 계산기", desc: "박스 규격·수량으로 팔레트 적재 수량과 CBM을 3D로 시뮬레이션합니다.", badge: "NEW" },
       { id: "analysis-history",      icon: "🔎", name: "리뷰 분석 기록",   desc: "크롬 확장 프로그램에서 분석한 쿠팡 리뷰 결과를 동기화해서 확인합니다.", badge: "NEW" }
     ]
   },
