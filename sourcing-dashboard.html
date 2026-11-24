@@ -2853,6 +2853,8 @@ document.getElementById('addProductBtn').addEventListener('click', function(){
   state.view = 'product';
   state.selected = p._id;
   render();
+  var ti = mainContentEl.querySelector('.ef-title');
+  if(ti){ ti.focus(); ti.select(); }
 });
 
 // ---------------- delegated editing handlers (live recompute, no page-scroll jump) ----------------
@@ -3239,6 +3241,14 @@ mainContentEl.addEventListener('change', function(e){
     try{ localStorage.setItem(isM ? 'moriva_tgt_margin_pct' : 'moriva_tgt_net_won', String(v)); }catch(err){}
   }
   if(currentProductRef) renderProduct(currentProductRef);
+});
+
+/* 기본 이름('새 상품')인 상품명 칸을 누르면 글자가 전체 선택되어 바로 덮어써서 입력할 수 있다 */
+mainContentEl.addEventListener('focusin', function(e){
+  var el = e.target;
+  if(el && el.classList && el.classList.contains('ef-title') && String(el.value).trim() === '새 상품'){
+    setTimeout(function(){ try{ el.select(); }catch(err){} }, 0);
+  }
 });
 
 /* 판매자 별점: 별을 클릭해서 0.5점 단위로 입력. 왼쪽 절반=.5점, 오른쪽 절반=정수점.
