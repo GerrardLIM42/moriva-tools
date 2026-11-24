@@ -3172,9 +3172,12 @@ mainContentEl.addEventListener('change', function(e){
   var p = currentProductRef;
   var s = p.pricing && p.pricing[el.getAttribute('data-wing-idx')];
   if(!s) return;
-  s.wing_fee = el.value;
-  if(el.value) s.fee_auto = true;
-  recomputePricingRow(s);
+  // 한쪽 카드에서 윙 카테고리를 고르면 모든 시뮬레이션 카드에 같이 적용한다
+  (p.pricing || []).forEach(function(row){
+    row.wing_fee = el.value;
+    if(el.value) row.fee_auto = true;
+    recomputePricingRow(row);
+  });
   persistEdits(p);
   renderProduct(p);
 });
@@ -3187,9 +3190,12 @@ mainContentEl.addEventListener('change', function(e){
   var p = currentProductRef;
   var s = p.pricing && p.pricing[el.getAttribute('data-cat-idx')];
   if(!s) return;
-  s.fee_cat = el.value;
-  s.fee_auto = true;
-  recomputePricingRow(s);
+  // 쿠팡 카테고리도 모든 시뮬레이션 카드에 같이 적용한다
+  (p.pricing || []).forEach(function(row){
+    row.fee_cat = el.value;
+    row.fee_auto = true;
+    recomputePricingRow(row);
+  });
   persistEdits(p);
   renderProduct(p);
 });
