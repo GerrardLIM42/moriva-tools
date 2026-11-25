@@ -3917,6 +3917,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
         <div class="card-name">${escapeHtml(it.name)}</div>
         ${hasMultiOptions ? `<div class="rep-note">${it.repOptionId ? '📌 대표 옵션 직접 지정 중' : '🏆 최고 마진 옵션 표시 중'}: <b>${escapeHtml(rep.name)}</b></div>` : ''}
         <div class="cny-price">¥${(rep.cny||0).toFixed(2)}<span class="cny-unit">/ 개당 위안화 단가${it.isBundle ? ` · 묶음 ${it.bundleQty}개` : ''}</span></div>
+        ${it.isBundle ? `<div class="cny-price cny-bundle" style="font-size:15px;margin-top:-2px">¥${((rep.cny||0) * (it.bundleQty||1)).toFixed(2)}<span class="cny-unit">/ 묶음 위안화 단가 · ${it.bundleQty}개 기준</span></div>` : ''}
         ${it.yearlySales ? `<div class="yearly-sales-tag">📈 연간 판매량 ${escapeHtml(formatQtyText(it.yearlySales))}</div>` : ''}
         ${sellerInfoHtml(it)}
         <div class="ledger">
