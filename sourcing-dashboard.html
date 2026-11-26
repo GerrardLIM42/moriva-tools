@@ -1411,6 +1411,109 @@ function migrateHiddenToManifest(){
   }catch(e){}
 }
 
+
+/* 쿠팡 카테고리 경로(예: 홈인테리어 > 수납/정리 > 옷걸이)를 윙 카테고리 표에서 가장 비슷한 항목으로 연결한다 */
+function mfTokens(s){ return String(s || '').split(/[\/\s·,()&\-]+/).filter(function(t){ return t.length >= 2; }); }
+function mfSim(a, b){
+  var A = String(a || '').replace(/\s/g, ''), B = String(b || '').replace(/\s/g, '');
+  if(!A || !B) return 0;
+  if(A === B) return 1;
+  var ta = mfTokens(a), tb = mfTokens(b), best = 0;
+  ta.forEach(function(x){ tb.forEach(function(y){
+    if(x === y) best = Math.max(best, 0.7);
+    else if(x.length >= 3 && y.length >= 3 && (x.indexOf(y) !== -1 || y.indexOf(x) !== -1)) best = Math.max(best, 0.5);
+  }); });
+  return best;
+}
+var MF_ROOT_ALIAS = {'패션의류잡화':['패션의류잡화'],'가전/디지털':['가전디지털'],'스포츠/레져':['스포츠레저','스포츠레져'],'반려/애완용품':['반려동물용품','반려애완용품'],'출산/유아동':['출산유아동'],'뷰티':['뷰티'],'식품':['식품'],'생활용품':['생활용품'],'주방용품':['주방용품'],'가구/홈데코':['가구홈데코','가구','홈데코'],'문구/오피스':['문구오피스','문구사무용품'],'완구/취미':['완구취미'],'자동차용품':['자동차용품']};
+function mfNorm(s){ return String(s || '').replace(/[\/\s·,()&\-]/g, ''); }
+function matchWingCategory(crumbs){
+  var c = (crumbs || []).filter(function(n){ return n && !/^(쿠팡\s*홈|쿠팡수입|싱글라이프|로켓프레시)$/.test(n); });
+  if(!c.length) return null;
+  var totalW = 0; c.forEach(function(_, i){ totalW += (i + 1) * (i + 1); });
+  var rootsFound = [];
+  Object.keys(MF_ROOT_ALIAS).forEach(function(r){ if(c.some(function(n){ return MF_ROOT_ALIAS[r].indexOf(mfNorm(n)) !== -1; })) rootsFound.push(r); });
+  var best = null, bestScore = 0;
+  WING_FEES.forEach(function(e){
+    if(/미확인/.test(e.path)) return;
+    if(rootsFound.length && rootsFound.indexOf(e.root) === -1) return;
+    var segs = [e.root].concat(String(e.path).split(' > ').slice(1));
+    var score = 0, matchedDepth = 0;
+    c.forEach(function(name, i){
+      var w = (i + 1) * (i + 1), m = 0, mi = -1;
+      segs.forEach(function(sg, j){ var s = mfSim(name, sg); if(s > m){ m = s; mi = j; } });
+      score += w * m;
+      if(m >= 0.5 && mi > matchedDepth) matchedDepth = mi;
+    });
+    score = score / totalW + matchedDepth * 0.003 - segs.length * 0.0005;
+    if(score > bestScore){ bestScore = score; best = e; }
+  });
+  return (best && bestScore >= 0.28) ? { id: best.id, root: best.root, path: best.path, score: bestScore } : null;
+}
+
+/* ── MORIVA 확장 프로그램 연결: 쿠팡 상품 링크의 가격·카테고리 등을 읽어 온다 ── */
+function morivaExt(type, payload, timeoutMs){
+  return new Promise(function(resolve, reject){
+    var id = 'x' + Date.now() + Math.random().toString(36).slice(2, 6);
+    var timer = setTimeout(function(){ window.removeEventListener('message', onMsg); reject(new Error('timeout')); }, timeoutMs || 3000);
+    function onMsg(e){
+      var d = e.data;
+      if(e.source !== window || !d || d.source !== 'MORIVA_EXTENSION' || d.id !== id) return;
+      clearTimeout(timer); window.removeEventListener('message', onMsg); resolve(d);
+    }
+    window.addEventListener('message', onMsg);
+    window.postMessage(Object.assign({ source: 'MORIVA_SITE', type: type, id: id }, payload || {}), window.location.origin);
+  });
+}
+var coupangImporting = false;
+function importCoupangInfo(p, idx){
+  var c = p.competitors && p.competitors[idx];
+  if(!c) return;
+  var url = String(c.url || '').trim();
+  if(!/coupang\.com\/vp\/products\//.test(url)){ mfSay('쿠팡 상품 링크(coupang.com/vp/products/...)를 먼저 입력해 주세요.', true); return; }
+  if(coupangImporting){ mfSay('이미 불러오는 중이에요. 잠시만 기다려 주세요.', true); return; }
+  coupangImporting = true;
+  morivaExt('moriva-ext-ping', null, 1500).then(function(){
+    mfSay('쿠팡에서 상품 정보를 읽는 중… (몇 초 걸려요)', false, true);
+    return morivaExt('moriva-ext-fetch', { url: url }, 60000);
+  }, function(){
+    throw new Error('MORIVA 확장 프로그램(v1.16 이상)이 연결되지 않았어요. 확장 프로그램을 최신으로 업데이트한 뒤 크롬에서 이 페이지를 새로고침(F5)해 주세요.');
+  }).then(function(res){
+    if(!res.ok || !res.info) throw new Error(res.error || '상품 정보를 읽지 못했어요.');
+    applyCoupangInfo(p, idx, res.info);
+  }).catch(function(err){
+    mfSay(err && err.message ? err.message : '불러오기에 실패했어요.', true);
+  }).then(function(){ coupangImporting = false; });
+}
+function applyCoupangInfo(p, idx, info){
+  var c = p.competitors[idx];
+  if(info.title) c.name = info.title;
+  if(typeof info.price === 'number') c.price = info.price;
+  if(typeof info.reviewCount === 'number') c.reviews = info.reviewCount;
+  if(typeof info.monthlyBuyers === 'number') c.buyers_28d = info.monthlyBuyers;
+  if(info.url) c.url = info.url;
+  if(info.image){
+    var note = getNote(p);
+    var imgs = Object.assign({}, note.compImgUrls || {}); imgs[idx] = info.image;
+    setNote(p, { compImgUrls: imgs });
+  }
+  var msg = '불러왔어요: ' + (info.price != null ? info.price.toLocaleString('ko-KR') + '원' : '가격 확인 불가');
+  var m = (info.category && info.category.length) ? matchWingCategory(info.category) : null;
+  var hasWing = (p.pricing || []).some(function(s){ return s.wing_fee; });
+  if(m && !hasWing){
+    (p.pricing || []).forEach(function(s){ s.wing_fee = m.id; s.fee_auto = true; });
+    msg += ' · 카테고리 자동 연결: ' + m.path;
+  } else if(m){
+    msg += ' · 카테고리 후보: ' + m.path + ' (기존 설정 유지)';
+  } else if(info.category && info.category.length){
+    msg += ' · 카테고리(' + info.category.join(' > ') + ')는 자동 연결 못 했어요. 윙 카테고리를 직접 골라 주세요.';
+  }
+  recomputeAll(p);
+  persistEdits(p);
+  renderProduct(p);
+  renderSidebar();
+  mfSay(msg, false);
+}
 function findManifestItem(payload, id){
   for(var i = 0; i < payload.items.length; i++){
     if(payload.items[i] && payload.items[i].id === id) return payload.items[i];
@@ -2557,6 +2660,7 @@ function renderProduct(p){
           '<div class="cc-views-row">월 구매수(이상) '+ef('competitors.'+idx+'.buyers_28d', c.buyers_28d, {cls:'ef-cc-views'})+'<span class="cc-unit">명</span></div>'+
           '<div class="cc-views-row">리뷰수 '+ef('competitors.'+idx+'.reviews', c.reviews, {cls:'ef-cc-views'})+'<span class="cc-unit">개</span></div>'+
           '<div class="cc-url-row">'+ef('competitors.'+idx+'.url', c.url, {type:'text', cls:'ef-cc-url', placeholder:'쿠팡 상품 링크 붙여넣기'})+'<a class="cc-link" href="'+esc(normCompUrl(c.url) || '#')+'" target="_blank" rel="noopener noreferrer" title="쿠팡 상품 페이지 열기" style="'+(normCompUrl(c.url) ? '' : 'display:none')+'">🔗 열기</a></div>'+
+          '<div class="cc-import-row" style="margin:6px 0 2px;"><button type="button" class="autofill-btn" data-action="coupang-import" data-idx="'+idx+'" title="MORIVA 확장 프로그램으로 위 링크의 상품명·가격·리뷰수·카테고리를 읽어옵니다">📥 쿠팡 정보 불러오기</button></div>'+
           '<div class="cc-est" data-est="'+idx+'">'+estSalesInner(c)+'</div>'+
         '</div></div>';
     }).join('') +
@@ -3091,6 +3195,9 @@ mainContentEl.addEventListener('click', function(e){
     var purchase6 = Math.max(0, sell6 - growth6 - fee6 - needNet6 / 0.9);
     s6.purchase_cost = Math.round(purchase6);
     s6.china_cost = Math.round(s6.purchase_cost / getPurchaseRate() * 100) / 100;
+  } else if(action === 'coupang-import'){
+    importCoupangInfo(p, parseInt(idx, 10));
+    return;
   } else if(action === 'add-1688'){
     p.sourcing_1688 = p.sourcing_1688 || [];
     p.sourcing_1688.push({unit_price:null, yearly_sales:'', url:'', options:''});
@@ -3262,6 +3369,18 @@ mainContentEl.addEventListener('focusin', function(e){
   var el = e.target;
   if(el && el.classList && el.classList.contains('ef-title') && String(el.value).trim() === '새 상품'){
     setTimeout(function(){ try{ el.select(); }catch(err){} }, 0);
+  }
+});
+
+/* 쿠팡 링크를 붙여넣고 칸을 벗어나면, 아직 비어 있는 카드는 자동으로 정보를 불러온다 */
+mainContentEl.addEventListener('change', function(e){
+  var el = e.target;
+  if(!el || !el.getAttribute || !currentProductRef) return;
+  var m = String(el.getAttribute('data-path') || '').match(/^competitors\.(\d+)\.url$/);
+  if(!m) return;
+  var c = currentProductRef.competitors && currentProductRef.competitors[m[1]];
+  if(c && /coupang\.com\/vp\/products\//.test(String(c.url || '')) && !c.name && (c.price === null || c.price === undefined || c.price === '')){
+    importCoupangInfo(currentProductRef, parseInt(m[1], 10));
   }
 });
 
