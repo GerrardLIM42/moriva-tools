@@ -2,10 +2,16 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#071A35">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="MORIVA">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="./manifest.webmanifest">
 <title>MORIVA</title>
 <link rel="icon" type="image/png" href="./favicon.png">
-<link rel="apple-touch-icon" href="./favicon.png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <style>
   :root{
     --navy:#071A35; --navy-soft:#0E2A4C; --gold:#C9961A;
@@ -90,8 +96,8 @@
   /* 도구 이름은 각 도구 페이지가 직접 보여주므로 PC에서는 상단 바를 두지 않는다.
      모바일에서는 사이드바가 숨겨지므로 메뉴·뒤로가기 버튼용으로만 표시한다. */
   .topbar{
-    display:none; flex-shrink:0; height:48px; align-items:center; gap:8px;
-    padding:0 12px; background:#fff; border-bottom:1px solid #E3E6EA;
+    display:none; flex-shrink:0; height:calc(48px + env(safe-area-inset-top, 0px)); align-items:center; gap:8px;
+    padding:env(safe-area-inset-top, 0px) calc(12px + env(safe-area-inset-right, 0px)) 0 calc(12px + env(safe-area-inset-left, 0px)); background:#fff; border-bottom:1px solid #E3E6EA;
   }
   .burger{display:none;background:none;border:0;font-size:19px;cursor:pointer;color:#1B2A3D;padding:4px 6px;}
   /* 모바일에서는 사이드바가 숨겨지므로 도구 모음으로 돌아가는 버튼을 상단에 둔다 */
@@ -101,6 +107,7 @@
   }
   .backbtn:hover{border-color:var(--gold);}
   iframe{flex:1;width:100%;border:0;display:block;background:var(--paper);}
+  .topbar .toptitle{font-size:14px;font-weight:800;color:#1B2A3D;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
   .scrim{display:none;position:fixed;inset:0;background:rgba(7,26,53,.45);z-index:35;}
 
@@ -126,7 +133,8 @@
   @media (max-width:820px){
     /* 드로어는 top/bottom을 함께 고정해 실제 보이는 영역에 딱 맞춘다
        (height 계산에 의존하지 않으므로 주소창이 나타나고 사라져도 하단이 잘리지 않음) */
-    aside{position:fixed;left:0;top:0;bottom:0;height:auto;transform:translateX(-100%);transition:transform .22s ease;box-shadow:0 0 40px rgba(0,0,0,.3);}
+    aside{padding-top:env(safe-area-inset-top, 0px);position:fixed;left:0;top:0;bottom:0;height:auto;transform:translateX(-100%);transition:transform .22s ease;box-shadow:none;}
+    body.nav-open aside{box-shadow:0 0 40px rgba(0,0,0,.3);}
     body.nav-open aside{transform:translateX(0);}
     body.nav-open .scrim{display:block;}
     .burger{display:block;}
@@ -156,6 +164,7 @@
   <div class="topbar">
     <button class="burger" id="burger" aria-label="메뉴 열기">☰</button>
     <button class="backbtn" id="backBtn" aria-label="전체 보기로">←</button>
+    <span class="toptitle" id="topTitle"></span>
   </div>
   <iframe id="frame" title="도구 화면"></iframe>
 </main>
@@ -206,8 +215,19 @@ nav.innerHTML = html;
    ASSET_VERSION: 도구 파일을 수정할 때마다 이 값을 올린다.
    모바일 브라우저는 HTML을 오래 캐시해 수정 사항이 바로 반영되지 않는데,
    주소에 버전을 붙이면 새 주소로 인식해 항상 최신 파일을 받아온다. */
-var ASSET_VERSION = "20261126a";
+var ASSET_VERSION = "20261128a";
 var frame = document.getElementById("frame");
+/* 도구 화면이 열릴 때마다 모바일 보정 스크립트를 넣는다 (같은 출처라 가능) */
+frame.addEventListener("load", function () {
+  try {
+    var d = frame.contentDocument;
+    if (!d || d.getElementById("moriva-mobile-js")) return;
+    var sc = d.createElement("script");
+    sc.id = "moriva-mobile-js";
+    sc.src = "./moriva-mobile.js?v=" + ASSET_VERSION;
+    (d.head || d.documentElement).appendChild(sc);
+  } catch (e) {}
+});
   // saas-starter 설정 페이지의 "모리바 도구모음에서 분석 기록 보기" 버튼이 여기로
   // ?token=...#analysis-history 형태로 들어온다. 사용자가 코드를 직접 복사/붙여넣기
   // 하지 않아도 되도록, 최초 진입 시 한 번만 프레임에 그대로 전달하고 주소창에서는
@@ -231,6 +251,7 @@ function route() {
   }
   // 도구 이름은 각 도구 페이지 안에서 표시하므로 상단 바에는 넣지 않는다.
   document.title = tool ? "MORIVA · " + tool.name : "MORIVA";
+  document.getElementById("topTitle").textContent = tool ? tool.name : "";
   nav.querySelectorAll("a").forEach(function (a) {
     a.classList.toggle("active", a.getAttribute("data-id") === id);
   });
