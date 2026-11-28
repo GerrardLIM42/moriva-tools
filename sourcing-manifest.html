@@ -874,6 +874,16 @@
             <input type="url" id="f-link" placeholder="https://detail.1688.com/offer/..." />
           </div>
           <div class="field full">
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+              <button type="button" class="btn ghost" id="btn-fetch-1688">🔄 1688 정보 불러오기</button>
+              <span class="hint" id="fetch-1688-msg" style="margin:0;flex:1;min-width:200px;">링크를 넣고 누르면 MORIVA 확장 프로그램이 1688 페이지를 열어 회사명·입점 연차·별점·판매량·옵션을 채워 줘요. (PC 크롬 + 1688 로그인 필요)</span>
+            </div>
+          </div>
+          <div class="field full">
+            <label>회사명 (판매자) <span style="font-weight:400;">(선택)</span></label>
+            <input type="text" id="f-seller-name" placeholder="불러오기로 자동 입력되고, 직접 적어도 돼요" />
+          </div>
+          <div class="field full">
             <label>연간 판매량 <span style="font-weight:400;">(선택)</span></label>
             <input type="text" id="f-yearly-sales" placeholder="예: 5,000개 · 1688 상품페이지의 판매 수량" />
             <span class="hint">소싱 대시보드의 1688 소싱처에 그대로 표시됩니다</span>
@@ -1409,6 +1419,7 @@
   }
   function sellerInfoHtml(it){
     var parts = [];
+    if(it.sellerName) parts.push('<span class="seller-name-tag" style="color:var(--ink,#1B2A3D);font-weight:700;">' + escapeHtml(String(it.sellerName)) + '</span>');
     if(it.sellerGrade) parts.push(gradeBadgeHtml(it.sellerGrade));
     if(it.sellerYears) parts.push('<span class="seller-sub">입주 ' + escapeHtml(String(it.sellerYears)) + '년</span>');
     if(it.sellerRating) parts.push(starRatingHtml(it.sellerRating));
@@ -1485,6 +1496,7 @@
       category: it.category || 'ACTIVE',
       status: it.status || '검토중',
       yearlySales: it.yearlySales || '',
+      sellerName: it.sellerName || '',
       sellerYears: it.sellerYears || '',
       sellerRating: it.sellerRating || '',
       sellerGrade: it.sellerGrade || '',
@@ -1826,6 +1838,7 @@
           name: (it.name || '').trim(),
           link: it.link || '',
           yearlySales: it.yearlySales || '',
+          sellerName: it.sellerName || '',
           sellerYears: it.sellerYears || '',
           sellerRating: it.sellerRating || '',
           sellerGrade: it.sellerGrade || '',
@@ -4112,6 +4125,74 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
 
   /* ---------------- form ---------------- */
 
+  /* ── 1688 정보 불러오기 (MORIVA 확장 프로그램 연동) ── */
+  function morivaExt(type, payload, timeoutMs){
+    return new Promise(function(resolve, reject){
+      var id = 'x' + Date.now() + Math.random().toString(36).slice(2, 6);
+      var timer = setTimeout(function(){ window.removeEventListener('message', onMsg); reject(new Error('timeout')); }, timeoutMs || 3000);
+      function onMsg(e){
+        var d = e.data;
+        if(e.source !== window || !d || d.source !== 'MORIVA_EXTENSION' || d.id !== id) return;
+        clearTimeout(timer); window.removeEventListener('message', onMsg); resolve(d);
+      }
+      window.addEventListener('message', onMsg);
+      window.postMessage(Object.assign({ source: 'MORIVA_SITE', type: type, id: id }, payload || {}), window.location.origin);
+    });
+  }
+  function verNum(v){ var p = String(v || '0').split('.').map(Number); return (p[0]||0)*10000 + (p[1]||0)*100 + (p[2]||0); }
+  var fetching1688 = false;
+  function apply1688Info(info){
+    var got = [], miss = [];
+    if(info.sellerName){ $('#f-seller-name').value = info.sellerName; got.push(info.sellerName); } else miss.push('회사명');
+    if(info.sellerYears != null){ $('#f-seller-years').value = info.sellerYears; got.push(info.sellerYears + '년'); } else miss.push('연차');
+    if(info.sellerRating != null){ setSellerRatingValue(info.sellerRating); got.push('★' + info.sellerRating); } else miss.push('별점');
+    if(info.sellerGrade){ $('#f-seller-grade').value = info.sellerGrade; updateGradePreview(); }
+    if(info.salesCount != null){
+      $('#f-yearly-sales').value = formatQtyText(info.salesCount);
+      got.push('판매 ' + info.salesCount.toLocaleString('ko-KR') + (info.salesKind === 'month' ? '(30일)' : ''));
+    } else miss.push('판매량');
+    var opts = (info.options || []).filter(function(o){ return o && o.name; });
+    if(opts.length){
+      var blank = draftOptions.every(function(o){ return !o.cny && !o.sell && !o.image && (!o.name || /^옵션 \d+$/.test(o.name)); });
+      if(blank || confirm('1688 옵션 ' + opts.length + '개로 현재 옵션 입력값을 바꿀까요?\n(취소하면 옵션은 그대로 두고 나머지 정보만 채웁니다)')){
+        var base = draftOptions[0] || {};
+        draftOptions = opts.map(function(o, i){
+          return { id: uid(), name: o.name, cny: o.cny || 0, sell: 0, image: o.image || (i === 0 ? (info.image || '') : ''),
+                   _mode: base._mode || 'margin', _targetMarginPct: base._targetMarginPct || '' };
+        });
+        renderOptionsList(); refreshAutoFields();
+        got.push('옵션 ' + opts.length + '개');
+      }
+    } else miss.push('옵션');
+    var msg = '✓ ' + got.join(' · ') + (miss.length ? '  /  ⚠ 못 읽음: ' + miss.join(', ') : '');
+    if(info.loginWall) msg += '  (1688 로그인이 안 돼 있으면 옵션·판매량이 일부만 보여요)';
+    $('#fetch-1688-msg').textContent = msg;
+    showToast('1688 정보를 불러왔어요. 확인 후 저장하세요.');
+  }
+  async function fetch1688Info(){
+    var link = $('#f-link').value.trim(), msg = $('#fetch-1688-msg'), btn = $('#btn-fetch-1688');
+    if(!/1688\.com\/offer\/\d+/.test(link)){ msg.textContent = '⚠ 1688 상품 링크(detail.1688.com/offer/숫자.html)를 먼저 입력해 주세요.'; return; }
+    if(fetching1688) return;
+    fetching1688 = true; btn.disabled = true; msg.textContent = '확장 프로그램 확인 중…';
+    try{
+      var pong;
+      try{ pong = await morivaExt('moriva-ext-ping', null, 1500); }
+      catch(e){ throw new Error('MORIVA 확장 프로그램이 연결되지 않았어요. PC 크롬에서 확장 프로그램을 켜고 이 화면을 새로고침해 주세요. (아이폰에서는 사용할 수 없어요)'); }
+      if(verNum(pong.version) < verNum('1.18.0')) throw new Error('확장 프로그램이 오래된 버전(' + pong.version + ')이에요. 1.18.0으로 업데이트한 뒤 chrome://extensions 에서 새로고침해 주세요.');
+      msg.textContent = '1688 페이지를 읽는 중… (최대 30초, 새 탭이 잠깐 열렸다 닫혀요)';
+      var res = await morivaExt('moriva-ext-fetch1688', { url: link }, 90000);
+      if(!res.ok || !res.info) throw new Error(res.error || '1688 정보를 읽지 못했어요.');
+      apply1688Info(res.info);
+    }catch(e){
+      msg.textContent = '⚠ ' + (e && e.message === 'timeout' ? '시간이 초과됐어요. 1688에 로그인돼 있는지 확인하고 다시 시도해 주세요.' : (e.message || e));
+    }finally{
+      fetching1688 = false; btn.disabled = false;
+    }
+  }
+  document.addEventListener('click', function(e){
+    if(e.target.closest && e.target.closest('#btn-fetch-1688')) fetch1688Info();
+  });
+
   function openForm(id, presetData){
     editingId = id || null;
     panel.hidden = false;
@@ -4125,6 +4206,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
       $('#f-folder-new').value = '';
       $('#f-link').value = it.link;
       $('#f-yearly-sales').value = formatQtyText(it.yearlySales);
+      $('#f-seller-name').value = it.sellerName || '';
       $('#f-seller-years').value = it.sellerYears || '';
       setSellerRatingValue(it.sellerRating || '');
       $('#f-seller-grade').value = it.sellerGrade || '';
@@ -4351,6 +4433,7 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
       folder: folderVal,
       link: $('#f-link').value.trim(),
       yearlySales: $('#f-yearly-sales').value.replace(/,/g, '').trim(),
+      sellerName: $('#f-seller-name').value.trim(),
       sellerYears: $('#f-seller-years').value.trim(),
       sellerRating: $('#f-seller-rating').value.trim(),
       sellerGrade: $('#f-seller-grade').value,

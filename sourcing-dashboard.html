@@ -1076,6 +1076,7 @@ function loadManifestSummary(){
             memo: it.memo || '',
             cny: it.cny,
             yearlySales: it.yearlySales || '',
+            sellerName: it.sellerName || '',
             sellerYears: it.sellerYears || '',
             sellerRating: it.sellerRating || '',
             sellerGrade: it.sellerGrade || '',
@@ -1539,7 +1540,7 @@ function updateManifestField(id, field, rawValue){
     if(!isFinite(value) || value < 0) value = 0;
   } else if(field === 'yearlySales' || field === 'sellerYears' || field === 'sellerRating'){
     value = String(rawValue == null ? '' : rawValue).replace(/,/g, '').trim();
-  } else if(field === 'sellerGrade'){
+  } else if(field === 'sellerGrade' || field === 'sellerName'){
     value = String(rawValue == null ? '' : rawValue).trim();
   } else if(field === 'image' || field === 'link'){
     value = String(rawValue == null ? '' : rawValue).trim();
@@ -2774,6 +2775,7 @@ function renderProduct(p){
         '</div>'+
         '<button type="button" class="mf-del" data-action="mf-delete" data-mf-id="'+esc(m.id)+'" title="소싱 후보에서 삭제">✕</button>'+
         '<div class="src-seller-row">'+
+          '<div class="src-seller-field" style="min-width:150px;flex:1.4;"><input type="text" class="mf-in" data-mf-field="sellerName" data-mf-id="'+esc(m.id)+'" value="'+esc(m.sellerName||'')+'" placeholder="-" title="'+esc(m.sellerName||'')+'"><div class="u-sub">회사명</div></div>'+
           '<div class="src-seller-field"><input type="text" inputmode="decimal" class="mf-in mf-in-sm" data-mf-field="sellerYears" data-mf-id="'+esc(m.id)+'" value="'+esc(m.sellerYears||'')+'" placeholder="-"><div class="u-sub">입점 연차</div></div>'+
           '<div class="src-seller-field"><div class="star-rate interactive" data-star-rate="1" data-mf-id="'+esc(m.id)+'" title="'+(m.sellerRating?esc(String(m.sellerRating))+'점':'')+'">'+renderStarPickerHtml(m.sellerRating)+'</div><div class="u-sub">별점</div></div>'+
           '<div class="src-seller-field src-seller-grade">'+gradePickerHtml(m.sellerGrade, m.id)+'<div class="u-sub">실력상가 등급</div></div>'+
