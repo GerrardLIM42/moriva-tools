@@ -935,6 +935,13 @@
       <div class="fsec" id="fsec-options">
         <div class="fsec-head"><span class="ico">🎨</span><span class="ttl">옵션 (이미지·단가·판매가)</span></div>
         <span class="hint">옵션 1개만 있는 단일 상품이면 그대로 옵션 1만 채우면 되고, 색상·사이즈별로 단가나 판매가가 다르면 "+ 옵션 추가"로 옵션 2, 3...을 계속 늘릴 수 있어요. 옵션마다 예상 마진이 바로 표시됩니다.</span>
+        <div id="bulk-margin-bar" style="display:none;margin-top:10px;padding:10px 12px;border:1px dashed #DCD5C3;border-radius:10px;background:#FBF8F1;align-items:center;gap:8px;flex-wrap:wrap;">
+          <b style="font-size:12.5px;">일괄 마진율</b>
+          <input type="number" id="bulk-margin-input" step="0.1" min="0" max="99" placeholder="예: 25" style="width:90px;" />
+          <span style="font-size:12.5px;">%</span>
+          <button type="button" class="btn ghost" id="bulk-margin-apply">모든 옵션에 적용</button>
+          <span class="hint" style="margin:0;flex:1;min-width:180px;">옵션별 목표 마진율을 한 번에 채우고, 옵션마다 판매가를 자동 역산해요.</span>
+        </div>
         <div id="options-list" style="margin-top:10px;"></div>
         <button type="button" class="btn ghost" id="add-option-btn" style="margin-top:4px;">+ 옵션 추가</button>
       </div>
@@ -4334,6 +4341,8 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
 
   function renderOptionsList(){
     const wrap = $('#options-list');
+    const bulkBar = $('#bulk-margin-bar');
+    if(bulkBar) bulkBar.style.display = draftOptions.length > 1 ? 'flex' : 'none';
     wrap.innerHTML = draftOptions.map((o, idx) => {
       const mode = o._mode || 'margin';
       return `
@@ -4399,6 +4408,13 @@ if(false){ // Worker 프록시 사용 중 — 항상 동기화
       }
     });
   }
+  $('#bulk-margin-apply').addEventListener('click', () => {
+    const v = parseFloat($('#bulk-margin-input').value);
+    if(!isFinite(v) || v <= 0 || v >= 100){ showToast('1~99 사이의 마진율(%)을 입력해 주세요.'); return; }
+    draftOptions.forEach(o => { o._mode = 'margin'; o._targetMarginPct = v; });
+    renderOptionsList();
+    showToast('옵션 ' + draftOptions.length + '개에 마진율 ' + v + '%를 적용했어요.');
+  });
   $('#add-option-btn').addEventListener('click', () => {
     const last = draftOptions[draftOptions.length - 1];
     draftOptions.push({
